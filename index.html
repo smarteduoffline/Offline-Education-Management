@@ -64,6 +64,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .dots{border:0;background:none;font-size:22px;color:var(--mu);line-height:1;padding:0 6px}
 .ob{border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px}.ob.g{border-color:#16a34a;color:#16a34a;background:#f0fdf4}
 .mr{display:flex;align-items:center;gap:12px;padding:11px 0;font-size:14px}.mr i{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-style:normal;flex:none}.mr.rd{color:var(--rd)}.mr.rd i{background:#ffe4e9}
+.tb.wr th,.tb.wr td{white-space:normal;font-size:11px;padding:8px 3px;vertical-align:middle}.tb.wr .pl{font-size:10px;padding:1px 6px;margin:0}
 </style>
 </head>
 <body>
@@ -91,7 +92,7 @@ function render(){
 }
 function go(t){tab=t;q="";sub="";curExam="";profId="";render();$("v").scrollTop=0}
 
-let homeCls="",logAll=false,photoCb=null;
+let homeCls="",logAll=false,photoCb=null,photoDoc=false;
 const p2=n=>String(n).padStart(2,"0");
 function logA(ty,cat,tx){S.log.unshift({t:Date.now(),ty,cat,tx});S.log=S.log.slice(0,60)}
 function autoFees(){const d=new Date(),ym=mk(d.getFullYear(),d.getMonth());S.students.forEach(s=>{if(s.status=="নিষ্ক্রিয়"||!(+s.monthlyFee>0))return;if(!S.fees.some(f=>f.sid==s.id&&f.auto==ym))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+MN[d.getMonth()]+" "+bn(d.getFullYear()),amt:+s.monthlyFee,paid:0,date:today(),auto:ym})})}
@@ -152,6 +153,7 @@ let sCls="",sGen="",sSt="",selS={};
 const HND='<div style="width:40px;height:4px;border-radius:2px;background:var(--ln);margin:0 auto 12px"></div>';
 const avt=(s,z)=>s.photo?`<img class="av" style="width:${z}px;height:${z}px" src="${s.photo}">`:`<div class="av" style="width:${z}px;height:${z}px;font-size:${Math.round(z/2)}px">👤</div>`;
 const sOf=id=>S.students.find(x=>x.id==id);
+const pOf=id=>S.students.find(x=>x.id==id)||S.teachers.find(x=>x.id==id)||S.staff.find(x=>x.id==id);
 function sList(){const k=q.trim().toLowerCase();return S.students.filter(s=>(!sCls||s.cls==sCls)&&(!sGen||s.gender==sGen)&&(!sSt||(s.status||"সক্রিয়")==sSt)&&(!k||[s.name,s.nameEn,s.roll,s.guardian,s.phone].join(" ").toLowerCase().includes(k)))}
 function stuRows(){
  return sList().map(s=>`<div class="sc2"><input type="checkbox" class="cb" ${selS[s.id]?"checked":""} onchange="togS('${s.id}')"><div style="flex:1;min-width:0" onclick="profile('${s.id}')"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">${avt(s,36)}<b style="font-size:15px">${esc(s.name)}</b></div>
@@ -368,20 +370,20 @@ function delTx(id,fid){if(!confirm("এই লেনদেনের রেকর
 
 /* ---- message ---- */
 function msgM(ids,txt){
- const l=ids.map(sOf).filter(x=>x&&x.phone);if(!l.length){alert("মোবাইল নম্বর সহ কোনো শিক্ষার্থী নেই");return}
+ const l=ids.map(pOf).filter(x=>x&&x.phone);if(!l.length){alert("মোবাইল নম্বর সহ কোনো শিক্ষার্থী নেই");return}
  mctx={ids:l.map(x=>x.id),sel:Object.fromEntries(l.map(x=>[x.id,1])),done:{},txt:txt||(l.length==1?fillT(MT,l[0]):MT)};drawMsg();
 }
 function drawMsg(){
- const l=mctx.ids.map(sOf),n=Object.keys(mctx.sel).length,one=l.length==1;
- modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">💬 ${one?esc(l[0].guardian||"অভিভাবক")+" -কে বার্তা পাঠান":"অভিভাবকদের বার্তা পাঠান"}</h2><label class="lb">বার্তার বিষয়বস্তু</label><textarea rows="5" oninput="mctx.txt=this.value;$('mc').textContent=bn(this.value.length)+' অক্ষর'">${esc(mctx.txt)}</textarea><small id="mc" style="color:var(--mu)">${bn(mctx.txt.length)} অক্ষর</small>
+ const l=mctx.ids.map(pOf),n=Object.keys(mctx.sel).length,one=l.length==1;
+ modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">💬 ${one?esc(l[0].guardian||l[0].name)+" -কে বার্তা পাঠান":"অভিভাবকদের বার্তা পাঠান"}</h2><label class="lb">বার্তার বিষয়বস্তু</label><textarea rows="5" oninput="mctx.txt=this.value;$('mc').textContent=bn(this.value.length)+' অক্ষর'">${esc(mctx.txt)}</textarea><small id="mc" style="color:var(--mu)">${bn(mctx.txt.length)} অক্ষর</small>
  <div style="display:flex;align-items:center;gap:8px;margin:10px 0"><input type="checkbox" class="cb" ${n==l.length?"checked":""} onchange="msgAll(this.checked)"><b style="font-size:13px;flex:1">সবাই নির্বাচন (${bn(n)} জন)</b><button class="btn g s" onclick="msgNext()">সকলকে WhatsApp</button></div>
- <div class="card" style="padding:6px">${l.map(x=>`<div class="row"><input type="checkbox" class="cb" ${mctx.sel[x.id]?"checked":""} onchange="msgTog('${x.id}')"><div class="f"><b>${esc(x.guardian||"অভিভাবক")}</b> <span style="font-size:12px;color:var(--mu)">(${esc(x.name)})</span><small>📞 ${esc(x.phone)}${mctx.done[x.id]?" ✓ পাঠানো হয়েছে":""}</small></div><button class="btn s g" onclick="msgOne('${x.id}','wa')">WA</button><button class="btn s o" onclick="msgOne('${x.id}','sms')">SMS</button></div>`).join("")}</div>
+ <div class="card" style="padding:6px">${l.map(x=>`<div class="row"><input type="checkbox" class="cb" ${mctx.sel[x.id]?"checked":""} onchange="msgTog('${x.id}')"><div class="f"><b>${esc(x.guardian||x.name)}</b>${x.guardian?` <span style="font-size:12px;color:var(--mu)">(${esc(x.name)})</span>`:""}<small>📞 ${esc(x.phone)}${mctx.done[x.id]?" ✓ পাঠানো হয়েছে":""}</small></div><button class="btn s g" onclick="msgOne('${x.id}','wa')">WA</button><button class="btn s o" onclick="msgOne('${x.id}','sms')">SMS</button></div>`).join("")}</div>
  <p style="font-size:11px;color:var(--mu);text-align:center">WhatsApp/SMS বাটনে ক্লিক করলে ফোনের অ্যাপ খুলবে — পাঠানোর পর লগ স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে। "সকলকে WhatsApp" চাপলে একে একে পরের জনের চ্যাট খুলবে। {নাম} ও {শ্রেণি} লিখলে প্রত্যেকের নাম বসবে।</p>`);
  $("mt").onclick=null;
 }
 function msgAll(on){mctx.sel=on?Object.fromEntries(mctx.ids.map(i=>[i,1])):{};drawMsg()}
 function msgTog(id){if(mctx.sel[id])delete mctx.sel[id];else mctx.sel[id]=1;drawMsg()}
-function msgOne(id,ch){const x=sOf(id);mctx.done[id]=1;sendTo(x,ch,fillT(mctx.txt,x));setTimeout(drawMsg,400)}
+function msgOne(id,ch){const x=pOf(id);mctx.done[id]=1;sendTo(x,ch,fillT(mctx.txt,x));setTimeout(drawMsg,400)}
 function msgNext(){const id=mctx.ids.find(i=>mctx.sel[i]&&!mctx.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}msgOne(id,"wa")}
 
 /* ---- admit card / id card ---- */
@@ -538,12 +540,15 @@ function commit(){
  else{const id=uid();S.students.push({id,...o,monthlyFee:+((fees||{}).monthly)||0});FEES.forEach(f=>{if(f[0]=="monthly")return;const a=+((fees||{})[f[0]]);if(a>0)S.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})});logA("add","শিক্ষার্থী","নতুন শিক্ষার্থী ভর্তি: "+o.name)}
  autoFees();save();closeM();render();
 }
-function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=160;const x=c.getContext("2d"),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,160,160);const u=c.toDataURL("image/jpeg",.75);if(photoCb){const f=photoCb;photoCb=null;f(u);return}grab();draft.photo=u;drawStu()};im.onerror=()=>alert("ছবিটি পড়া যায়নি");im.src=url}
+function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");let u;
+ if(photoDoc){photoDoc=false;const k=Math.min(1,900/Math.max(im.width,im.height));c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);u=c.toDataURL("image/jpeg",.7)}
+ else{c.width=c.height=160;const x=c.getContext("2d"),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,160,160);u=c.toDataURL("image/jpeg",.75)}
+ if(photoCb){const f=photoCb;photoCb=null;f(u);return}grab();draft.photo=u;drawStu()};im.onerror=()=>alert("ছবিটি পড়া যায়নি");im.src=url}
 function photoFile(f){if(!f)return;if(f.size>5*1024*1024){alert("ছবি ৫ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=()=>shrink(r.result);r.readAsDataURL(f)}
 async function pickPhoto(){
  const P=window.Capacitor&&Capacitor.Plugins;let err="";
  if(P&&P.Camera){
-  try{const r=await P.Camera.getPhoto({quality:70,width:600,resultType:"dataUrl",source:"PHOTOS"});if(r&&r.dataUrl){shrink(r.dataUrl);return}}
+  try{const r=await P.Camera.getPhoto({quality:70,width:(photoDoc?1200:600),resultType:"dataUrl",source:"PHOTOS"});if(r&&r.dataUrl){shrink(r.dataUrl);return}}
   catch(e){if(e&&/cancel/i.test(e.message||""))return;err="Camera: "+(e.message||e)}
  }
  if(P&&P.FilePicker&&P.FilePicker.pickImages){
@@ -563,8 +568,8 @@ const MN=["জানুয়ারি","ফেব্রুয়ারি","ম
 const MC=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#14b8a6","#a855f7","#eab308","#ef4444"];
 const mk=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
 function members(all){
- if(attGroup=="tea")return S.teachers.map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.sub||""}));
- if(attGroup=="staff")return S.staff.map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.role||""}));
+ if(attGroup=="tea")return S.teachers.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.sub||t.desig||""}));
+ if(attGroup=="staff")return S.staff.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.role||t.desig||""}));
  return S.students.filter(s=>s.status!="নিষ্ক্রিয়"&&(all||((!attCls||s.cls==attCls)&&(!attBr||s.branch==attBr)))).map(s=>({id:s.id,name:s.name,roll:s.roll||"",cls:s.cls||"",br:s.branch||""}));
 }
 function pctOf(ids,pre){let p=0,t=0;for(const d in S.att){if(!d.startsWith(pre))continue;const r=S.att[d];ids.forEach(id=>{const v=r[id];if(v=="p"||v=="l"){p++;t++}else if(v=="a")t++})}return t?Math.round(p/t*1000)/10:null}
@@ -602,7 +607,7 @@ function att(){
  <div class="g2" style="gap:6px 14px;margin:0">${MN.map((m,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:13px"><i style="width:8px;height:8px;border-radius:50%;background:${MC[i]};flex:none"></i><span style="flex:1">${m}</span><span style="color:var(--mu)">${vals[i]==null?"—":bn(vals[i])+"%"}</span></div>`).join("")}</div></div>
  <div class="seg">${[["stu","শিক্ষার্থী"],["tea","শিক্ষক"],["staff","কর্মী"]].map(g=>`<button class="${attGroup==g[0]?"on":""}" onclick="setGrp('${g[0]}')">${g[1]}</button>`).join("")}</div>
  <div class="sub">${[["daily","দৈনিক হাজিরা"],["qr","দ্রুত চেক-ইন"],["report","মাসিক প্রতিবেদন"],["register","মাসিক রেজিস্টার"]].map(t=>`<button class="${attSub==t[0]?"on":""}" onclick="attSub='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`;
- if(attGroup=="staff")h+=`<button class="btn o s" style="margin-bottom:10px" onclick="staffAdd()">+ কর্মী যোগ করুন</button>`;
+ if(attGroup=="staff")h+=`<button class="btn o s" style="margin-bottom:10px" onclick="pForm('staff')">+ কর্মী যোগ করুন</button>`;
  if(attSub=="daily")h+=take?dailyTake():dailyList(day);
  else if(attSub=="qr")h+=qrTab();
  else h+=monthTab(attSub=="report");
@@ -664,12 +669,101 @@ let sub="",curExam="",repSid="",smsCls="",smsMsg="";
 const gr=p=>p>=80?"A+":p>=70?"A":p>=60?"A-":p>=50?"B":p>=40?"C":p>=33?"D":"F";
 function ask(t,fs,cb){window._cb=cb;window._fs=fs;modal(`<h2 style="margin-bottom:8px">${t}</h2>`+fs.map((f,i)=>`<label class="lb">${f[1]}</label>`+(f[2]=="select"?`<select id="q${i}">${f[3].map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join("")}</select>`:`<input id="q${i}" type="${f[2]}" value="${esc(f[3]||"")}">`)).join("")+`<button class="btn" style="width:100%;margin-top:10px" onclick="askOk()">সংরক্ষণ করুন</button>`)}
 function askOk(){const v=window._fs.map((f,i)=>$("q"+i).value.trim());if(window._cb(v)!==false){save();closeM();render()}}
-const MENU=[["exam","📝","পরীক্ষা ও ফলাফল"],["report","📄","রিপোর্ট কার্ড"],["acc","💰","আয় ও ব্যয়"],["hw","📚","পড়া ও বাড়ির কাজ"],["lib","📖","লাইব্রেরি"],["sms","💬","SMS (অভিভাবক)"],["teach","🎓","শিক্ষক"],["notice","🔔","নোটিশ বোর্ড"],["set","⚙️","সেটিংস ও ব্যাকআপ"]];
+const MENU=[["exam","📝","পরীক্ষা ও ফলাফল"],["report","📄","রিপোর্ট কার্ড"],["acc","💰","আয় ও ব্যয়"],["hw","📚","পড়া ও বাড়ির কাজ"],["lib","📖","লাইব্রেরি"],["sms","💬","SMS (অভিভাবক)"],["teach","🎓","শিক্ষক"],["staff","🧑‍💼","কর্মকর্তা/কর্মচারী"],["notice","🔔","নোটিশ বোর্ড"],["set","⚙️","সেটিংস ও ব্যাকআপ"]];
 function more(){
  if(!sub)return `<div class="g2">${MENU.map(m=>`<div class="card" style="text-align:center;margin:0" onclick="sub='${m[0]}';render()"><div style="font-size:28px">${m[1]}</div><div style="font-size:14px;margin-top:6px">${m[2]}</div></div>`).join("")}</div>`;
- return `<button class="btn o s" style="margin-bottom:12px" onclick="${sub=="exam"&&curExam?"curExam=''":"sub=''"};render()">← ফিরে যান</button>`+({exam,report,acc,hw,lib,sms,teach,notice,set:setng})[sub]();
+ return `<button class="btn o s" style="margin-bottom:12px" onclick="${sub=="exam"&&curExam?"curExam=''":"sub=''"};render()">← ফিরে যান</button>`+({exam,report,acc,hw,lib,sms,teach,staff,notice,set:setng})[sub]();
 }
-function teach(){return `<div class="card"><h2>শিক্ষক (${bn(S.teachers.length)})</h2>${S.teachers.map(t=>`<div class="row" onclick="tForm('${t.id}')"><div class="f"><b>${esc(t.name)}</b><small>${esc(t.sub)} · ${esc(t.phone)}</small></div></div>`).join("")}<button class="btn o s" onclick="tForm()">+ শিক্ষক যোগ করুন</button></div>`}
+let tq="",sq="",sDept="",sStat="",sView="card";
+const FD=(k,l,t,o,r,p,full)=>({k,l,t,o,r,p,full});
+const DESIG_T=["প্রধান শিক্ষক","সহকারী প্রধান শিক্ষক","সিনিয়র শিক্ষক","সহকারী শিক্ষক","হাফেজ","ক্বারী","মুফতি","মাওলানা","অন্যান্য"];
+const DESIG_S=["ম্যানেজার","হিসাবরক্ষক","অফিস সহকারী","দারোয়ান","পিয়ন","বাবুর্চি","ড্রাইভার","ক্লিনার","অন্যান্য"];
+const DEPTS=["শিক্ষাবিষয়ক","প্রশাসনিক","আর্থিক","নিরাপত্তা","স্বাস্থ্য","সহায়ক","অন্যান্য"];
+const COM=[FD("status","অবস্থা","select",["সক্রিয়","নিষ্ক্রিয়"]),FD("salary","মাসিক বেতন (৳)","number",0,0,"মাসিক বেতন")];
+const PF={
+ tea:{t:"শিক্ষক",L:()=>S.teachers,fs:[FD("photo","প্রোফাইল ছবি","photo",0,0,0,1),FD("name","নাম","text",0,1,"শিক্ষকের নাম"),FD("email","ইমেইল","email",0,0,"example@school.com"),FD("desig","পদবি","select",DESIG_T,1),FD("gender","লিঙ্গ","select",["পুরুষ","মহিলা"],1),FD("phone","মোবাইল","tel",0,0,"01XXXXXXXXX"),FD("joinDate","যোগদানের তারিখ","date"),...COM,FD("sub","বিষয়","text",0,1,"বিষয়/বিভাগ",1),FD("permAddr","স্থায়ী ঠিকানা","text",0,0,"স্থায়ী ঠিকানা",1),FD("curAddr","বর্তমান ঠিকানা","text",0,0,"বর্তমান ঠিকানা",1),FD("nid","এনআইডি কার্ড নম্বর","text",0,0,"এনআইডি কার্ড নম্বর",1),FD("nidPhoto","এনআইডি কার্ডের ছবি","doc",0,0,0,1),FD("cert","সার্টিফিকেট (ঐচ্ছিক)","doc",0,0,0,1),FD("note","বিশেষ নোট","area",0,0,0,1)]},
+ staff:{t:"কর্মী",L:()=>S.staff,fs:[FD("photo","প্রোফাইল ছবি","photo",0,0,0,1),FD("name","নাম","text",0,1,"কর্মীর নাম"),FD("email","ইমেইল","email",0,0,"example@school.com"),FD("desig","পদ","select",DESIG_S,1),FD("dept","বিভাগ","select",DEPTS,1),FD("phone","মোবাইল","tel",0,0,"01XXXXXXXXX"),FD("joinDate","যোগদানের তারিখ","date"),...COM,FD("permAddr","ঠিকানা","text",0,0,"ঠিকানা",1),FD("nid","এনআইডি কার্ড নম্বর","text",0,0,"এনআইডি কার্ড নম্বর",1),FD("nidPhoto","এনআইডি কার্ডের ছবি","doc",0,0,0,1),FD("note","বিশেষ নোট","area",0,0,0,1)]}
+};
+let pk="tea",pd={},pEdit=null;
+const stPill=t=>pill(esc(t.status||"সক্রিয়"),(t.status||"সক্রিয়")=="সক্রিয়"?"g":"r");
+function pForm(k,id){pk=k;pEdit=id||null;const o=PF[k].L().find(x=>x.id==id);pd=o?{...o}:{status:"সক্রিয়",joinDate:today()};drawP()}
+function pGrab(){PF[pk].fs.forEach(f=>{if(f.t=="photo"||f.t=="doc")return;const e=$("p_"+f.k);if(e)pd[f.k]=e.value.trim()})}
+function pField(f){
+ const lb=`<label class="lb">${f.l}${f.r?" *":""}</label>`,fu=f.full?' style="grid-column:1/-1"':"";
+ if(f.t=="select")return `<div${fu}>${lb}<select id="p_${f.k}"><option value="">নির্বাচন করুন</option>${f.o.map(v=>`<option ${pd[f.k]==v?"selected":""}>${v}</option>`).join("")}</select></div>`;
+ if(f.t=="area")return `<div${fu}>${lb}<textarea id="p_${f.k}" rows="3">${esc(pd[f.k])}</textarea></div>`;
+ if(f.t=="photo"||f.t=="doc")return `<div${fu}>${lb}<div class="row" style="border:0;padding:2px 0">${pd[f.k]?`<img class="av" style="width:44px;height:44px;${f.t=="doc"?"border-radius:8px":""}" src="${pd[f.k]}">`:""}<button class="btn o s" onclick="pPick('${f.k}',${f.t=="doc"})">⬆ আপলোড করুন</button>${pd[f.k]?`<span onclick="pGrab();pd.${f.k}='';drawP()" style="color:var(--rd);font-size:13px">✕ সরান</span>`:""}</div></div>`;
+ return `<div${fu}>${lb}<input id="p_${f.k}" type="${f.t}" placeholder="${esc(f.p||"")}" value="${esc(pd[f.k])}"></div>`;
+}
+function drawP(){
+ const C=PF[pk];
+ modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:8px">${pEdit?C.t+"-এর তথ্য সম্পাদনা":"নতুন "+C.t+" যোগ করুন"}</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">${C.fs.map(pField).join("")}</div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''"><button class="btn" style="width:100%;margin-top:6px" onclick="pSave()">${pEdit?"সংরক্ষণ করুন":"যোগ করুন"}</button><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বাতিল করুন</button>`);
+ $("mt").onclick=null;
+}
+function pPick(k,doc){pGrab();photoDoc=!!doc;photoCb=u=>{pd[k]=u;drawP()};pickPhoto()}
+function pSave(){
+ pGrab();const C=PF[pk],miss=C.fs.filter(f=>f.r&&!pd[f.k]);
+ if(miss.length){alert(miss.map(f=>f.l).join(", ")+" আবশ্যক");return}
+ pd.salary=+pd.salary||0;if(pk=="staff")pd.role=pd.desig;
+ const L=C.L();if(pEdit)Object.assign(L.find(x=>x.id==pEdit),pd);else L.push({id:uid(),...pd});
+ logA(pEdit?"edit":"add",C.t,(pEdit?"তথ্য আপডেট: ":"নতুন যোগ: ")+pd.name);save();closeM();render();
+}
+function pMenu(k,id){
+ const t=PF[k].L().find(x=>x.id==id),A=[["👤","প্রোফাইল দেখুন",`pProfile('${k}','${id}')`],["✏️","সম্পাদনা",`pForm('${k}','${id}')`],["💬","বার্তা পাঠান",`pMsg('${id}')`],["⬇","প্রোফাইল PDF",`pProfPdf('${k}','${id}')`]];
+ modal(HND+`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(t.name)}</b><span style="padding:4px 8px" onclick="closeM()">✕</span></div>`+A.map(a=>`<div class="mr" onclick="${a[2]}"><i>${a[0]}</i>${a[1]}</div>`).join("")+`<div class="mr rd" onclick="pDel('${k}','${id}')"><i>🗑</i>মুছে ফেলুন</div>`);
+}
+function pMsg(id){closeM();msgM([id],"আসসালামু আলাইকুম {নাম},\n\n")}
+function pDel(k,id){if(!confirm("এই তথ্য মুছে ফেলবেন?"))return;const C=PF[k],t=C.L().find(x=>x.id==id);if(k=="tea")S.teachers=S.teachers.filter(x=>x.id!=id);else S.staff=S.staff.filter(x=>x.id!=id);logA("edit",C.t,"মুছে ফেলা হয়েছে: "+t.name);save();closeM();render()}
+function pRows(k,t){const m=v=>v||"";return [["নাম",t.name],["ইমেইল",t.email],["পদ/পদবি",t.desig],k=="tea"?["লিঙ্গ",t.gender]:["বিভাগ",t.dept],["মোবাইল",t.phone],["যোগদানের তারিখ",m(t.joinDate)?bn(t.joinDate):""],["অবস্থা",t.status||"সক্রিয়"],["মাসিক বেতন",t.salary?money(t.salary):""],k=="tea"?["বিষয়",t.sub]:["",""],["স্থায়ী ঠিকানা",t.permAddr],["বর্তমান ঠিকানা",t.curAddr],["এনআইডি নম্বর",t.nid],["বিশেষ নোট",t.note]].filter(r=>r[0]&&r[1])}
+function pProfile(k,id){
+ closeM();const t=PF[k].L().find(x=>x.id==id),img=(l,v)=>v?`<div style="margin:8px 0"><small style="color:var(--mu)">${l}</small><img src="${v}" style="width:100%;border-radius:10px;border:1px solid var(--ln);margin-top:4px"></div>`:"";
+ modal(HND+`<div style="text-align:center">${avt(t,72)}<h2 style="margin-top:8px">${esc(t.name)}</h2><small style="color:var(--mu)">${esc(t.desig||"")}</small><div style="margin:8px 0">${stPill(t)}</div></div>`+pRows(k,t).map(r=>`<div class="row" style="padding:7px 0"><div class="f"><small>${r[0]}</small>${esc(r[1])}</div></div>`).join("")+img("এনআইডি কার্ডের ছবি",t.nidPhoto)+img("সার্টিফিকেট",t.cert)
+ +`<div class="g2" style="margin:10px 0 0"><button class="btn o" onclick="pMsg('${id}')">💬 বার্তা</button><button class="btn o" onclick="pProfPdf('${k}','${id}')">⬇ PDF</button><button class="btn" onclick="pForm('${k}','${id}')">✏️ সম্পাদনা</button><button class="btn o" onclick="closeM()">বন্ধ</button></div>`);
+}
+function pProfPdf(k,id){
+ closeM();const t=PF[k].L().find(x=>x.id==id);
+ printDoc("profile-"+k,`<h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${esc(S.school.name)}</h2><div style="text-align:center;color:#555;font-size:12px;margin-bottom:10px">${PF[k].t} প্রোফাইল</div><div style="display:flex;gap:14px;align-items:center;margin-bottom:10px">${t.photo?`<img src="${t.photo}" style="width:90px;height:90px;border-radius:8px;object-fit:cover">`:""}<div><b style="font-size:18px">${esc(t.name)}</b><div>${esc(t.desig||"")}</div></div></div><table>${pRows(k,t).map(r=>`<tr><td style="width:35%;background:#f3f4f6">${r[0]}</td><td>${esc(r[1])}</td></tr>`).join("")}</table>${t.nidPhoto?`<p>এনআইডি কার্ড:</p><img src="${t.nidPhoto}" style="max-width:60%">`:""}`);
+}
+function pList(k){const q1=(k=="tea"?tq:sq).toLowerCase();return k=="tea"?S.teachers.filter(t=>!q1||[t.name,t.sub,t.phone,t.desig].join(" ").toLowerCase().includes(q1)):S.staff.filter(t=>(!sDept||t.dept==sDept)&&(!sStat||(t.status||"সক্রিয়")==sStat)&&(!q1||[t.name,t.desig,t.phone,t.dept].join(" ").toLowerCase().includes(q1)))}
+function pExcel(k){const l=pList(k),c=v=>'"'+String(v??"").replace(/"/g,'""')+'"',H=["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","লিঙ্গ","মোবাইল","ইমেইল","যোগদান","বেতন","অবস্থা","ঠিকানা"];shareFile((k=="tea"?"teachers-":"staff-")+today()+".csv","\uFEFF"+[H.map(c).join(",")].concat(l.map(t=>[t.name,t.desig,k=="tea"?t.sub:t.dept,t.gender,t.phone,t.email,t.joinDate,t.salary,t.status||"সক্রিয়",t.permAddr].map(c).join(","))).join("\r\n"),(k=="tea"?"শিক্ষক":"কর্মী")+" তালিকা (Excel/CSV)")}
+function pPdf(k){
+ const l=pList(k),d=new Date();
+ printDoc(k=="tea"?"teachers-list":"staff-list",`<style>.st td,.st th{border:1px solid #c7d2fe;font-size:12px;padding:6px 7px}.st th{color:#666;font-weight:500}</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="st" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
+}
+function pTable(k,l){
+ const hd=k=="tea"?["নাম","পদবি","বিষয়","মোবাইল","যোগদান","অবস্থা"]:["নাম","পদ","বিভাগ","মোবাইল","বেতন","অবস্থা"];
+ return `<table class="tb wr"><tr>${hd.map(h=>`<th>${h}</th>`).join("")}<th></th></tr>${l.map(t=>`<tr><td onclick="pProfile('${k}','${t.id}')"><b>${esc(t.name)}</b></td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${k=="tea"?(t.joinDate?bn(t.joinDate):""):(t.salary?money(t.salary):"")}</td><td>${stPill(t)}</td><td onclick="pMenu('${k}','${t.id}')" style="font-size:20px;color:var(--mu)">⋯</td></tr>`).join("")}</table>${l.length?"":'<div class="em">কেউ নেই</div>'}`;
+}
+function keepP(k){const e=$(k=="tea"?"tlst":"slst");if(e)e.innerHTML=k=="tea"||sView=="list"?pTable(k,pList(k)):staffCards(pList(k))}
+function copyLink(){const v=S.school.appLink||"";if(!v){alert("আগে লিংক বসান");return}try{navigator.clipboard.writeText(v);toast("লিংক কপি হয়েছে")}catch(e){const i=$("al");i.select();document.execCommand("copy");toast("লিংক কপি হয়েছে")}}
+function shareApp(){const l=S.teachers.filter(t=>t.phone);if(!S.school.appLink){alert("আগে অ্যাপের লিংক বসান");return}msgM(l.map(t=>t.id),"আসসালামু আলাইকুম {নাম},\n\n"+S.school.name+" অ্যাপের লিংক:\n"+S.school.appLink)}
+function teach(){
+ const l=pList("tea");
+ return `<h1 style="font-size:22px">শিক্ষক ব্যবস্থাপনা</h1><small style="color:var(--mu)">মোট ${bn(S.teachers.length)} জন শিক্ষক</small>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="ob" onclick="pPdf('tea')">🗎 PDF</button><button class="ob" onclick="pExcel('tea')">📄 Excel</button><button class="btn" onclick="pForm('tea')">＋ নতুন শিক্ষক</button></div>
+ <input placeholder="🔍 নাম, বিষয় বা মোবাইল খুঁজুন..." value="${esc(tq)}" oninput="tq=this.value;keepP('tea')">
+ <div class="card ov" style="padding:6px" id="tlst">${pTable("tea",l)}</div>
+ <div class="card" style="background:#eef2ff;border-color:#c7d2fe"><b style="color:#3b5bdb;font-size:14px">🔗 শিক্ষকদের অ্যাপ লিংক শেয়ার করুন</b><div style="font-size:12px;color:#3b5bdb;margin:4px 0 8px">শিক্ষক-শিক্ষিকাদের পাঠান — এই লিংক থেকে তারা অ্যাপ ডাউনলোড করতে পারবেন।</div>
+ <div style="display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:2px 10px"><input id="al" placeholder="অ্যাপের ডাউনলোড লিংক বসান" value="${esc(S.school.appLink||"")}" oninput="S.school.appLink=this.value.trim();save()" style="margin:0;border:0;flex:1;padding:10px 0"><span onclick="copyLink()" style="font-size:18px">📋</span></div>
+ <div class="g2" style="margin:8px 0 0"><button class="btn g" onclick="shareApp()">WhatsApp</button><button class="btn" onclick="shareApp()">SMS</button></div></div>
+ <details class="card" style="background:#eef2ff;border-color:#c7d2fe"><summary style="font-size:14px;color:#3b5bdb">📘 শিক্ষক-ব্যবহার নির্দেশিকা <span class="pl b">নতুন</span></summary><div style="font-size:13px;line-height:1.7;margin-top:8px">১. "নতুন শিক্ষক" চেপে শিক্ষকের তথ্য, ছবি ও বেতন যোগ করুন।<br>২. নামের পাশে ⋯ চেপে প্রোফাইল, সম্পাদনা, বার্তা ও PDF পাবেন।<br>৩. উপস্থিতি পেইজের "শিক্ষক" ট্যাবে প্রতিদিনের হাজিরা নিন।<br>৪. ইন্টারনেট থাকলে PDF বাটনে চাপলেই PDF ফাইল ফোনে সেভ হবে।<br>৫. ফোন বদলানোর আগে সেটিংস থেকে ব্যাকআপ নিন।</div></details>`;
+}
+function staffCards(l){
+ const DC={"শিক্ষাবিষয়ক":"b","প্রশাসনিক":"b","আর্থিক":"g","নিরাপত্তা":"r","স্বাস্থ্য":"g","সহায়ক":"b","অন্যান্য":""};
+ return l.map(t=>`<div class="card" style="background:#eef3ff;margin-bottom:10px"><div class="ch" style="margin:0"><div style="display:flex;align-items:center;gap:8px">${avt(t,32)}<b>${esc(t.name)}</b></div><span onclick="pMenu('staff','${t.id}')" style="font-size:22px;color:var(--mu);padding:0 6px">⋯</span></div>
+ <div style="font-size:13px;line-height:1.8;margin-top:6px"><span class="pl b">${esc(t.desig||"")}</span><br>📞 ${esc(t.phone||"—")}<br><small style="color:var(--mu)">বেতন ${money(t.salary||0)}</small></div>
+ <div style="display:flex;justify-content:space-between;margin-top:6px">${stPill(t)}<span class="pl ${DC[t.dept]||""}">${esc(t.dept||"")}</span></div></div>`).join("")||'<div class="em">কোনো কর্মী নেই</div>';
+}
+function staff(){
+ const l=pList("staff"),act=S.staff.filter(t=>(t.status||"সক্রিয়")=="সক্রিয়").length,sal=S.staff.reduce((a,t)=>a+(+t.salary||0),0);
+ const sc=(n,lb,bg,c)=>`<div style="background:${bg};border-radius:14px;padding:14px;text-align:center"><b style="font-size:24px;color:${c}">${n}</b><div style="font-size:12px;color:${c}">${lb}</div></div>`;
+ return `<h1 style="font-size:20px">কর্মকর্তা/কর্মচারী</h1><small style="color:var(--mu)">সকল কর্মীর তথ্য ও বেতন পরিচালনা করুন</small>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="ob" onclick="pPdf('staff')">🗎 PDF</button><button class="ob" onclick="pExcel('staff')">📄 Excel</button><button class="btn" onclick="pForm('staff')">＋ নতুন কর্মী</button></div>
+ <div class="g2">${sc(bn(S.staff.length),"মোট কর্মী","#dbeafe","#2563eb")}${sc(bn(act),"সক্রিয়","#d1fae5","#059669")}${sc(bn(S.staff.length-act),"নিষ্ক্রিয়","#f3e8ff","#7c3aed")}${sc(money(sal),"মাসিক মোট বেতন","#ede9fe","#6d28d9")}</div>
+ <div class="card"><input placeholder="🔍 কর্মীর নাম অনুসন্ধান..." value="${esc(sq)}" oninput="sq=this.value;keepP('staff')"><select onchange="sDept=this.value;render()"><option value="">বিভাগ (সব)</option>${DEPTS.map(d=>`<option ${sDept==d?"selected":""}>${d}</option>`).join("")}</select><select onchange="sStat=this.value;render()"><option value="">অবস্থা (সব)</option>${["সক্রিয়","নিষ্ক্রিয়"].map(d=>`<option ${sStat==d?"selected":""}>${d}</option>`).join("")}</select><button class="btn o" style="width:100%" onclick="sq='';sDept='';sStat='';render()">রিসেট</button></div>
+ <div class="seg" style="width:60%">${[["card","কার্ড"],["list","তালিকা"]].map(v=>`<button class="${sView==v[0]?"on":""}" onclick="sView='${v[0]}';render()">${v[1]}</button>`).join("")}</div>
+ <div id="slst" ${sView=="list"?'class="card ov" style="padding:6px"':""}>${sView=="list"?pTable("staff",l):staffCards(l)}</div>`;
+}
 function notice(){return `<div class="card"><h2>নোটিশ বোর্ড</h2>${S.notices.slice().reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div><button class="btn r s" onclick="S.notices=S.notices.filter(x=>x.id!='${n.id}');save();render()">মুছুন</button></div>`).join("")}<button class="btn o s" onclick="nForm()">+ নোটিশ দিন</button></div>`}
 function setng(){return `<div class="card"><h2>স্কুল প্রোফাইল</h2><div class="row" style="border:0" onclick="pickLogo()"><div class="av" style="width:52px;height:52px">${S.school.logo?`<img class="av" style="width:52px;height:52px" src="${S.school.logo}">`:"🕌"}</div><div class="f"><span style="color:var(--pri)">লোগো আপলোড করুন</span></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''"><input id="sn" placeholder="প্রতিষ্ঠানের নাম" value="${esc(S.school.name)}"><input id="sa" placeholder="ঠিকানা" value="${esc(S.school.addr)}"><input id="se" placeholder="স্থাপিত (যেমন: ২০২৪ ইং)" value="${esc(S.school.est)}"><input id="sy" placeholder="শিক্ষাবর্ষ (যেমন: ২০২৬ ইং)" value="${esc(S.school.year)}"><input id="sd" placeholder="পরিচালকের নাম" value="${esc(S.school.director)}"><input id="sp" type="tel" placeholder="ফোন" value="${esc(S.school.phone)}"><button class="btn" onclick="saveSchool()">সংরক্ষণ করুন</button></div>
  <div class="card"><h2>ব্যাকআপ</h2><p style="font-size:13px;color:var(--mu);margin-bottom:10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর আগে ব্যাকআপ নিন।</p><button class="btn g s" onclick="exp()">ব্যাকআপ নিন</button> <button class="btn o s" onclick="pickRestore()">ফাইল থেকে রিস্টোর</button> <button class="btn o s" onclick="pasteImp()">টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept="*/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"></div>`}
