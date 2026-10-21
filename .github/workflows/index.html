@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>স্মার্ট এডুকেশন সিস্টেম</title>
+<style>
+:root{--bg:#f3f5fa;--card:#fff;--tx:#1d2433;--mu:#6b7385;--pri:#3b5bdb;--gr:#16a34a;--rd:#e11d48;--pu:#7c3aed;--ln:#e3e7f0}
+@media(prefers-color-scheme:dark){:root{--bg:#10131c;--card:#1a1f2c;--tx:#e8ecf5;--mu:#98a0b3;--ln:#2a3144}}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;background:var(--bg);color:var(--tx);padding-top:env(safe-area-inset-top)}
+#app{height:100%;display:flex;flex-direction:column}
+main{flex:1;overflow-y:auto;padding:14px 14px 90px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:10px 0 8px;font:inherit;font-size:12px}
+nav button b{display:block;font-size:20px;font-weight:400}
+nav button.on{color:var(--pri);font-weight:700}
+.hero{background:linear-gradient(135deg,#3b5bdb,#4c6ef5);color:#fff;border-radius:18px;padding:16px;margin-bottom:12px}
+.hero h1{font-size:19px}.hero p{font-size:13px;opacity:.85;margin-top:4px}
+.hero .clk{font-size:26px;font-weight:700;margin-top:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.st{border-radius:14px;padding:14px;color:#fff}.st small{opacity:.9;font-size:13px}.st div{font-size:28px;font-weight:700;margin-top:4px}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--ln)}
+.card h2{font-size:16px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--ln)}
+.row:last-child{border:0}.row .f{flex:1;min-width:0}.row small{color:var(--mu);display:block;font-size:12px}
+.btn{border:0;border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;background:var(--pri);color:#fff}
+.btn.s{padding:6px 10px;font-size:12px}.btn.g{background:var(--gr)}.btn.r{background:var(--rd)}.btn.o{background:none;color:var(--pri);border:1px solid var(--pri)}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-radius:10px;font:inherit;background:var(--card);color:var(--tx);margin-bottom:8px}
+.top{display:flex;gap:8px;align-items:center;margin-bottom:12px}.top input,.top select{margin:0}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;background:#e8edff;color:var(--pri)}
+.tag.g{background:#dcfce7;color:var(--gr)}.tag.r{background:#ffe4e9;color:var(--rd)}
+.mt{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;z-index:9}
+.mt>div{background:var(--card);width:100%;max-height:88%;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.em{text-align:center;color:var(--mu);padding:24px 0;font-size:14px}
+.pb{width:44px;height:36px;border-radius:10px;border:1px solid var(--ln);background:none;font:inherit;color:var(--mu)}
+.pb.p{background:var(--gr);color:#fff;border-color:var(--gr)}.pb.a{background:var(--rd);color:#fff;border-color:var(--rd)}
+.lb{display:block;font-size:13px;font-weight:600;margin:8px 0 4px}.hint{font-size:12px;color:var(--mu);margin:-2px 0 6px}
+.tabs{display:flex;border-bottom:1px solid var(--ln);margin-bottom:8px}.tabs div{padding:8px 14px;font-size:14px;color:var(--mu)}.tabs .on{color:var(--pri);border-bottom:2px solid var(--pri);font-weight:700}
+.ch{display:flex;gap:8px;margin-bottom:4px}.ch button{flex:1;height:40px;border-radius:10px;border:1px solid var(--ln);background:none;font:inherit;font-size:14px;color:var(--tx)}.ch button.on{border-color:var(--pri);background:#e8edff;color:var(--pri)}
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#e8edff;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden}
+.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="app"><main id="v"></main>
+<nav id="nv"></nav></div>
+<script>
+const KEY="smart-edu-v1";
+const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[]});
+let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const bn=n=>String(n).replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money=n=>"৳"+bn(Number(n||0).toLocaleString("en-US"));
+const $=id=>document.getElementById(id);
+let tab="home",q="",cls="",adate=today();
+const TABS=[["home","🏠","হোম"],["att","✅","উপস্থিতি"],["stu","👥","শিক্ষার্থী"],["fee","👛","ফি"],["more","☰","আরও"]];
+const stuName=id=>(S.students.find(s=>s.id==id)||{}).name||"—";
+const due=f=>f.amt-f.paid;
+
+function render(){
+ $("nv").innerHTML=TABS.map(t=>`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
+ $("v").innerHTML=({home,att,stu,fee,more})[tab]();
+}
+function go(t){tab=t;q="";sub="";curExam="";render();$("v").scrollTop=0}
+
+function home(){
+ const day=S.att[today()]||{},pr=Object.values(day).filter(x=>x=="p").length,ab=Object.values(day).filter(x=>x=="a").length;
+ const td=S.fees.reduce((a,f)=>a+due(f),0),pd=S.fees.reduce((a,f)=>a+f.paid,0);
+ return `<div class="hero"><h1>${esc(S.school.name)}</h1><p>📍 ${esc(S.school.addr)}</p><div class="clk" id="clk"></div><p>${new Date().toLocaleDateString("bn-BD",{day:"numeric",month:"long",year:"numeric"})}</p></div>
+ <div class="g2">
+ <div class="st" style="background:#3b82f6"><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div>
+ <div class="st" style="background:#8b5cf6"><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div>
+ <div class="st" style="background:#16a34a"><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div>
+ <div class="st" style="background:#e11d48"><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
+ <div class="card"><h2>ফি পরিস্থিতি</h2><div class="row"><div class="f">আদায়কৃত</div><b style="color:var(--gr)">${money(pd)}</b></div><div class="row"><div class="f">মোট বকেয়া</div><b style="color:var(--rd)">${money(td)}</b></div></div>
+ <div class="card"><h2>নোটিশ</h2>${S.notices.length?S.notices.slice(-3).reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div></div>`).join(""):'<div class="em">কোনো নোটিশ নেই</div>'}</div>`;
+}
+setInterval(()=>{const c=$("clk");if(c)c.textContent=new Date().toLocaleTimeString("bn-BD")},1000);
+
+function classes(){return [...new Set(S.students.map(s=>s.cls).filter(Boolean))].sort()}
+function list(){return S.students.filter(s=>(!cls||s.cls==cls)&&(!q||(s.name+s.roll+s.guardian).toLowerCase().includes(q.toLowerCase())))}
+function filt(){return `<div class="top"><input placeholder="খুঁজুন..." value="${esc(q)}" oninput="q=this.value;keep()"><select onchange="cls=this.value;render()" style="width:110px"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${cls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`}
+function keep(){const p=$("lst");if(p)p.innerHTML=tab=="stu"?stuRows():tab=="fee"?feeRows():""}
+
+function stuRows(){const l=list();return l.length?l.map(s=>`<div class="row" onclick="stuForm('${s.id}')">${s.photo?`<img class="av" src="${s.photo}">`:'<div class="av">👤</div>'}<div class="f"><b>${esc(s.name)}</b><small>শ্রেণি ${esc(s.cls)} · রোল ${esc(s.roll)} · ${esc(s.guardian)}</small></div><span class="tag">${esc(s.type||"অনাবাসিক")}</span></div>`).join(""):'<div class="em">কোনো শিক্ষার্থী নেই। নতুন শিক্ষার্থী যোগ করুন।</div>'}
+function stu(){return filt()+`<button class="btn" style="width:100%;margin-bottom:12px" onclick="stuForm()">+ নতুন শিক্ষার্থী</button><div class="card" id="lst">${stuRows()}</div>`}
+
+const FEES=[["monthly","মাসিক বেতন (৳)","মাসিক বেতন"],["adm","ভর্তি ফি (৳)","ভর্তি ফি"],["book","বই ফি (৳)","বই ফি"],["elec","বিদ্যুৎ বিল (৳/মাস)","বিদ্যুৎ বিল"],["other","অন্যান্য ফি (৳)","অন্যান্য ফি"]];
+const DIVS=["স্কুল/কিন্ডারগার্টেন","নূরানী","হিফজ","কিতাব","মক্তব"];
+const TYPES={"অনাবাসিক":"সাধারণ দিবা শিক্ষার্থী","আবাসিক":"হোস্টেলে থেকে পড়ে","ডেকেয়ার":"দিনের বেলা তত্ত্বাবধানে থাকে"};
+let draft={},step=1,editId=null;
+function stuForm(id){editId=id||null;const s=S.students.find(x=>x.id==id);draft=s?{...s}:{type:"অনাবাসিক",status:"সক্রিয়",division:DIVS[0],admDate:today(),fees:{}};step=1;drawStu()}
+function grab(){
+ const g=id=>{const e=$(id);return e?e.value.trim():undefined};
+ if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
+ else{draft.fees=draft.fees||{};FEES.forEach(f=>{const v=g("f_"+f[0]);if(v!==undefined)draft.fees[f[0]]=v})}
+}
+function setType(t){grab();draft.type=t;drawStu()}
+function fld(l,k,ph,t,req,extra){return `<label class="lb">${l}${req?" *":""}</label><input id="s_${k}" type="${t||"text"}" placeholder="${ph||""}" value="${esc(draft[k])}" ${extra||""}>`}
+function sel(l,k,opts,req,ph){return `<label class="lb">${l}${req?" *":""}</label><select id="s_${k}">${ph?`<option value="">${ph}</option>`:""}${opts.map(o=>`<option ${draft[k]==o?"selected":""}>${o}</option>`).join("")}</select>`}
+function drawStu(){
+ const isNew=!editId,old=document.querySelector("#mt>div"),y=old?old.scrollTop:0;
+ let h=`<div class="tabs"><div class="${step==1?"on":""}">মূল তথ্য</div>${isNew?`<div class="${step==2?"on":""}">ফি নির্ধারণ</div>`:""}</div>`;
+ if(step==1){
+  h+=`<h2 style="font-size:16px;margin:4px 0">${isNew?"নতুন শিক্ষার্থী ভর্তি":"শিক্ষার্থী সম্পাদনা"}</h2>
+  <label class="lb">শিক্ষার্থীর ছবি</label>
+  <div class="row" style="border:0;padding:4px 0" onclick="pickPhoto()"><div class="av" style="width:56px;height:56px;font-size:20px">${draft.photo?`<img class="av" style="width:56px;height:56px" src="${draft.photo}">`:"⬆️"}</div><div class="f"><span style="color:var(--pri)">ছবি আপলোড করুন</span><small>ট্যাপ করে ফাইল নির্বাচন করুন</small></div></div>
+  <div class="hint">JPG, PNG (সর্বোচ্চ ৫ MB)</div>
+  <input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">
+  <label class="lb">শিক্ষার্থীর ধরন *</label>
+  <div class="ch">${Object.keys(TYPES).map(t=>`<button type="button" class="${draft.type==t?"on":""}" onclick="setType('${t}')">${t}</button>`).join("")}</div>
+  <div class="hint">${TYPES[draft.type]}</div>
+  ${fld("নাম (বাংলায়)","name","","text",1)}
+  ${fld("Name (English)","nameEn")}
+  ${fld("শ্রেণি","cls","শ্রেণি লিখুন (যেমন: পঞ্চম, হিফজ)","text",1,'list="cl"')}
+  <datalist id="cl">${classes().map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+  <div class="hint">তালিকা থেকে বাছুন অথবা নতুন শ্রেণি ম্যানুয়ালি লিখুন</div>
+  ${fld("শাখা","branch","শাখা লিখুন (ঐচ্ছিক)")}
+  ${sel("বিভাগ","division",DIVS)}
+  ${fld("রোল নম্বর","roll","","text",0,'inputmode="numeric"')}
+  ${sel("লিঙ্গ","gender",["ছেলে","মেয়ে"],1,"নির্বাচন করুন")}
+  ${fld("জন্ম তারিখ","dob","","date")}
+  ${fld("ভর্তির তারিখ","admDate","","date")}
+  ${fld("অভিভাবকের নাম","guardian")}
+  ${fld("অভিভাবকের মোবাইল","phone","","tel")}
+  ${fld("অভিভাবকের ইমেইল","email","example@gmail.com","email")}
+  ${sel("অবস্থা","status",["সক্রিয়","নিষ্ক্রিয়"])}
+  <label class="lb">ঠিকানা</label><textarea id="s_addr" rows="3">${esc(draft.addr)}</textarea>
+  ${fld("লগইন পাসওয়ার্ড","pass","শিক্ষার্থীর পাসওয়ার্ড (ঐচ্ছিক)")}
+  <div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="stuNext()">${isNew?"পরবর্তী: ফি নির্ধারণ":"সংরক্ষণ করুন"}</button></div>
+  ${isNew?"":`<button class="btn r" style="width:100%;margin-top:10px" onclick="stuDel('${editId}')">মুছে ফেলুন</button>`}`;
+ }else{
+  h+=`<div class="card" style="padding:10px;margin-top:8px"><span class="tag">শিক্ষার্থীর ধরন: ${draft.type}</span></div>`+
+  FEES.map(f=>`<label class="lb">${f[1]}</label><input id="f_${f[0]}" type="number" inputmode="numeric" placeholder="0" value="${esc((draft.fees||{})[f[0]])}">`).join("")+
+  `<div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn o" onclick="stuBack()">পূর্ববর্তী</button><button class="btn" onclick="stuAdmit()">ভর্তি করুন</button></div>`;
+ }
+ modal(h);$("mt").onclick=null;const n=document.querySelector("#mt>div");if(n)n.scrollTop=y;
+}
+function stuNext(){grab();if(!draft.name||!draft.cls||!draft.gender){alert("নাম, শ্রেণি ও লিঙ্গ আবশ্যক");return}if(editId)commit();else{step=2;drawStu()}}
+function stuBack(){grab();step=1;drawStu()}
+function stuAdmit(){grab();commit()}
+function commit(){
+ const {fees,...o}=draft;
+ if(editId)Object.assign(S.students.find(x=>x.id==editId),o);
+ else{const id=uid();S.students.push({id,...o});FEES.forEach(f=>{const a=+((fees||{})[f[0]]);if(a>0)S.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})})}
+ save();closeM();render();
+}
+function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=160;const x=c.getContext("2d"),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,160,160);grab();draft.photo=c.toDataURL("image/jpeg",.75);drawStu()};im.onerror=()=>alert("ছবিটি পড়া যায়নি");im.src=url}
+function photoFile(f){if(!f)return;if(f.size>5*1024*1024){alert("ছবি ৫ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=()=>shrink(r.result);r.readAsDataURL(f)}
+async function pickPhoto(){
+ const P=window.Capacitor&&Capacitor.Plugins;let err="";
+ if(P&&P.Camera){
+  try{const r=await P.Camera.getPhoto({quality:70,width:600,resultType:"dataUrl",source:"PHOTOS"});if(r&&r.dataUrl){shrink(r.dataUrl);return}}
+  catch(e){if(e&&/cancel/i.test(e.message||""))return;err="Camera: "+(e.message||e)}
+ }
+ if(P&&P.FilePicker&&P.FilePicker.pickImages){
+  try{const r=await P.FilePicker.pickImages({limit:1,readData:true});const f=r.files&&r.files[0];if(!f)return;
+   shrink("data:"+(f.mimeType||"image/jpeg")+";base64,"+f.data);return}
+  catch(e){if(e&&/cancel/i.test(e.message||""))return;err+=" FilePicker: "+(e.message||e)}
+ }
+ if(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&!(P&&(P.Camera||P.FilePicker))){alert("ছবি আপলোডের প্লাগিন অ্যাপে যুক্ত নেই। @capacitor/camera যোগ করে আবার বিল্ড করুন।");return}
+ if(err)alert("ছবি খোলা যায়নি: "+err);
+ $("ph").click();
+}
+function stuDel(id){if(!confirm("এই শিক্ষার্থী ও তার ফি রেকর্ড মুছে ফেলবেন?"))return;S.students=S.students.filter(x=>x.id!=id);S.fees=S.fees.filter(f=>f.sid!=id);save();closeM();render()}
+
+function att(){
+ const day=S.att[adate]||{},l=list();
+ return `<div class="top"><input type="date" value="${adate}" onchange="adate=this.value;render()"><select onchange="cls=this.value;render()" style="width:120px"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${cls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+ ${l.length?`<div class="top"><button class="btn g s" onclick="markAll('p')">সবাই উপস্থিত</button><button class="btn o s" onclick="markAll('')">রিসেট</button></div>`:""}
+ <div class="card">${l.length?l.map(s=>`<div class="row"><div class="f"><b>${esc(s.name)}</b><small>শ্রেণি ${esc(s.cls)} · রোল ${esc(s.roll)}</small></div>
+ <button class="pb ${day[s.id]=="p"?"p":""}" onclick="mark('${s.id}','p')">উ</button><button class="pb ${day[s.id]=="a"?"a":""}" onclick="mark('${s.id}','a')">অ</button></div>`).join(""):'<div class="em">আগে শিক্ষার্থী যোগ করুন</div>'}</div>`;
+}
+function mark(id,v){const d=S.att[adate]=S.att[adate]||{};d[id]=d[id]==v?"":v;save();const y=$("v").scrollTop;render();$("v").scrollTop=y}
+function markAll(v){const d=S.att[adate]=S.att[adate]||{};list().forEach(s=>d[s.id]=v);save();render()}
+
+function feeRows(){
+ const l=S.fees.filter(f=>!q||stuName(f.sid).includes(q)||f.title.includes(q)).slice().reverse();
+ return l.length?l.map(f=>`<div class="row" onclick="feeForm('${f.id}')"><div class="f"><b>${esc(stuName(f.sid))}</b><small>${esc(f.title)} · ${bn(f.date)}</small></div><div style="text-align:right">${money(f.amt)}<small>${due(f)<=0?'<span class="tag g">পরিশোধিত</span>':'<span class="tag r">বকেয়া '+money(due(f))+'</span>'}</small></div></div>`).join(""):'<div class="em">কোনো ফি রেকর্ড নেই</div>';
+}
+function fee(){
+ const t=S.fees.reduce((a,f)=>a+f.amt,0),p=S.fees.reduce((a,f)=>a+f.paid,0);
+ return `<div class="g2"><div class="st" style="background:#16a34a"><small>আদায়</small><div>${money(p)}</div></div><div class="st" style="background:#e11d48"><small>বকেয়া</small><div>${money(t-p)}</div></div></div>
+ <div class="top"><input placeholder="নাম বা ফি খুঁজুন..." value="${esc(q)}" oninput="q=this.value;keep()"></div>
+ <button class="btn" style="width:100%;margin-bottom:12px" onclick="feeForm()">+ নতুন ফি যোগ করুন</button><div class="card" id="lst">${feeRows()}</div>`;
+}
+function feeForm(id){
+ const f=S.fees.find(x=>x.id==id);
+ if(!S.students.length){alert("আগে শিক্ষার্থী যোগ করুন");return}
+ modal(`<h2 style="margin-bottom:10px">${f?"ফি আপডেট":"নতুন ফি"}</h2>
+ <select id="g1" ${f?"disabled":""}>${S.students.map(s=>`<option value="${s.id}" ${f&&f.sid==s.id?"selected":""}>${esc(s.name)} (${esc(s.cls)})</option>`).join("")}</select>
+ <input id="g2" placeholder="ফি-এর ধরন (যেমন: মাসিক বেতন)" value="${esc(f?f.title:"")}">
+ <input id="g3" type="number" inputmode="numeric" placeholder="মোট টাকা" value="${f?f.amt:""}">
+ <input id="g4" type="number" inputmode="numeric" placeholder="পরিশোধিত টাকা" value="${f?f.paid:0}">
+ <button class="btn" style="width:100%" onclick="feeSave('${id||""}')">সংরক্ষণ করুন</button>
+ ${f?`<button class="btn r" style="width:100%;margin-top:8px" onclick="S.fees=S.fees.filter(x=>x.id!='${id}');save();closeM();render()">মুছে ফেলুন</button>`:""}`);
+}
+function feeSave(id){
+ const t=$("g2").value.trim(),a=+$("g3").value,p=+$("g4").value||0;
+ if(!t||!a){alert("ধরন ও টাকার পরিমাণ লিখুন");return}
+ if(id)Object.assign(S.fees.find(x=>x.id==id),{title:t,amt:a,paid:Math.min(p,a)});
+ else S.fees.push({id:uid(),sid:$("g1").value,title:t,amt:a,paid:Math.min(p,a),date:today()});
+ save();closeM();render();
+}
+
+let sub="",curExam="",repSid="",smsCls="",smsMsg="";
+const gr=p=>p>=80?"A+":p>=70?"A":p>=60?"A-":p>=50?"B":p>=40?"C":p>=33?"D":"F";
+function ask(t,fs,cb){window._cb=cb;window._fs=fs;modal(`<h2 style="margin-bottom:8px">${t}</h2>`+fs.map((f,i)=>`<label class="lb">${f[1]}</label>`+(f[2]=="select"?`<select id="q${i}">${f[3].map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join("")}</select>`:`<input id="q${i}" type="${f[2]}" value="${esc(f[3]||"")}">`)).join("")+`<button class="btn" style="width:100%;margin-top:10px" onclick="askOk()">সংরক্ষণ করুন</button>`)}
+function askOk(){const v=window._fs.map((f,i)=>$("q"+i).value.trim());if(window._cb(v)!==false){save();closeM();render()}}
+const MENU=[["exam","📝","পরীক্ষা ও ফলাফল"],["report","📄","রিপোর্ট কার্ড"],["acc","💰","আয় ও ব্যয়"],["hw","📚","পড়া ও বাড়ির কাজ"],["lib","📖","লাইব্রেরি"],["sms","💬","SMS (অভিভাবক)"],["teach","🎓","শিক্ষক"],["notice","🔔","নোটিশ বোর্ড"],["set","⚙️","সেটিংস ও ব্যাকআপ"]];
+function more(){
+ if(!sub)return `<div class="g2">${MENU.map(m=>`<div class="card" style="text-align:center;margin:0" onclick="sub='${m[0]}';render()"><div style="font-size:28px">${m[1]}</div><div style="font-size:14px;margin-top:6px">${m[2]}</div></div>`).join("")}</div>`;
+ return `<button class="btn o s" style="margin-bottom:12px" onclick="${sub=="exam"&&curExam?"curExam=''":"sub=''"};render()">← ফিরে যান</button>`+({exam,report,acc,hw,lib,sms,teach,notice,set:setng})[sub]();
+}
+function teach(){return `<div class="card"><h2>শিক্ষক (${bn(S.teachers.length)})</h2>${S.teachers.map(t=>`<div class="row" onclick="tForm('${t.id}')"><div class="f"><b>${esc(t.name)}</b><small>${esc(t.sub)} · ${esc(t.phone)}</small></div></div>`).join("")}<button class="btn o s" onclick="tForm()">+ শিক্ষক যোগ করুন</button></div>`}
+function notice(){return `<div class="card"><h2>নোটিশ বোর্ড</h2>${S.notices.slice().reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div><button class="btn r s" onclick="S.notices=S.notices.filter(x=>x.id!='${n.id}');save();render()">মুছুন</button></div>`).join("")}<button class="btn o s" onclick="nForm()">+ নোটিশ দিন</button></div>`}
+function setng(){return `<div class="card"><h2>স্কুল প্রোফাইল</h2><input id="sn" value="${esc(S.school.name)}"><input id="sa" value="${esc(S.school.addr)}"><button class="btn" onclick="S.school={name:$('sn').value,addr:$('sa').value};save();alert('সংরক্ষিত হয়েছে')">সংরক্ষণ করুন</button></div>
+ <div class="card"><h2>ব্যাকআপ</h2><p style="font-size:13px;color:var(--mu);margin-bottom:10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর আগে ব্যাকআপ নিন।</p><button class="btn g s" onclick="exp()">ব্যাকআপ নিন</button> <button class="btn o s" onclick="pickRestore()">ফাইল থেকে রিস্টোর</button> <button class="btn o s" onclick="pasteImp()">টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept="*/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"></div>`}
+
+function exam(){
+ if(curExam)return examMarks();
+ return `<button class="btn" style="width:100%;margin-bottom:12px" onclick="examAdd()">+ নতুন পরীক্ষা</button><div class="card">${S.exams.map(e=>`<div class="row" onclick="curExam='${e.id}';render()"><div class="f"><b>${esc(e.name)}</b><small>শ্রেণি ${esc(e.cls)} · পূর্ণমান ${bn(e.total)} · ${bn(e.date)}</small></div></div>`).join("")||'<div class="em">কোনো পরীক্ষা নেই</div>'}</div>`;
+}
+function examAdd(){
+ if(!classes().length){alert("আগে শিক্ষার্থী যোগ করুন");return}
+ ask("নতুন পরীক্ষা",[["n","পরীক্ষার নাম (যেমন: প্রথম সাময়িক)","text"],["c","শ্রেণি","select",classes().map(c=>[c,c])],["t","পূর্ণমান","number","100"],["d","তারিখ","date",today()]],v=>{if(!v[0]){alert("পরীক্ষার নাম দিন");return false}S.exams.push({id:uid(),name:v[0],cls:v[1],total:+v[2]||100,date:v[3],marks:{}})});
+}
+function examMarks(){
+ const e=S.exams.find(x=>x.id==curExam);if(!e){curExam="";return exam()}
+ const l=S.students.filter(s=>s.cls==e.cls);
+ return `<div class="card"><h2>${esc(e.name)} · শ্রেণি ${esc(e.cls)}</h2><small style="color:var(--mu)">পূর্ণমান ${bn(e.total)}</small>${l.map(s=>{const m=e.marks[s.id];return `<div class="row"><div class="f">${esc(s.name)}<small>রোল ${esc(s.roll)}${m!==undefined?" · গ্রেড "+gr(m/e.total*100):""}</small></div><input id="m_${s.id}" type="number" inputmode="decimal" value="${m??""}" style="width:80px;margin:0"></div>`}).join("")||'<div class="em">এই শ্রেণিতে শিক্ষার্থী নেই</div>'}</div><button class="btn" style="width:100%" onclick="saveMarks()">নম্বর সংরক্ষণ করুন</button><button class="btn r" style="width:100%;margin-top:8px" onclick="delExam()">পরীক্ষা মুছুন</button>`;
+}
+function saveMarks(){const e=S.exams.find(x=>x.id==curExam);S.students.filter(s=>s.cls==e.cls).forEach(s=>{const v=$("m_"+s.id).value;if(v==="")delete e.marks[s.id];else e.marks[s.id]=Math.min(+v,e.total)});save();render()}
+function delExam(){if(!confirm("পরীক্ষাটি মুছবেন?"))return;S.exams=S.exams.filter(x=>x.id!=curExam);curExam="";save();render()}
+
+function report(){
+ const s=S.students.find(x=>x.id==repSid);
+ let h=`<div class="top"><select onchange="repSid=this.value;render()"><option value="">শিক্ষার্থী বাছুন</option>${S.students.map(x=>`<option value="${x.id}" ${x.id==repSid?"selected":""}>${esc(x.name)} (${esc(x.cls)})</option>`).join("")}</select></div>`;
+ if(!s)return h+'<div class="em">রিপোর্ট কার্ড দেখতে শিক্ষার্থী বাছুন</div>';
+ const ex=S.exams.filter(e=>e.cls==s.cls&&e.marks[s.id]!==undefined),ad=Object.values(S.att).filter(d=>d[s.id]),pc=ad.filter(d=>d[s.id]=="p").length;
+ let T=0,M=0;
+ h+=`<div class="card"><h2>${esc(S.school.name)}</h2><p style="font-size:13px;color:var(--mu)">${esc(s.name)} · শ্রেণি ${esc(s.cls)} · রোল ${esc(s.roll)}</p>`;
+ h+=ex.map(e=>{const m=e.marks[s.id];T+=e.total;M+=m;return `<div class="row"><div class="f">${esc(e.name)}<small>${bn(e.date)}</small></div><div style="text-align:right">${bn(m)}/${bn(e.total)}<small>${gr(m/e.total*100)}</small></div></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>';
+ if(T)h+=`<div class="row"><div class="f"><b>সর্বমোট</b></div><b>${bn(M)}/${bn(T)} · ${bn((M/T*100).toFixed(1))}% · ${gr(M/T*100)}</b></div>`;
+ h+=`<div class="row"><div class="f">উপস্থিতি</div>${bn(pc)}/${bn(ad.length)} দিন</div>`;
+ return h+"</div>";
+}
+
+function acc(){
+ const pd=S.fees.reduce((a,f)=>a+f.paid,0),oi=S.txns.filter(t=>t.type=="in").reduce((a,t)=>a+t.amt,0),eo=S.txns.filter(t=>t.type=="out").reduce((a,t)=>a+t.amt,0);
+ return `<div class="g2"><div class="st" style="background:#16a34a"><small>মোট আয়</small><div style="font-size:22px">${money(pd+oi)}</div></div><div class="st" style="background:#e11d48"><small>মোট ব্যয়</small><div style="font-size:22px">${money(eo)}</div></div></div>
+ <div class="card"><div class="row"><div class="f">ফি আদায়</div>${money(pd)}</div><div class="row"><div class="f">অন্যান্য আয়</div>${money(oi)}</div><div class="row"><div class="f"><b>ব্যালেন্স</b></div><b>${money(pd+oi-eo)}</b></div></div>
+ <button class="btn" style="width:100%;margin-bottom:12px" onclick="txnAdd()">+ আয়/ব্যয় যোগ করুন</button>
+ <div class="card">${S.txns.slice().reverse().map(t=>`<div class="row"><div class="f">${esc(t.title)}<small>${bn(t.date)}</small></div><b style="color:var(--${t.type=="in"?"gr":"rd"})">${t.type=="in"?"+":"−"}${money(t.amt)}</b><button class="btn r s" onclick="S.txns=S.txns.filter(x=>x.id!='${t.id}');save();render()">✕</button></div>`).join("")||'<div class="em">কোনো লেনদেন নেই</div>'}</div>`;
+}
+function txnAdd(){ask("আয়/ব্যয় যোগ",[["t","ধরন","select",[["in","আয়"],["out","ব্যয়"]]],["n","বিবরণ","text"],["a","টাকা","number"],["d","তারিখ","date",today()]],v=>{if(!v[1]||!+v[2]){alert("বিবরণ ও টাকা দিন");return false}S.txns.push({id:uid(),type:v[0],title:v[1],amt:+v[2],date:v[3]})})}
+
+function hw(){return `<button class="btn" style="width:100%;margin-bottom:12px" onclick="hwAdd()">+ নতুন বাড়ির কাজ</button><div class="card">${S.hw.slice().reverse().slice(0,30).map(h=>`<div class="row"><div class="f"><b>${esc(h.subject)}</b> <span class="tag">${esc(h.cls)}</span><small>${esc(h.text)} · ${bn(h.date)}</small></div><button class="btn r s" onclick="S.hw=S.hw.filter(x=>x.id!='${h.id}');save();render()">✕</button></div>`).join("")||'<div class="em">আজকের পড়া এখনো আপডেট হয়নি</div>'}</div>`}
+function hwAdd(){
+ if(!classes().length){alert("আগে শিক্ষার্থী যোগ করুন");return}
+ ask("বাড়ির কাজ",[["c","শ্রেণি","select",classes().map(c=>[c,c])],["s","বিষয়","text"],["t","পড়া/কাজ","text"],["d","তারিখ","date",today()]],v=>{if(!v[1]||!v[2]){alert("বিষয় ও কাজ লিখুন");return false}S.hw.push({id:uid(),cls:v[0],subject:v[1],text:v[2],date:v[3]})});
+}
+
+function lib(){
+ return `<button class="btn" style="width:100%;margin-bottom:12px" onclick="bookAdd()">+ নতুন বই</button>${S.books.map(b=>{const op=b.issues.filter(i=>!i.ret);return `<div class="card"><div class="row" style="border:0;padding-top:0"><div class="f"><b>${esc(b.title)}</b><small>${esc(b.author)} · মোট ${bn(b.copies)} · পাওয়া যাবে ${bn(b.copies-op.length)}</small></div><button class="btn s" onclick="issue('${b.id}')">ইস্যু</button><button class="btn r s" onclick="if(confirm('বইটি মুছবেন?')){S.books=S.books.filter(x=>x.id!='${b.id}');save();render()}">✕</button></div>${op.map(i=>`<div class="row"><div class="f">${esc(stuName(i.sid))}<small>${bn(i.date)}</small></div><button class="btn g s" onclick="retBook('${b.id}','${i.sid}')">ফেরত</button></div>`).join("")}</div>`}).join("")||'<div class="em">কোনো বই নেই</div>'}`;
+}
+function bookAdd(){ask("নতুন বই",[["t","বইয়ের নাম","text"],["a","লেখক","text"],["c","কপি সংখ্যা","number","1"]],v=>{if(!v[0]){alert("বইয়ের নাম দিন");return false}S.books.push({id:uid(),title:v[0],author:v[1],copies:+v[2]||1,issues:[]})})}
+function issue(id){
+ const b=S.books.find(x=>x.id==id);
+ if(!S.students.length){alert("আগে শিক্ষার্থী যোগ করুন");return}
+ if(b.copies-b.issues.filter(i=>!i.ret).length<=0){alert("বইটির সব কপি ইস্যু করা আছে");return}
+ ask("বই ইস্যু",[["s","শিক্ষার্থী","select",S.students.map(s=>[s.id,s.name+" ("+s.cls+")"])]],v=>{b.issues.push({sid:v[0],date:today(),ret:false})});
+}
+function retBook(bid,sid){const b=S.books.find(x=>x.id==bid),i=b.issues.find(x=>x.sid==sid&&!x.ret);if(i)i.ret=true;save();render()}
+
+function sms(){
+ const l=S.students.filter(s=>(!smsCls||s.cls==smsCls)&&s.phone),nums=l.map(s=>s.phone).join(",");
+ const dues=S.students.map(s=>({s,d:S.fees.filter(f=>f.sid==s.id).reduce((a,f)=>a+due(f),0)})).filter(x=>x.d>0&&x.s.phone);
+ return `<div class="card"><h2>অভিভাবককে বার্তা</h2><select onchange="smsCls=this.value;render()"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${smsCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><textarea id="sm" rows="3" placeholder="বার্তা লিখুন" oninput="smsMsg=this.value;document.getElementById('sl').href='sms:${nums}?body='+encodeURIComponent(smsMsg)">${esc(smsMsg)}</textarea><a id="sl" class="btn g" style="display:block;text-align:center;text-decoration:none" href="sms:${nums}?body=${encodeURIComponent(smsMsg)}">${bn(l.length)} জনকে SMS পাঠান</a><div class="hint" style="margin-top:6px">আপনার ফোনের SMS অ্যাপ খুলবে, সেখান থেকে পাঠান। ইন্টারনেট লাগে না।</div></div>
+ <div class="card"><h2>বকেয়া রিমাইন্ডার</h2>${dues.map(x=>`<div class="row"><div class="f">${esc(x.s.name)}<small>বকেয়া ${money(x.d)}</small></div><a class="btn s g" style="text-decoration:none" href="sms:${x.s.phone}?body=${encodeURIComponent(x.s.name+"-এর "+bn(x.d)+" টাকা ফি বকেয়া আছে। - "+S.school.name)}">SMS</a></div>`).join("")||'<div class="em">কোনো বকেয়া নেই</div>'}</div>`;
+}
+function tForm(id){
+ const t=S.teachers.find(x=>x.id==id)||{};
+ modal(`<h2 style="margin-bottom:10px">শিক্ষক</h2><input id="t1" placeholder="নাম" value="${esc(t.name)}"><input id="t2" placeholder="বিষয়" value="${esc(t.sub)}"><input id="t3" type="tel" placeholder="ফোন" value="${esc(t.phone)}">
+ <button class="btn" style="width:100%" onclick="tSave('${id||""}')">সংরক্ষণ করুন</button>${id?`<button class="btn r" style="width:100%;margin-top:8px" onclick="S.teachers=S.teachers.filter(x=>x.id!='${id}');save();closeM();render()">মুছে ফেলুন</button>`:""}`);
+}
+function tSave(id){
+ const o={name:$("t1").value.trim(),sub:$("t2").value.trim(),phone:$("t3").value.trim()};if(!o.name){alert("নাম লিখুন");return}
+ if(id)Object.assign(S.teachers.find(x=>x.id==id),o);else S.teachers.push({id:uid(),...o});save();closeM();render();
+}
+function nForm(){modal(`<h2 style="margin-bottom:10px">নতুন নোটিশ</h2><textarea id="n1" rows="4" placeholder="নোটিশ লিখুন"></textarea><button class="btn" style="width:100%" onclick="nSave()">প্রকাশ করুন</button>`)}
+function nSave(){const t=$("n1").value.trim();if(!t){alert("নোটিশ লিখুন");return}S.notices.push({id:uid(),title:t,date:today()});save();closeM();render()}
+async function exp(){
+ const data=JSON.stringify(S),name="madrasa-backup-"+today()+".json",P=window.Capacitor&&Capacitor.Plugins;
+ if(P&&P.Filesystem&&P.Share){
+  try{const r=await P.Filesystem.writeFile({path:name,data:data,directory:"CACHE",encoding:"utf8"});await P.Share.share({title:"ব্যাকআপ",url:r.uri,dialogTitle:"ব্যাকআপ সংরক্ষণ করুন"});return}catch(e){if(e&&/cancel/i.test(e.message||""))return}
+ }
+ try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();a.remove();if(!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()))return}catch(e){}
+ modal(`<h2 style="margin-bottom:10px">ব্যাকআপ টেক্সট</h2><p style="font-size:13px;color:var(--mu);margin-bottom:8px">সব কপি করে কোথাও সেভ রাখুন (নোটস/WhatsApp)।</p><textarea id="bk" rows="8" readonly>${esc(data)}</textarea><button class="btn" style="width:100%" onclick="$('bk').select();document.execCommand('copy');alert('কপি হয়েছে')">কপি করুন</button><button class="btn o" style="width:100%;margin-top:8px" onclick="pasteImp()">পেস্ট করে রিস্টোর</button>`);
+}
+async function pickRestore(){
+ const P=window.Capacitor&&Capacitor.Plugins;
+ if(P&&P.FilePicker){
+  try{
+   const r=await P.FilePicker.pickFiles({limit:1,readData:true});
+   const f=r.files&&r.files[0];if(!f)return;
+   const txt=decodeURIComponent(escape(atob(f.data)));
+   const d=JSON.parse(txt);if(!d.students)throw 0;
+   S={...D(),...d};save();render();alert("রিস্টোর সম্পন্ন");return;
+  }catch(e){if(e&&/cancel/i.test(e.message||""))return;alert("ফাইলটি পড়া যায়নি বা সঠিক ব্যাকআপ নয়। টেক্সট পেস্ট করে রিস্টোর করুন।");return}
+ }
+ $("rf").click();
+}
+function pasteImp(){modal(`<h2 style="margin-bottom:10px">রিস্টোর</h2><textarea id="bk" rows="8" placeholder="ব্যাকআপ টেক্সট পেস্ট করুন"></textarea><button class="btn" style="width:100%" onclick="try{const d=JSON.parse($('bk').value);if(!d.students)throw 0;S={...D(),...d};save();closeM();render();alert('রিস্টোর সম্পন্ন')}catch(e){alert('টেক্সটটি সঠিক ব্যাকআপ নয়')}">রিস্টোর করুন</button>`)}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.students)throw 0;S={...D(),...d};save();render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("ফাইলটি সঠিক ব্যাকআপ নয়")}};r.readAsText(f)}
+
+function modal(h){closeM();const m=document.createElement("div");m.className="mt";m.id="mt";m.onclick=e=>{if(e.target==m)closeM()};m.innerHTML="<div>"+h+"</div>";document.body.appendChild(m)}
+function closeM(){const m=$("mt");if(m)m.remove()}
+render();
+</script>
+</body>
+</html>
