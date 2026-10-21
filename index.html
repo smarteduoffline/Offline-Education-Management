@@ -181,12 +181,69 @@ function stuExcel(){
  const l=targets(),c=v=>'"'+String(v??"").replace(/"/g,'""')+'"',H=["রোল","নাম","Name (English)","শ্রেণি","শাখা","বিভাগ","লিঙ্গ","ধরন","অবস্থা","অভিভাবক","মোবাইল","ইমেইল","জন্ম তারিখ","ভর্তির তারিখ","ঠিকানা"];
  shareFile("students-"+today()+".csv","\uFEFF"+[H.map(c).join(",")].concat(l.map(s=>[s.roll,s.name,s.nameEn,s.cls,s.branch,s.division,s.gender,s.type,s.status||"সক্রিয়",s.guardian,s.phone,s.email,s.dob,s.admDate,s.addr].map(c).join(","))).join("\r\n"),"শিক্ষার্থী তালিকা (Excel/CSV)");
 }
-function printDoc(name,body){
+function htmlShare(name,body){
  shareFile(name+".html",`<!DOCTYPE html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)}</title><style>body{font-family:sans-serif;padding:14px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left}@media print{.np{display:none}}</style></head><body>${body}<p class="np"><button onclick="window.print()">প্রিন্ট / PDF সেভ করুন</button></p></body></html>`,"ব্রাউজারে খুলে প্রিন্ট → PDF সেভ করুন");
 }
+const LIBS={};
+function loadLib(u){return LIBS[u]||(LIBS[u]=new Promise((ok,no)=>{const e=document.createElement("script");e.src=u;e.onload=ok;e.onerror=()=>{delete LIBS[u];no(new Error("load"))};document.head.appendChild(e);setTimeout(()=>{delete LIBS[u];no(new Error("timeout"))},15000)}))}
+function toast(m,keep){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.style.cssText="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:85%;text-align:center";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._h);if(!keep)t._h=setTimeout(()=>{t.style.display="none"},3500)}
+function toastOff(){const t=$("toast");if(t)t.style.display="none"}
+async function printDoc(name,body){
+ if(!navigator.onLine){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
+ const fn=name+"-"+today()+".pdf";let wrap=null;
+ toast("⏳ PDF তৈরি হচ্ছে…",1);
+ try{
+  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  wrap=document.createElement("div");
+  wrap.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#111;padding:28px;box-sizing:border-box;font-family:sans-serif";
+  wrap.innerHTML='<style>table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left}.np{display:none}</style>'+body;
+  document.body.appendChild(wrap);
+  await new Promise(r=>setTimeout(r,400));
+  const sc=Math.min(2,14000/Math.max(1,wrap.scrollHeight));
+  const cv=await html2canvas(wrap,{scale:sc,backgroundColor:"#fff",useCORS:true});
+  const wr=wrap.getBoundingClientRect(),cuts=[...wrap.querySelectorAll("tr,.pgb")].map(e=>(e.getBoundingClientRect().bottom-wr.top)*sc);
+  wrap.remove();wrap=null;
+  const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:"a4"}),PW=595,PH=842,ph=Math.floor(cv.width*PH/PW);
+  let y=0,first=true;
+  while(y<cv.height-1){
+   let end=Math.min(y+ph,cv.height);
+   if(end<cv.height){const c=cuts.filter(v=>v>y+ph*.5&&v<=end);if(c.length)end=Math.max(...c)}
+   if(end<=y)end=Math.min(y+ph,cv.height);
+   const pc=document.createElement("canvas");pc.width=cv.width;pc.height=Math.ceil(end-y);const g=pc.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,pc.width,pc.height);g.drawImage(cv,0,y,cv.width,end-y,0,0,cv.width,end-y);
+   if(!first)pdf.addPage();first=false;
+   pdf.addImage(pc.toDataURL("image/jpeg",.92),"JPEG",0,0,PW,(end-y)*PW/cv.width);y=end;
+  }
+  toastOff();await savePdf(pdf,fn);
+ }catch(e){if(wrap)wrap.remove();toast("PDF তৈরি করা যায়নি — প্রিন্টযোগ্য ফাইল শেয়ার হচ্ছে");htmlShare(name,body)}
+}
+async function savePdf(pdf,fn){
+ const C=window.Capacitor,P=C&&C.Plugins,native=!!(C&&(C.isNativePlatform?C.isNativePlatform():(C.getPlatform&&C.getPlatform()!="web")));
+ if(native&&P&&P.Filesystem){
+  const b64=pdf.output("datauristring").split("base64,")[1];
+  try{
+   try{await P.Filesystem.requestPermissions()}catch(e){}
+   const r=await P.Filesystem.writeFile({path:"MadrasaApp/"+fn,data:b64,directory:"DOCUMENTS",recursive:true});
+   window._pdfUri=r.uri;
+   modal(`<div style="text-align:center;padding:8px 0"><div style="font-size:42px">✅</div><h2 style="margin:6px 0">PDF ডাউনলোড হয়েছে</h2><small style="color:var(--mu)">ফাইল: Documents/MadrasaApp/${esc(fn)}</small><div style="font-size:10px;color:var(--mu);margin-top:4px">মোড: অ্যাপ</div></div><div class="g2" style="margin:10px 0 0"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="sharePdf()">খুলুন / শেয়ার</button></div>`);
+   return;
+  }catch(e){
+   if(P.Share){try{const r=await P.Filesystem.writeFile({path:fn,data:b64,directory:"CACHE"});await P.Share.share({title:fn,url:r.uri,dialogTitle:"PDF সেভ করুন"});return}catch(e2){if(e2&&/cancel/i.test(e2.message||""))return}}
+   alert("PDF সেভ করা যায়নি: "+(e.message||e));return;
+  }
+ }
+ const blob=pdf.output("blob"),url=URL.createObjectURL(blob);window._pdfBlob=blob;window._pdfName=fn;
+ modal(`<div style="text-align:center;padding:8px 0"><div style="font-size:42px">📄</div><h2 style="margin:6px 0">PDF প্রস্তুত</h2><small style="color:var(--mu)">${esc(fn)}</small></div>
+ <a class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="${url}" download="${esc(fn)}">⬇ ডাউনলোড করুন</a>
+ <button class="btn g" style="width:100%;margin-bottom:8px" onclick="shareBlob()">📤 শেয়ার / সেভ করুন</button>
+ <a class="btn o" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="${url}" target="_blank" rel="noopener">🔗 নতুন ট্যাবে খুলুন</a>
+ <button class="btn o" style="width:100%" onclick="closeM()">বন্ধ</button><div style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px">মোড: ব্রাউজার</div>`);
+}
+async function shareBlob(){const f=new File([window._pdfBlob],window._pdfName,{type:"application/pdf"});try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:window._pdfName});return}alert("এই ডিভাইসে শেয়ার সমর্থিত নয়। ডাউনলোড বাটন ব্যবহার করুন।")}catch(e){if(e&&e.name!="AbortError")alert("শেয়ার করা যায়নি: "+e.message)}}
+async function sharePdf(){try{await Capacitor.Plugins.Share.share({url:window._pdfUri,dialogTitle:"PDF খুলুন / শেয়ার করুন"})}catch(e){if(!(e&&/cancel/i.test(e.message||"")))alert("ফাইলটি Files অ্যাপের Documents/MadrasaApp ফোল্ডারে আছে")}}
 function stuPdf(){
- const l=targets();
- printDoc("students-list",`<h2>${esc(S.school.name)}</h2><p>শিক্ষার্থী তালিকা — ${bn(l.length)} জন</p><table><tr><th>ক্রম</th><th>রোল</th><th>নাম</th><th>শ্রেণি</th><th>লিঙ্গ</th><th>অভিভাবক</th><th>মোবাইল</th></tr>${l.map((s,i)=>`<tr><td>${bn(i+1)}</td><td>${esc(s.roll)}</td><td>${esc(s.name)}</td><td>${esc(s.cls)}${s.branch?" — "+esc(s.branch):""}</td><td>${esc(s.gender)}</td><td>${esc(s.guardian)}</td><td>${esc(s.phone)}</td></tr>`).join("")}</table>`);
+ const l=targets().slice().sort((a,b)=>(parseInt(a.roll)||0)-(parseInt(b.roll)||0)),d=new Date();
+ printDoc("students-list",`<style>.st td,.st th{border:1px solid #c7d2fe;font-size:12px;padding:6px 7px}.st th{color:#666;font-weight:500}</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">শিক্ষার্থী ব্যবস্থাপনা</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · ${esc(S.school.name)} · মোট ${bn(l.length)} জন</div><table class="st" style="border:1px solid #1d4ed8"><tr>${["নাম","রোল","শ্রেণি","শাখা","লিঙ্গ","অভিভাবক","মোবাইল","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.roll)}</td><td>${esc(s.cls)}</td><td>${esc(s.branch||"")}</td><td>${esc(s.gender||"")}</td><td>${esc(s.guardian||"")}</td><td>${esc(s.phone||"")}</td><td>${esc(s.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
 }
 let profId="",profTab="info",txY=new Date().getFullYear(),txP=1,txM=true,arS={},cardCtx={},mctx={ids:[],sel:{},done:{},txt:""};
 const MT="প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর বিষয়ে একটি গুরুত্বপূর্ণ তথ্য জানাতে চাই।\n\nধন্যবাদ\n";
@@ -240,7 +297,6 @@ function qrSvg(text,px){
  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 ${size+6} ${size+6}" width="${px}" height="${px}" shape-rendering="crispEdges"><rect x="-3" y="-3" width="${size+6}" height="${size+6}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
 }
 
-/* ---- action sheet ---- */
 function menuS(id){
  const s=sOf(id),A=[["👤","প্রোফাইল দেখুন",`profile('${id}')`],["🎖","ফলাফল / গ্রেড",`resultsM('${id}')`],["📅","মাসিক উপস্থিতি",`stuAtt('${id}')`],["📋","প্রবেশপত্র তৈরি",`admit('${id}')`],["🪪","আইডি কার্ড",`idCard('${id}')`],["👛","লেনদেন",`stuTxn('${id}')`],["✏️","সম্পাদনা",`stuForm('${id}')`]];
  modal(HND+`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(s.name)}</b><span style="padding:4px 8px" onclick="closeM()">✕</span></div>`+A.map(a=>`<div class="mr" onclick="${a[2]}"><i>${a[0]}</i>${a[1]}</div>`).join("")+`<div class="mr rd" onclick="stuDel('${id}')"><i>🗑</i>মুছে ফেলুন</div>`);
