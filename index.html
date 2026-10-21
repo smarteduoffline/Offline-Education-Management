@@ -58,6 +58,12 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .lg2{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}.lg2 i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .ac{border-radius:16px;padding:14px;color:#fff;position:relative;overflow:hidden}.ac b{display:block;font-size:22px;margin:4px 0}.ac small{opacity:.9;font-size:12px}
 .bars{display:flex;align-items:flex-end;gap:10px;height:150px;margin:10px 0}.bars div{flex:1;border-radius:10px 10px 0 0;color:#fff;text-align:center;font-size:12px;padding-top:6px}
+.cb{appearance:none;-webkit-appearance:none;width:22px;height:28px;border:1.5px solid var(--pri);border-radius:8px;background:none;flex:none;margin:2px 0 0;padding:0;position:relative}.cb:checked{background:var(--pri)}.cb:checked:after{content:"✓";color:#fff;position:absolute;left:4px;top:3px;font-size:14px}
+.sc2{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px 10px 12px;margin-bottom:10px}
+.pl{display:inline-block;font-size:11px;padding:2px 9px;border-radius:6px;background:var(--ln);color:var(--mu);margin:0 4px 4px 0}.pl.g{background:#dcfce7;color:#16a34a}.pl.b{background:#dbe4ff;color:#3b5bdb}.pl.r{background:#ffe4e9;color:#e11d48}
+.dots{border:0;background:none;font-size:22px;color:var(--mu);line-height:1;padding:0 6px}
+.ob{border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px}.ob.g{border-color:#16a34a;color:#16a34a;background:#f0fdf4}
+.mr{display:flex;align-items:center;gap:12px;padding:11px 0;font-size:14px}.mr i{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-style:normal;flex:none}.mr.rd{color:var(--rd)}.mr.rd i{background:#ffe4e9}
 </style>
 </head>
 <body>
@@ -65,7 +71,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 <nav id="nv"></nav></div>
 <script>
 const KEY="smart-edu-v1";
-const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[]});
+const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[]});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};
 const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -83,7 +89,7 @@ function render(){
  $("nv").innerHTML=TABS.map(t=>`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
  $("v").innerHTML=({home,att,stu,fee,more})[tab]();
 }
-function go(t){tab=t;q="";sub="";curExam="";render();$("v").scrollTop=0}
+function go(t){tab=t;q="";sub="";curExam="";profId="";render();$("v").scrollTop=0}
 
 let homeCls="",logAll=false,photoCb=null;
 const p2=n=>String(n).padStart(2,"0");
@@ -95,7 +101,7 @@ function donut(segs,z,sw,t1,t2,c1){const r=(z-sw)/2,C=2*Math.PI*r,tot=segs.reduc
  if(!tot)cs=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="#e3e7f0" stroke-width="${sw}"/>`;
  else segs.forEach(x=>{if(x.v>0){const l=C*x.v/tot;cs+=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="${x.c}" stroke-width="${sw}" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${z/2} ${z/2})"/>`;off+=l}});
  return `<svg viewBox="0 0 ${z} ${z}" width="${z}" height="${z}" style="display:block;margin:4px auto">${cs}<text x="50%" y="${t2?"50%":"56%"}" text-anchor="middle" font-size="${t2?17:22}" font-weight="700" fill="${c1||"currentColor"}">${t1}</text>${t2?`<text x="50%" y="63%" text-anchor="middle" font-size="9" fill="#6b7385">${t2}</text>`:""}</svg>`}
-function nav(t,sb){closeM();tab=t;sub=sb||"";curExam="";q="";render();$("v").scrollTop=0}
+function nav(t,sb){closeM();tab=t;sub=sb||"";curExam="";q="";profId="";render();$("v").scrollTop=0}
 function drawer(){modal(`<h2 style="margin-bottom:6px">${esc(S.school.name)}</h2>`+[["home","","🏠","ড্যাশবোর্ড"],["stu","","👥","শিক্ষার্থী"],["att","","✅","উপস্থিতি"],["fee","","👛","ফি"]].concat(MENU.map(m=>["more",m[0],m[1],m[2]])).map(x=>`<div class="row" onclick="nav('${x[0]}','${x[1]}')"><span style="font-size:20px">${x[2]}</span><div class="f">${x[3]}</div></div>`).join(""))}
 function pickLogo(){photoCb=u=>{S.school.logo=u;save();render()};pickPhoto()}
 function saveSchool(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("sn"),addr:g("sa"),est:g("se"),year:g("sy"),director:g("sd"),phone:g("sp")};save();alert("সংরক্ষিত হয়েছে")}
@@ -142,9 +148,278 @@ function list(){return S.students.filter(s=>(!cls||s.cls==cls)&&(!q||(s.name+s.r
 function filt(){return `<div class="top"><input placeholder="খুঁজুন..." value="${esc(q)}" oninput="q=this.value;keep()"><select onchange="cls=this.value;render()" style="width:110px"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${cls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`}
 function keep(){const p=$("lst");if(p)p.innerHTML=tab=="stu"?stuRows():tab=="fee"?feeRows():""}
 
-function stuRows(){const l=list();return l.length?l.map(s=>`<div class="row" onclick="stuForm('${s.id}')">${s.photo?`<img class="av" src="${s.photo}">`:'<div class="av">👤</div>'}<div class="f"><b>${esc(s.name)}</b><small>শ্রেণি ${esc(s.cls)} · রোল ${esc(s.roll)} · ${esc(s.guardian)}</small></div><span class="tag">${esc(s.type||"অনাবাসিক")}</span></div>`).join(""):'<div class="em">কোনো শিক্ষার্থী নেই। নতুন শিক্ষার্থী যোগ করুন।</div>'}
-function stu(){return filt()+`<button class="btn" style="width:100%;margin-bottom:12px" onclick="stuForm()">+ নতুন শিক্ষার্থী</button><div class="card" id="lst">${stuRows()}</div>`}
+let sCls="",sGen="",sSt="",selS={};
+const HND='<div style="width:40px;height:4px;border-radius:2px;background:var(--ln);margin:0 auto 12px"></div>';
+const avt=(s,z)=>s.photo?`<img class="av" style="width:${z}px;height:${z}px" src="${s.photo}">`:`<div class="av" style="width:${z}px;height:${z}px;font-size:${Math.round(z/2)}px">👤</div>`;
+const sOf=id=>S.students.find(x=>x.id==id);
+function sList(){const k=q.trim().toLowerCase();return S.students.filter(s=>(!sCls||s.cls==sCls)&&(!sGen||s.gender==sGen)&&(!sSt||(s.status||"সক্রিয়")==sSt)&&(!k||[s.name,s.nameEn,s.roll,s.guardian,s.phone].join(" ").toLowerCase().includes(k)))}
+function stuRows(){
+ return sList().map(s=>`<div class="sc2"><input type="checkbox" class="cb" ${selS[s.id]?"checked":""} onchange="togS('${s.id}')"><div style="flex:1;min-width:0" onclick="profile('${s.id}')"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">${avt(s,36)}<b style="font-size:15px">${esc(s.name)}</b></div>
+ <span class="pl ${(s.status||"সক্রিয়")=="সক্রিয়"?"g":"r"}">${esc(s.status||"সক্রিয়")}</span><span class="pl b">${esc(s.type||"অনাবাসিক")}</span><span class="pl">${esc(s.cls)}${s.branch?" — "+esc(s.branch):""}</span>${s.gender?`<span class="pl">${esc(s.gender)}</span>`:""}
+ <div style="font-size:12px;color:var(--mu);line-height:1.6">${s.roll?"রোল: "+esc(s.roll)+"<br>":""}${s.guardian?"অভিভাবক: "+esc(s.guardian)+"<br>":""}${s.phone?"মোবাইল: "+esc(s.phone):""}</div></div><button class="dots" onclick="menuS('${s.id}')">⋯</button></div>`).join("")||'<div class="em">কোনো শিক্ষার্থী পাওয়া যায়নি</div>';
+}
+function stu(){if(profId)return profilePage();
+ const l=sList(),all=l.length&&l.every(s=>selS[s.id]),n=Object.keys(selS).length;
+ return `<h1 style="font-size:22px">শিক্ষার্থী ব্যবস্থাপনা</h1><small style="color:var(--mu)">মোট ${bn(S.students.length)} জন শিক্ষার্থী</small>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="ob" onclick="stuExcel()">📄 Excel</button><button class="ob" onclick="stuPdf()">🗎 PDF</button><button class="ob g" onclick="stuSms()">💬 সকলকে SMS</button><button class="btn" onclick="stuForm()">＋ নতুন শিক্ষার্থী</button></div>
+ <div class="card"><input placeholder="🔍 অনুসন্ধান করুন..." value="${esc(q)}" oninput="q=this.value;keep()"><div class="g2" style="margin:0"><select onchange="sCls=this.value;render()" style="margin:0"><option value="">শ্রেণি (সব)</option>${classes().map(c=>`<option ${sCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><select onchange="sGen=this.value;render()" style="margin:0"><option value="">লিঙ্গ (সব)</option>${["ছেলে","মেয়ে"].map(c=>`<option ${sGen==c?"selected":""}>${c}</option>`).join("")}</select></div><select onchange="sSt=this.value;render()" style="margin:8px 0 0;width:50%"><option value="">অবস্থা (সব)</option>${["সক্রিয়","নিষ্ক্রিয়"].map(c=>`<option ${sSt==c?"selected":""}>${c}</option>`).join("")}</select></div>
+ <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mu);margin:4px 0 10px"><input type="checkbox" class="cb" ${all?"checked":""} onchange="selAll(this.checked)">সব নির্বাচন করুন</label>
+ ${n?`<div class="card" style="padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1">${bn(n)} জন নির্বাচিত</b><button class="btn g s" onclick="stuSms()">SMS</button><button class="btn r s" onclick="bulkDel()">মুছুন</button><button class="btn o s" onclick="selS={};render()">বাতিল</button></div>`:""}
+ <div id="lst">${stuRows()}</div>`;
+}
+function togS(id){if(selS[id])delete selS[id];else selS[id]=1;const y=$("v").scrollTop;render();$("v").scrollTop=y}
+function selAll(on){sList().forEach(s=>{if(on)selS[s.id]=1;else delete selS[s.id]});const y=$("v").scrollTop;render();$("v").scrollTop=y}
+function bulkDel(){const n=Object.keys(selS).length;if(!n||!confirm(bn(n)+" জন শিক্ষার্থী ও তাদের ফি রেকর্ড মুছে ফেলবেন?"))return;S.students=S.students.filter(s=>!selS[s.id]);S.fees=S.fees.filter(f=>!selS[f.sid]);logA("edit","শিক্ষার্থী",bn(n)+" জন শিক্ষার্থী মুছে ফেলা হয়েছে");selS={};save();render()}
+function targets(){const n=Object.keys(selS).length;return n?S.students.filter(s=>selS[s.id]):sList()}
+function stuSms(){const t=targets().filter(x=>x.phone);if(!t.length){alert("মোবাইল নম্বর সহ কোনো শিক্ষার্থী নেই");return}msgM(t.map(x=>x.id))}
+async function shareFile(name,data,title){
+ const P=window.Capacitor&&Capacitor.Plugins;
+ if(P&&P.Filesystem&&P.Share){try{const r=await P.Filesystem.writeFile({path:name,data:data,directory:"CACHE",encoding:"utf8"});await P.Share.share({title:title||name,url:r.uri,dialogTitle:title||name});return}catch(e){if(e&&/cancel/i.test(e.message||""))return}}
+ modal(`<h2 style="margin-bottom:8px">${esc(title||name)}</h2><p style="font-size:13px;color:var(--mu);margin-bottom:8px">ফাইল শেয়ার করা যায়নি। নিচের লেখা কপি করে সেভ করুন।</p><textarea id="bk" rows="8" readonly>${esc(data)}</textarea><button class="btn" style="width:100%" onclick="$('bk').select();document.execCommand('copy');alert('কপি হয়েছে')">কপি করুন</button>`);
+}
+function stuExcel(){
+ const l=targets(),c=v=>'"'+String(v??"").replace(/"/g,'""')+'"',H=["রোল","নাম","Name (English)","শ্রেণি","শাখা","বিভাগ","লিঙ্গ","ধরন","অবস্থা","অভিভাবক","মোবাইল","ইমেইল","জন্ম তারিখ","ভর্তির তারিখ","ঠিকানা"];
+ shareFile("students-"+today()+".csv","\uFEFF"+[H.map(c).join(",")].concat(l.map(s=>[s.roll,s.name,s.nameEn,s.cls,s.branch,s.division,s.gender,s.type,s.status||"সক্রিয়",s.guardian,s.phone,s.email,s.dob,s.admDate,s.addr].map(c).join(","))).join("\r\n"),"শিক্ষার্থী তালিকা (Excel/CSV)");
+}
+function printDoc(name,body){
+ shareFile(name+".html",`<!DOCTYPE html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)}</title><style>body{font-family:sans-serif;padding:14px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left}@media print{.np{display:none}}</style></head><body>${body}<p class="np"><button onclick="window.print()">প্রিন্ট / PDF সেভ করুন</button></p></body></html>`,"ব্রাউজারে খুলে প্রিন্ট → PDF সেভ করুন");
+}
+function stuPdf(){
+ const l=targets();
+ printDoc("students-list",`<h2>${esc(S.school.name)}</h2><p>শিক্ষার্থী তালিকা — ${bn(l.length)} জন</p><table><tr><th>ক্রম</th><th>রোল</th><th>নাম</th><th>শ্রেণি</th><th>লিঙ্গ</th><th>অভিভাবক</th><th>মোবাইল</th></tr>${l.map((s,i)=>`<tr><td>${bn(i+1)}</td><td>${esc(s.roll)}</td><td>${esc(s.name)}</td><td>${esc(s.cls)}${s.branch?" — "+esc(s.branch):""}</td><td>${esc(s.gender)}</td><td>${esc(s.guardian)}</td><td>${esc(s.phone)}</td></tr>`).join("")}</table>`);
+}
+let profId="",profTab="info",txY=new Date().getFullYear(),txP=1,txM=true,arS={},cardCtx={},mctx={ids:[],sel:{},done:{},txt:""};
+const MT="প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর বিষয়ে একটি গুরুত্বপূর্ণ তথ্য জানাতে চাই।\n\nধন্যবাদ\n";
+const GP=p=>p>=80?5:p>=70?4:p>=60?3.5:p>=50?3:p>=40?2:p>=33?1:0;
+const openExt=u=>{const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()};
+function waLink(ph,t){let d=String(ph||"").replace(/\D/g,"");if(d.startsWith("0"))d="88"+d;return "https://wa.me/"+d+"?text="+encodeURIComponent(t)}
+function sendTo(x,ch,tx){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx});S.smslog=S.smslog.slice(0,300);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
+const fillT=(t,x)=>t.replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"");
+const pill=(t,k)=>`<span class="pl ${k||""}">${t}</span>`;
 
+/* ---- QR (byte mode, ECC M, v1-10) ---- */
+function qrSvg(text,px){
+ const enc=new TextEncoder().encode(text),ECC=[10,16,26,18,24,16,18,22,22,26],NB=[1,1,1,2,2,4,4,4,5,5];
+ const raw=v=>{let r=(16*v+128)*v+64;if(v>=2){const n=Math.floor(v/7)+2;r-=(25*n-10)*n-55;if(v>=7)r-=36}return r};
+ let v=1;for(;v<=10;v++){if(4+(v<10?8:16)+enc.length*8<=(Math.floor(raw(v)/8)-ECC[v-1]*NB[v-1])*8)break}
+ if(v>10)return "";
+ const nb=NB[v-1],el=ECC[v-1],rc=Math.floor(raw(v)/8),cap=rc-el*nb,bits=[],put=(x,n)=>{for(let i=n-1;i>=0;i--)bits.push((x>>>i)&1)};
+ put(4,4);put(enc.length,v<10?8:16);enc.forEach(b=>put(b,8));
+ for(let i=0;i<4&&bits.length<cap*8;i++)bits.push(0);while(bits.length%8)bits.push(0);
+ for(let pd=0xEC;bits.length<cap*8;pd^=0xEC^0x11)put(pd,8);
+ const dat=[];for(let i=0;i<bits.length;i+=8){let b=0;for(let j=0;j<8;j++)b=b<<1|bits[i+j];dat.push(b)}
+ const mul=(x,y)=>{let z=0;for(let i=7;i>=0;i--){z=(z<<1)^((z>>>7)*0x11D);z^=((y>>>i)&1)*x}return z};
+ const div=Array(el-1).fill(0).concat([1]);let root=1;
+ for(let i=0;i<el;i++){for(let j=0;j<el;j++){div[j]=mul(div[j],root);if(j+1<el)div[j]^=div[j+1]}root=mul(root,2)}
+ const rem=d=>{const r=Array(el).fill(0);for(const b of d){const f=b^r.shift();r.push(0);div.forEach((c,i)=>r[i]^=mul(c,f))}return r};
+ const sl=Math.floor(rc/nb),ns=nb-rc%nb,blocks=[];let k=0;
+ for(let i=0;i<nb;i++){const d=dat.slice(k,k+sl-el+(i<ns?0:1));k+=d.length;const e=rem(d);if(i<ns)d.push(0);blocks.push(d.concat(e))}
+ const all=[];for(let i=0;i<blocks[0].length;i++)blocks.forEach((b,j)=>{if(i!=sl-el||j>=ns)all.push(b[i])});
+ const size=v*4+17,m=Array.from({length:size},()=>Array(size).fill(false)),f=Array.from({length:size},()=>Array(size).fill(false));
+ const setF=(x,y,d)=>{m[y][x]=d;f[y][x]=true};
+ for(let i=0;i<size;i++){setF(6,i,i%2==0);setF(i,6,i%2==0)}
+ const fin=(cx,cy)=>{for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){const d=Math.max(Math.abs(dx),Math.abs(dy)),x=cx+dx,y=cy+dy;if(x>=0&&x<size&&y>=0&&y<size)setF(x,y,d!=2&&d!=4)}};
+ fin(3,3);fin(size-4,3);fin(3,size-4);
+ const na=v>1?Math.floor(v/7)+2:0,step=Math.ceil((v*4+4)/(Math.max(na,2)*2-2))*2;let ap=v>1?[6]:[];for(let q=size-7;ap.length<na;q-=step)ap.splice(1,0,q);
+ for(let i=0;i<na;i++)for(let j=0;j<na;j++){if((i==0&&j==0)||(i==0&&j==na-1)||(i==na-1&&j==0))continue;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)setF(ap[i]+dx,ap[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!=1)}
+ const bit=(x,i)=>((x>>>i)&1)!=0;
+ const fmt=mk=>{const d=0<<3|mk;let r=d;for(let i=0;i<10;i++)r=(r<<1)^((r>>>9)*0x537);const b=(d<<10|r)^0x5412;
+  for(let i=0;i<=5;i++)setF(8,i,bit(b,i));setF(8,7,bit(b,6));setF(8,8,bit(b,7));setF(7,8,bit(b,8));for(let i=9;i<15;i++)setF(14-i,8,bit(b,i));
+  for(let i=0;i<8;i++)setF(size-1-i,8,bit(b,i));for(let i=8;i<15;i++)setF(8,size-15+i,bit(b,i));setF(8,size-8,true)};
+ fmt(0);
+ if(v>=7){let r=v;for(let i=0;i<12;i++)r=(r<<1)^((r>>>11)*0x1F25);const b=v<<12|r;for(let i=0;i<18;i++){const c=bit(b,i),a=size-11+i%3,d=Math.floor(i/3);setF(a,d,c);setF(d,a,c)}}
+ let i=0;
+ for(let right=size-1;right>=1;right-=2){if(right==6)right=5;for(let vert=0;vert<size;vert++)for(let j=0;j<2;j++){const x=right-j,up=((right+1)&2)==0,y=up?size-1-vert:vert;if(!f[y][x]&&i<all.length*8){m[y][x]=bit(all[i>>>3],7-(i&7));i++}}}
+ const MK=[(x,y)=>(x+y)%2==0,(x,y)=>y%2==0,(x,y)=>x%3==0,(x,y)=>(x+y)%3==0,(x,y)=>(Math.floor(x/3)+Math.floor(y/2))%2==0,(x,y)=>x*y%2+x*y%3==0,(x,y)=>(x*y%2+x*y%3)%2==0,(x,y)=>((x+y)%2+x*y%3)%2==0];
+ const pen=g=>{let p=0;for(let a=0;a<size;a++)for(const dr of [0,1]){let run=1;for(let b=1;b<size;b++){const c=dr?g[b][a]:g[a][b],pr=dr?g[b-1][a]:g[a][b-1];if(c==pr){run++;if(run==5)p+=3;else if(run>5)p++}else run=1}}return p};
+ let best=null,bm=0,bp=1e9;
+ for(let mk=0;mk<8;mk++){const g=m.map(r=>r.slice());for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(!f[y][x]&&MK[mk](x,y))g[y][x]=!g[y][x];const pp=pen(g);if(pp<bp){bp=pp;best=g;bm=mk}}
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++)m[y][x]=best[y][x];
+ fmt(bm);
+ let d="";for(let y=0;y<size;y++)for(let x=0;x<size;x++)if(m[y][x])d+=`M${x} ${y}h1v1h-1z`;
+ return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 ${size+6} ${size+6}" width="${px}" height="${px}" shape-rendering="crispEdges"><rect x="-3" y="-3" width="${size+6}" height="${size+6}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
+/* ---- action sheet ---- */
+function menuS(id){
+ const s=sOf(id),A=[["👤","প্রোফাইল দেখুন",`profile('${id}')`],["🎖","ফলাফল / গ্রেড",`resultsM('${id}')`],["📅","মাসিক উপস্থিতি",`stuAtt('${id}')`],["📋","প্রবেশপত্র তৈরি",`admit('${id}')`],["🪪","আইডি কার্ড",`idCard('${id}')`],["👛","লেনদেন",`stuTxn('${id}')`],["✏️","সম্পাদনা",`stuForm('${id}')`]];
+ modal(HND+`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(s.name)}</b><span style="padding:4px 8px" onclick="closeM()">✕</span></div>`+A.map(a=>`<div class="mr" onclick="${a[2]}"><i>${a[0]}</i>${a[1]}</div>`).join("")+`<div class="mr rd" onclick="stuDel('${id}')"><i>🗑</i>মুছে ফেলুন</div>`);
+}
+function profile(id){closeM();profId=id;profTab="info";render();$("v").scrollTop=0}
+
+/* ---- results ---- */
+function recalc(e,id){const r=(e.sub&&e.sub[id])||[];if(r.length){e.marks[id]=r.reduce((a,x)=>a+x.g,0);e.full=e.full||{};e.full[id]=r.reduce((a,x)=>a+x.f,0)}else{delete e.marks[id];if(e.full)delete e.full[id]}}
+function resultsM(id,eid){
+ const s=sOf(id),ex=S.exams.filter(e=>e.cls==s.cls),e=ex.find(x=>x.id==eid)||ex[ex.length-1],rows=e?((e.sub||{})[id]||[]):[];
+ let T=0,G=0,F=0;const tr=rows.map((x,i)=>{const p=x.f?x.g/x.f*100:0,gp=GP(p);T+=x.g;G+=x.f;if(gp==0)F=1;return {x,i,p,gp}});
+ const gpa=tr.length&&!F?tr.reduce((a,r)=>a+r.gp,0)/tr.length:0,th='style="background:#3b5bdb;color:#fff"';
+ modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">🎖 ${esc(s.name)} — ফলাফল প্রোফাইল</h2><div class="card" style="background:#eef2ff;display:flex;gap:12px;align-items:center;padding:12px">${avt(s,48)}<div><b style="color:#1d2433">${esc(s.name)}</b><small style="color:#6b7385">${esc(s.cls)} | রোল: ${esc(s.roll)}</small></div></div>`
+ +(e?`<select onchange="resultsM('${id}',this.value)">${ex.map(x=>`<option value="${x.id}" ${x.id==e.id?"selected":""}>${esc(x.name)} — ${esc(x.cls)}</option>`).join("")}</select>
+ <div class="card ov" style="padding:0"><table class="tb"><tr><th ${th}>বিষয়</th><th ${th}>পূর্ণমান</th><th ${th}>প্রাপ্ত</th><th ${th}>%</th><th ${th}>গ্রেড</th><th ${th}>GPA</th><th ${th}></th></tr>
+ ${tr.map(r=>`<tr><td>${esc(r.x.s)}</td><td>${bn(r.x.f)}</td><td>${bn(r.x.g)}</td><td>${bn(r.p.toFixed(0))}%</td><td>${gr(r.p)}</td><td>${bn(r.gp.toFixed(2))}</td><td onclick="delMark('${id}','${e.id}',${r.i})" style="color:var(--rd)">✕</td></tr>`).join("")||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:18px">কোনো ফলাফল নেই</td></tr>'}
+ ${tr.length?`<tr style="font-weight:700"><td>মোট</td><td>${bn(G)}</td><td>${bn(T)}</td><td>${bn((T/G*100).toFixed(0))}%</td><td>${F?"F":gr(T/G*100)}</td><td>${bn(gpa.toFixed(2))}</td><td></td></tr>`:""}</table></div>
+ <button class="btn o" style="width:100%" onclick="markAdd('${id}','${e.id}')">＋ নতুন নম্বর যুক্ত করুন</button>`:'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই। আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।</div>')
+ +`<button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
+}
+function markAdd(id,eid){
+ ask("নম্বর যুক্ত করুন",[["s","বিষয়","text"],["f","পূর্ণমান","number","100"],["g","প্রাপ্ত নম্বর","number"]],v=>{
+  const f=+v[1],g=+v[2];if(!v[0]||!f||v[2]===""||isNaN(g)){alert("বিষয়, পূর্ণমান ও প্রাপ্ত নম্বর দিন");return false}
+  const e=S.exams.find(x=>x.id==eid);e.sub=e.sub||{};(e.sub[id]=e.sub[id]||[]).push({s:v[0],f,g:Math.min(g,f)});recalc(e,id);logA("add","ফলাফল","নম্বর যুক্ত: "+sOf(id).name+" — "+v[0]);save();resultsM(id,eid);return false});
+}
+function delMark(id,eid,i){const e=S.exams.find(x=>x.id==eid);e.sub[id].splice(i,1);recalc(e,id);save();resultsM(id,eid)}
+function routineCard(e){return `<div class="card"><h2>পরীক্ষার সূচি</h2>${(e.routine||[]).slice().sort((a,b)=>a.date>b.date?1:-1).map(r=>`<div class="row"><div class="f"><b>${esc(r.subject)}</b><small>${bn(r.date)}${r.time?" · "+esc(r.time):""}</small></div><span onclick="rtDel('${e.id}','${r.id}')" style="color:var(--rd);padding:4px 8px">✕</span></div>`).join("")||'<div class="em" style="padding:8px 0">কোনো সূচি নেই</div>'}<button class="btn o s" onclick="rtAdd('${e.id}')">+ বিষয় যোগ করুন</button></div>`}
+function rtAdd(eid){ask("পরীক্ষার সূচি যোগ",[["s","বিষয়","text"],["d","তারিখ","date",today()],["t","সময় (যেমন: সকাল ১০টা)","text"]],v=>{if(!v[0]){alert("বিষয় দিন");return false}const e=S.exams.find(x=>x.id==eid);(e.routine=e.routine||[]).push({id:uid(),subject:v[0],date:v[1],time:v[2]})})}
+function rtDel(eid,rid){const e=S.exams.find(x=>x.id==eid);e.routine=e.routine.filter(r=>r.id!=rid);save();render()}
+
+/* ---- monthly attendance report ---- */
+function attText(id){const x=sOf(id),pre=mk(arS.y,arS.m),c=cnt(id,pre),pc=pctOf([id],pre)||0;return arS.sn+"\n"+x.name+" ("+x.cls+") — "+MN[arS.m]+" "+bn(arS.y)+" উপস্থিতি\nউপস্থিত: "+bn(c.p)+", অনুপস্থিত: "+bn(c.a)+", বিলম্ব: "+bn(c.l)+", ছুটি: "+bn(c.h)+"\nউপস্থিতির হার: "+bn(pc)+"%"}
+function attDoc(id,m,y,sn){
+ const x=sOf(id),pre=mk(y,m),c=cnt(id,pre),pc=pctOf([id],pre)||0,ds=Object.keys(S.att).filter(d=>d.startsWith(pre)&&S.att[d][id]).sort();
+ return `<h2>${esc(sn)}</h2><p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)}${x.branch?" | শাখা: "+esc(x.branch):""} | রোল: ${esc(x.roll)}<br>${MN[m]} ${bn(y)} — মাসিক উপস্থিতি রিপোর্ট</p><p>উপস্থিত: ${bn(c.p)} | অনুপস্থিত: ${bn(c.a)} | বিলম্ব: ${bn(c.l)} | ছুটি: ${bn(c.h)} | হার: ${bn(pc)}%</p><table><tr><th>তারিখ</th><th>অবস্থা</th></tr>${ds.map(d=>`<tr><td>${bn(d)}</td><td>${ST[S.att[d][id]][0]}</td></tr>`).join("")||'<tr><td colspan="2">কোনো রেকর্ড নেই</td></tr>'}</table>`;
+}
+function attPdf(id,m,y,sn){printDoc("attendance-report",attDoc(id,m,y,sn))}
+function stuAtt(id,keep){
+ const x=sOf(id),Y=new Date().getFullYear();if(!keep)arS={m:new Date().getMonth(),y:Y,sn:S.school.name};
+ const pre=mk(arS.y,arS.m),c=cnt(id,pre),tot=c.p+c.a+c.l+c.h,pc=pctOf([id],pre)||0;
+ const bd=pc>=90?["চমৎকার","#dcfce7","#16a34a"]:pc>=75?["ভালো","#dbe4ff","#3b5bdb"]:pc>=60?["সতর্কতা","#fef3c7","#b45309"]:["উদ্বেগজনক","#ffe4e9","#e11d48"];
+ const tl=(i,l,n,col)=>`<div class="mini" style="background:var(--bg)"><div style="color:${col}">${i}</div><b style="font-size:20px;color:${col}">${bn(n)}</b>${l}</div>`;
+ modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">📅 মাসিক উপস্থিতি রিপোর্ট</h2><div class="g2" style="margin-bottom:8px"><select onchange="arS.m=+this.value;stuAtt('${id}',1)" style="margin:0">${MN.map((m,i)=>`<option value="${i}" ${arS.m==i?"selected":""}>${m}</option>`).join("")}</select><select onchange="arS.y=+this.value;stuAtt('${id}',1)" style="margin:0">${[Y-1,Y,Y+1].map(y=>`<option value="${y}" ${arS.y==y?"selected":""}>${bn(y)}</option>`).join("")}</select></div>
+ <input value="${esc(arS.sn)}" oninput="arS.sn=this.value" placeholder="প্রতিষ্ঠানের নাম">
+ <div class="card" style="background:#eef2ff;display:flex;justify-content:space-between;align-items:center;padding:12px"><div><b style="color:#3b5bdb">${esc(x.name)}</b><small style="color:#6b7385">${esc(x.cls)} | শাখা: ${esc(x.branch||"—")} | রোল: ${esc(x.roll)}</small></div><span class="pl" style="background:${bd[1]};color:${bd[2]};margin:0">${bd[0]}</span></div>
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">${tl("✓","উপস্থিত",c.p,"#16a34a")}${tl("✕","অনুপস্থিত",c.a,"#e11d48")}${tl("◔","বিলম্বে",c.l,"#f59e0b")}${tl("📅","ছুটি",c.h,"#3b5bdb")}</div>
+ <div style="display:flex;justify-content:space-between;font-size:13px"><span>উপস্থিতির হার</span><b style="color:${bd[2]}">${bn(pc)}%</b></div><div style="height:8px;border-radius:4px;background:var(--ln);margin:6px 0"><div style="width:${pc}%;height:100%;border-radius:4px;background:${bd[2]}"></div></div><small style="color:var(--mu)">মোট ${bn(tot)} কার্যদিবস</small>
+ ${tot?"":'<div class="em">এই মাসে কোনো উপস্থিতি রেকর্ড নেই।</div>'}
+ <div class="g2" style="margin:12px 0 0"><button class="btn" onclick="attPdf('${id}',arS.m,arS.y,arS.sn)">PDF ডাউনলোড / প্রিন্ট</button><button class="btn o g" style="margin:0" onclick="sendTo(sOf('${id}'),'wa',attText('${id}'))">WhatsApp শেয়ার</button></div>`);
+}
+
+/* ---- transactions ---- */
+function txnBody(id,rf){
+ const x=sOf(id),fs=S.fees.filter(f=>f.sid==id),mo=f=>f.auto||(f.date||"").slice(0,7),Y=new Date().getFullYear(),sm=(l,k)=>l.reduce((a,f)=>a+f[k],0);
+ const yr=fs.filter(f=>mo(f).startsWith(txY+"-")),P=sm(yr,"paid"),D=sm(yr,"amt")-P;
+ const st=(a,p)=>a-p<=0?pill("পরিশোধিত","g"):p>0?'<span class="pl" style="background:#fef3c7;color:#b45309">আংশিক</span>':pill("অপরিশোধিত","r");
+ const mr=MN.map((m,i)=>{const r=fs.filter(f=>mo(f)==mk(txY,i)),a=sm(r,"amt"),p=sm(r,"paid");return r.length?`<tr><td><b>${m}</b></td><td><b>${bn(a)}</b></td><td style="color:var(--gr)">${p?bn(p):"—"}</td><td style="color:var(--rd)"><b>${a-p?bn(a-p):"—"}</b></td><td>${st(a,p)}</td></tr>`:`<tr style="color:var(--mu)"><td>${m}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`}).join("");
+ const hist=fs.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:-1),pages=Math.max(1,Math.ceil(hist.length/5));if(txP>pages)txP=pages;if(txP<1)txP=1;
+ const dt=d=>{try{return new Date(d+"T00:00:00").toLocaleDateString("bn-BD",{day:"numeric",month:"long",year:"numeric"})}catch(e){return d}};
+ return `<div class="card" style="padding:10px"><div class="ch"><b>👛 একাডেমিক লেনদেন</b><select style="width:90px;margin:0" onchange="txY=+this.value;txP=1;${rf}">${[Y-2,Y-1,Y,Y+1].map(y=>`<option value="${y}" ${txY==y?"selected":""}>${bn(y)}</option>`).join("")}</select></div>
+ <div style="font-size:12px;margin-bottom:8px">মোট প্রদেয় পরিমাণ/মাস : <b style="color:#3b5bdb">${bn(x.monthlyFee||0)} টাকা</b> · পরিশোধিত: <b style="color:var(--gr)">${bn(P)} ৳</b> · বকেয়া: <b style="color:var(--rd)">${bn(D)} ৳</b></div>
+ <div class="ov"><table class="tb"><tr><th>মাস</th><th>মোট ফি</th><th>পরিশোধিত</th><th>বকেয়া</th><th>অবস্থা</th></tr>${mr}</table></div></div>
+ <div class="card" style="padding:10px"><div class="ch"><b>লেনদেনের ইতিহাস</b>${pill(bn(hist.length)+" টি","b")}</div><div class="ov"><table class="tb"><tr><th>তারিখ</th><th>ধরন</th><th>পরিমাণ</th><th>অবস্থা</th><th>কার্যক্রম</th></tr>
+ ${hist.slice((txP-1)*5,txP*5).map(f=>`<tr><td onclick="feeForm('${f.id}')">${dt(f.date)}</td><td><b>${esc(f.title)}</b></td><td><b>${bn(f.amt)} ৳</b></td><td>${st(f.amt,f.paid)}</td><td onclick="delTx('${id}','${f.id}')" style="color:var(--mu)">🗑</td></tr>`).join("")||'<tr><td colspan="5" style="text-align:center;color:var(--mu)">কোনো লেনদেন নেই</td></tr>'}</table></div>
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--mu)"><span>পৃষ্ঠা ${bn(txP)} / ${bn(pages)} · মোট ${bn(hist.length)} টি</span><span><button class="ob" style="padding:4px 10px" onclick="txP=Math.max(1,txP-1);${rf}">‹</button> <button class="ob" style="padding:4px 10px" onclick="txP=Math.min(${pages},txP+1);${rf}">›</button></span></div></div>`;
+}
+function stuTxn(id,keep){if(!keep){txY=new Date().getFullYear();txP=1}txM=true;const x=sOf(id);modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">👛 ${esc(x.name)} — লেনদেন</h2>`+txnBody(id,`stuTxn('${id}',1)`)+`<button class="btn o" style="width:100%" onclick="closeM()">বন্ধ</button>`)}
+function delTx(id,fid){if(!confirm("এই লেনদেনের রেকর্ড মুছবেন?"))return;S.fees=S.fees.filter(f=>f.id!=fid);logA("edit","ফি","ফি রেকর্ড মুছে ফেলা হয়েছে");save();if(txM)stuTxn(id,1);else render()}
+
+/* ---- message ---- */
+function msgM(ids,txt){
+ const l=ids.map(sOf).filter(x=>x&&x.phone);if(!l.length){alert("মোবাইল নম্বর সহ কোনো শিক্ষার্থী নেই");return}
+ mctx={ids:l.map(x=>x.id),sel:Object.fromEntries(l.map(x=>[x.id,1])),done:{},txt:txt||(l.length==1?fillT(MT,l[0]):MT)};drawMsg();
+}
+function drawMsg(){
+ const l=mctx.ids.map(sOf),n=Object.keys(mctx.sel).length,one=l.length==1;
+ modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">💬 ${one?esc(l[0].guardian||"অভিভাবক")+" -কে বার্তা পাঠান":"অভিভাবকদের বার্তা পাঠান"}</h2><label class="lb">বার্তার বিষয়বস্তু</label><textarea rows="5" oninput="mctx.txt=this.value;$('mc').textContent=bn(this.value.length)+' অক্ষর'">${esc(mctx.txt)}</textarea><small id="mc" style="color:var(--mu)">${bn(mctx.txt.length)} অক্ষর</small>
+ <div style="display:flex;align-items:center;gap:8px;margin:10px 0"><input type="checkbox" class="cb" ${n==l.length?"checked":""} onchange="msgAll(this.checked)"><b style="font-size:13px;flex:1">সবাই নির্বাচন (${bn(n)} জন)</b><button class="btn g s" onclick="msgNext()">সকলকে WhatsApp</button></div>
+ <div class="card" style="padding:6px">${l.map(x=>`<div class="row"><input type="checkbox" class="cb" ${mctx.sel[x.id]?"checked":""} onchange="msgTog('${x.id}')"><div class="f"><b>${esc(x.guardian||"অভিভাবক")}</b> <span style="font-size:12px;color:var(--mu)">(${esc(x.name)})</span><small>📞 ${esc(x.phone)}${mctx.done[x.id]?" ✓ পাঠানো হয়েছে":""}</small></div><button class="btn s g" onclick="msgOne('${x.id}','wa')">WA</button><button class="btn s o" onclick="msgOne('${x.id}','sms')">SMS</button></div>`).join("")}</div>
+ <p style="font-size:11px;color:var(--mu);text-align:center">WhatsApp/SMS বাটনে ক্লিক করলে ফোনের অ্যাপ খুলবে — পাঠানোর পর লগ স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে। "সকলকে WhatsApp" চাপলে একে একে পরের জনের চ্যাট খুলবে। {নাম} ও {শ্রেণি} লিখলে প্রত্যেকের নাম বসবে।</p>`);
+ $("mt").onclick=null;
+}
+function msgAll(on){mctx.sel=on?Object.fromEntries(mctx.ids.map(i=>[i,1])):{};drawMsg()}
+function msgTog(id){if(mctx.sel[id])delete mctx.sel[id];else mctx.sel[id]=1;drawMsg()}
+function msgOne(id,ch){const x=sOf(id);mctx.done[id]=1;sendTo(x,ch,fillT(mctx.txt,x));setTimeout(drawMsg,400)}
+function msgNext(){const id=mctx.ids.find(i=>mctx.sel[i]&&!mctx.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}msgOne(id,"wa")}
+
+/* ---- admit card / id card ---- */
+function schFields(list){return list.map(f=>`<label class="lb">${f[1]}</label><input id="sc_${f[0]}" value="${esc(S.school[f[0]])}" oninput="schUp()">`).join("")}
+function schUp(){["name","nameEn","addr","phone","est","year","director","founder"].forEach(k=>{const e=$("sc_"+k);if(e)S.school[k]=e.value});save();pvUp()}
+function pvUp(){const p=$("pv");if(!p)return;const x=sOf(cardCtx.id);p.innerHTML=cardCtx.kind=="id"?idHtml(x):admitHtml(x,S.exams.find(e=>e.id==cardCtx.eid))}
+function exUp(){const e=S.exams.find(x=>x.id==cardCtx.eid);e.center=$("ex_c").value;e.start=$("ex_s").value;e.end=$("ex_e").value;save();pvUp()}
+function cardLogo(){photoCb=u=>{S.school.logo=u;save();cardRedraw()};pickPhoto()}
+function cardRedraw(){if(cardCtx.kind=="id")drawId();else drawAdmit()}
+function logoRow(){return `<label class="lb">প্রতিষ্ঠানের লোগো</label><div class="row" style="border:0;padding:4px 0"><div class="av" style="width:46px;height:46px;font-size:11px">${S.school.logo?`<img class="av" style="width:46px;height:46px" src="${S.school.logo}">`:"লোগো"}</div><button class="btn o s" onclick="cardLogo()">⬆ লোগো আপলোড</button><span onclick="S.school.logo='';save();cardRedraw()" style="color:var(--rd);font-size:13px">✕ সরান</span></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">`}
+function admit(id){
+ const x=sOf(id),ex=S.exams.filter(e=>e.cls==x.cls);
+ if(!ex.length){alert("এই শ্রেণির কোনো পরীক্ষা নেই। আগে আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।");return}
+ cardCtx={kind:"admit",id,eid:ex[ex.length-1].id};drawAdmit();
+}
+function drawAdmit(){
+ const x=sOf(cardCtx.id),ex=S.exams.filter(e=>e.cls==x.cls),e=S.exams.find(v=>v.id==cardCtx.eid)||ex[0];
+ modal(HND+`<h2 style="font-size:16px">📄 প্রবেশপত্র তৈরি — ${esc(x.name)}</h2><small style="color:var(--mu)">প্রতিষ্ঠানের তথ্য (স্বয়ংক্রিয়ভাবে লোড হয়, প্রয়োজনে সম্পাদনা করুন)</small>${logoRow()}
+ ${schFields([["name","প্রতিষ্ঠানের নাম *"],["nameEn","ইংরেজি নাম"],["addr","ঠিকানা"],["phone","ফোন"],["est","স্থাপন সাল"],["director","পরিচালক / প্রধান শিক্ষক"]])}
+ <label class="lb">পরীক্ষা</label><select onchange="cardCtx.eid=this.value;drawAdmit()">${ex.map(v=>`<option value="${v.id}" ${v.id==e.id?"selected":""}>${esc(v.name)} — ${bn(v.date)}</option>`).join("")}</select>
+ <label class="lb">পরীক্ষার কেন্দ্র</label><input id="ex_c" value="${esc(e.center||S.school.name)}" oninput="exUp()">
+ <div class="g2" style="margin:0"><div><label class="lb">পরীক্ষা শুরুর তারিখ</label><input id="ex_s" type="date" value="${esc(e.start||e.date)}" onchange="exUp()"></div><div><label class="lb">পরীক্ষা শেষের তারিখ</label><input id="ex_e" type="date" value="${esc(e.end||"")}" onchange="exUp()"></div></div>
+ <div id="pv" style="background:#eef3f3;padding:6px;border-radius:12px;overflow:auto;margin:6px 0">${admitHtml(x,e)}</div>
+ <div class="card" style="background:#f0fdf4;padding:12px"><b style="color:#16a34a;font-size:14px">💬 অভিভাবককে পরীক্ষার সূচি পাঠান</b><div style="font-size:12px;margin:4px 0 8px;color:#16a34a">${esc(x.guardian||"অভিভাবক")}${x.phone?" ("+esc(x.phone)+")":""}-এর কাছে ${esc(e.name)} পরীক্ষার সময়সূচি পাঠান।</div><div class="g2" style="margin:0"><button class="btn g" onclick="admMsg('wa')">WhatsApp</button><button class="btn o g" style="margin:0" onclick="admMsg('sms')">SMS</button></div></div>
+ <div class="g2" style="margin:0"><button class="ob" onclick="printCard()">🖨 প্রিন্ট করুন</button><button class="btn g" onclick="printCard()">⬇ PDF ডাউনলোড</button></div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
+ $("mt").onclick=null;
+}
+function admMsg(ch){
+ const x=sOf(cardCtx.id),e=S.exams.find(v=>v.id==cardCtx.eid);if(!x.phone){alert("অভিভাবকের মোবাইল নম্বর নেই");return}
+ const rt=(e.routine||[]).slice().sort((a,b)=>a.date>b.date?1:-1);
+ sendTo(x,ch,"প্রিয় অভিভাবক,\n"+x.name+" ("+x.cls+")-এর "+e.name+" পরীক্ষার সূচি:\n"+(rt.map(r=>bn(r.date)+" — "+r.subject+(r.time?" ("+r.time+")":"")).join("\n")||"পরীক্ষা শুরু: "+bn(e.start||e.date))+"\n— "+S.school.name);
+}
+function admitHtml(x,e){
+ const sc=S.school,lg=sc.logo?`<img src="${sc.logo}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff">`:'<div style="width:50px;height:50px;border-radius:50%;border:2px solid #7fc8d6;color:#7fc8d6;font-size:10px;display:flex;align-items:center;justify-content:center">logo</div>',
+ td="border:1px solid #ddd;padding:4px 6px",rt=(e.routine||[]).slice().sort((a,b)=>a.date>b.date?1:-1),
+ dy=d=>{try{return new Date(d+"T00:00:00").toLocaleDateString("bn-BD",{weekday:"long"})}catch(z){return ""}},
+ row=(l,v)=>`<div style="display:flex;font-size:13px;padding:2px 0"><span style="width:62px;color:#555">${l}</span><span>: <b>${esc(v||"—")}</b></span></div>`,
+ cell="flex:1;padding:5px;border:1px solid #9fd3da";
+ return `<div style="font-family:sans-serif;color:#222;border:2px solid #0f4c5c;border-radius:10px;overflow:hidden;max-width:420px;margin:10px auto;background:#fff">
+ <div style="background:#0f4c5c;color:#fff;padding:10px;display:flex;align-items:center;gap:8px">${lg}<div style="text-align:center;flex:1"><div style="font-size:19px;font-weight:700">${esc(sc.name)}</div><div style="color:#ffd54a;font-size:12px;font-weight:700">${esc(sc.nameEn||"")}</div></div>${lg}</div>
+ <div style="background:#127a8c;color:#fff;text-align:center;font-size:12px;padding:5px">${esc(sc.addr)}</div>
+ <div style="display:flex;font-size:11px;text-align:center;background:#d9f2f5;color:#0f4c5c"><div style="${cell}">পরিচালক: ${esc(sc.director||"—")}</div><div style="${cell}">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="${cell}">মোবাইল: ${esc(sc.phone||"—")}</div></div>
+ <div style="text-align:center;margin:8px 0"><span style="background:#e5e7eb;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700">প্রবেশ পত্র / ADMIT CARD</span></div>
+ <div style="display:flex;justify-content:space-between;gap:8px;padding:0 12px 8px"><div style="flex:1;min-width:0">${row("নাম",x.name)}${row("রোল নং",x.roll)}${row("শ্রেণি",x.cls+(x.branch?" ("+x.branch+")":""))}${row("পরীক্ষা",e.name)}${row("কেন্দ্র",e.center||sc.name)}</div>${x.photo?`<img src="${x.photo}" style="width:70px;height:82px;object-fit:cover;border-radius:4px">`:'<div style="width:70px;height:82px;background:#eee;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:30px">👤</div>'}</div>
+ <div style="background:#1e2a4a;color:#fff;font-size:12px;font-weight:700;padding:5px 10px">পরীক্ষার সূচি</div>
+ ${rt.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><tr><th style="${td}">তারিখ</th><th style="${td}">বার</th><th style="${td}">বিষয়</th><th style="${td}">সময়</th></tr>${rt.map(r=>`<tr><td style="${td}">${bn(r.date)}</td><td style="${td}">${dy(r.date)}</td><td style="${td}">${esc(r.subject)}</td><td style="${td}">${esc(r.time||"")}</td></tr>`).join("")}</table>`:`<div style="text-align:center;color:#888;font-size:12px;padding:12px">পরীক্ষার সূচি পাওয়া যায়নি। আরও → পরীক্ষা ও ফলাফল থেকে "${esc(e.name)}" পরীক্ষায় সূচি যোগ করুন।</div>`}
+ <div style="margin:10px;border:1px solid #fca5a5;background:#fff5f5;border-radius:8px;padding:8px;font-size:12px"><b style="color:#c62828">⚠ গুরুত্বপূর্ণ নির্দেশনা:</b><ul style="margin:4px 0 0 16px;padding:0"><li>পরীক্ষার ৩০ মিনিট আগে কেন্দ্রে উপস্থিত থাকতে হবে।</li><li>প্রবেশপত্র ছাড়া পরীক্ষায় অংশগ্রহণ করা যাবে না।</li><li>হলে মোবাইল ফোন আনা নিষিদ্ধ।</li></ul></div></div>`;
+}
+function idCard(id){cardCtx={kind:"id",id};drawId()}
+function drawId(){
+ const x=sOf(cardCtx.id);
+ modal(HND+`<h2 style="font-size:16px;text-align:center">শিক্ষার্থী আইডি কার্ড — ${esc(x.name)}</h2>${logoRow()}
+ ${schFields([["name","প্রতিষ্ঠানের নাম (বাংলা)"],["nameEn","প্রতিষ্ঠানের নাম (English)"],["addr","ঠিকানা"],["est","স্থাপিত"],["year","শিক্ষাবর্ষ"],["founder","প্রতিষ্ঠাতার নাম"],["director","পরিচালকের নাম"],["phone","পরিচালকের মোবাইল"]])}
+ <div id="pv" style="background:#e8eeee;padding:8px;border-radius:12px;overflow:auto;margin:10px 0">${idHtml(x)}</div>
+ <div class="g2" style="margin:0"><button class="ob" onclick="printCard()">🖨 প্রিন্ট</button><button class="btn g" onclick="printCard()">⬇ ডাউনলোড</button></div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
+ $("mt").onclick=null;
+}
+function idHtml(x){
+ const sc=S.school,lg=z=>sc.logo?`<img src="${sc.logo}" style="width:${z}px;height:${z}px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:${z}px;height:${z}px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:${Math.round(z/2)}px">🕌</div>`,
+ cl=x.cls+(x.branch?" ("+x.branch+")":""),
+ r=(l,v)=>`<div style="display:flex;font-size:11px;padding:2px 0"><span style="width:56px;color:#444">${l}</span><span style="flex:1">: ${esc(v||"—")}</span></div>`,
+ qr=qrSvg([sc.name,x.name,"শ্রেণি: "+cl,"রোল: "+(x.roll||""),"মোবাইল: "+(x.phone||"")].join("\n"),96),
+ w="width:260px;margin:10px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px #0003;font-family:sans-serif;color:#222;background:#fff";
+ return `<div style="${w}"><div style="background:#146c3a;color:#fff;text-align:center;padding:10px 8px 30px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px">${lg(30)}<div><b style="font-size:14px">${esc(sc.name)}</b><div style="font-size:9px;color:#ffd54a">${esc(sc.nameEn||"")}</div></div>${lg(30)}</div><div style="font-size:9px;margin-top:3px">${esc(sc.addr)}</div><div style="font-size:9px;color:#ffd54a">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="color:#ffd54a;font-weight:700;font-size:13px;margin-top:4px">পরিচয়পত্র</div></div>
+ <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0">${avt(x,64)}</div></div>
+ <div style="text-align:center;color:#d32f2f;font-weight:700;font-size:16px;margin:4px 0">${esc(x.name)}</div><div style="padding:0 16px 8px">${r("পিতা",x.guardian)}${r("রোল",x.roll)}${r("শ্রেণি",cl)}${r("শিক্ষাবর্ষ",sc.year)}${r("মোবা",x.phone)}${r("ঠিকানা",x.addr)}</div>
+ <div style="background:#d98a2b;color:#fff;text-align:right;padding:8px 12px;font-size:10px"><div style="border-top:1px solid #fff;display:inline-block;padding-top:2px">পরিচালকের স্বাক্ষর<br><b>${esc(sc.director||"")}</b></div></div></div>
+ <div style="${w}"><div style="background:#d98a2b;height:12px"></div><div style="text-align:center;padding:10px">${qr}<div style="font-size:9px;color:#555">শিক্ষার্থীর তথ্য স্ক্যান করুন</div><b style="font-size:13px;display:block;margin-top:6px">${esc(sc.name)}</b><div style="font-size:10px">${esc(sc.nameEn||"")}</div><div style="font-size:10px;color:#146c3a">${esc(sc.addr)}</div><div style="font-size:10px;color:#146c3a">স্থাপিত: ${esc(sc.est||"—")}</div><div style="font-size:10px;margin-top:4px">প্রতিষ্ঠাতা: ${esc(sc.founder||"—")}</div><div style="font-size:10px">পরিচালক: ${esc(sc.director||"—")}</div><b style="font-size:11px">যোগাযোগ: ${esc(sc.phone||"—")}</b><div style="margin-top:6px">${lg(34)}</div></div>
+ <div style="background:#146c3a;color:#fff;font-size:9px;text-align:center;padding:10px 12px;border-top:4px solid #f5c518;line-height:1.5">এই কার্ডটি শুধু প্রতিষ্ঠানের একটি সম্পত্তি। যদি এই কার্ডটি কোথাও পাওয়া যায় তবে দয়া করে উপরের ঠিকানায় ফেরত দেওয়ার অনুরোধ রইলো।</div></div>`;
+}
+function printCard(){const x=sOf(cardCtx.id);if(cardCtx.kind=="id")printDoc("id-card",idHtml(x));else printDoc("admit-card",admitHtml(x,S.exams.find(e=>e.id==cardCtx.eid)))}
+
+/* ---- full profile page ---- */
+function resDoc(id){const x=sOf(id);return `<h2>${esc(S.school.name)}</h2><p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)} | রোল: ${esc(x.roll)} — ফলাফল</p>`+(S.exams.filter(e=>e.cls==x.cls&&(e.sub||{})[id]&&e.sub[id].length).map(e=>{const rs=e.sub[id];return `<h3>${esc(e.name)}</h3><table><tr><th>বিষয়</th><th>পূর্ণমান</th><th>প্রাপ্ত</th><th>%</th><th>গ্রেড</th><th>GPA</th></tr>${rs.map(r=>{const p=r.g/r.f*100;return `<tr><td>${esc(r.s)}</td><td>${bn(r.f)}</td><td>${bn(r.g)}</td><td>${bn(p.toFixed(0))}%</td><td>${gr(p)}</td><td>${bn(GP(p).toFixed(2))}</td></tr>`}).join("")}</table>`}).join("")||"<p>কোনো ফলাফল নেই</p>")}
+function profilePage(){
+ const x=sOf(profId);if(!x){profId="";return stu()}
+ const Y=new Date().getFullYear(),ad=Object.keys(S.att).filter(d=>S.att[d][x.id]),pcn=ad.filter(d=>S.att[d][x.id]=="p"||S.att[d][x.id]=="l").length,pr=ad.length?Math.round(pcn/ad.length*100):0,ab=ad.filter(d=>S.att[d][x.id]=="a").length;
+ const subj=S.exams.reduce((a,e)=>a+(((e.sub||{})[x.id])||[]).length,0),logs=S.smslog.filter(l=>l.sid==x.id);
+ const kv=(l,v)=>`<div class="row" style="padding:8px 0"><div class="f" style="color:var(--mu);font-size:13px">${l}</div><span style="text-align:right">${esc(v||"-")}</span></div>`;
+ const stat=(n,l,sub,c)=>`<div class="card" style="margin:0;padding:12px"><b style="font-size:22px;color:${c}">${n}</b><div style="font-size:13px">${l}</div><small style="color:var(--mu)">${sub}</small></div>`;
+ const TB=[["info","ব্যক্তিগত তথ্য"],["res","ফলাফল"],["att","উপস্থিতি"],["log","যোগাযোগ লগ"],["txn","লেনদেন"]];
+ let c="";
+ if(profTab=="info")c=`<div class="card"><h2>👤 ব্যক্তিগত তথ্য</h2>${kv("পূর্ণ নাম (বাংলা)",x.name)}${kv("পূর্ণ নাম (ইংরেজি)",x.nameEn)}${kv("লিঙ্গ",x.gender)}${kv("জন্ম তারিখ",x.dob)}${kv("রক্তের গ্রুপ",x.blood)}${kv("ভর্তির তারিখ",x.admDate)}${kv("মাসিক বেতন",x.monthlyFee?money(x.monthlyFee):"")}</div><div class="card"><h2>📞 অভিভাবক ও যোগাযোগ</h2>${kv("অভিভাবকের নাম",x.guardian)}${kv("মোবাইল নম্বর",x.phone)}${kv("ঠিকানা",x.addr)}${kv("শ্রেণি",x.cls)}${kv("শাখা",x.branch)}${kv("রোল নম্বর",x.roll)}<div class="top" style="margin:10px 0 0"><button class="btn g s" onclick="msgM(['${x.id}'])">💬 অভিভাবককে বার্তা</button><button class="btn o s" onclick="stuForm('${x.id}')">✏️ সম্পাদনা</button></div></div>`;
+ else if(profTab=="res")c=`<div class="card"><h2>ফলাফল</h2>${S.exams.filter(e=>e.cls==x.cls).map(e=>{const rs=(e.sub||{})[x.id]||[];return `<div class="row" onclick="resultsM('${x.id}','${e.id}')"><div class="f"><b>${esc(e.name)}</b><small>${rs.length?bn(rs.length)+" বিষয় · মোট "+bn(e.marks[x.id])+"/"+bn(e.full[x.id]):"কোনো ফলাফল নেই"}</small></div><span class="lk">খুলুন ›</span></div>`}).join("")||'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই</div>'}</div>`;
+ else if(profTab=="att")c=`<div class="card ov" style="padding:6px"><table class="tb"><tr><th>মাস</th><th>উপ.</th><th>অনু.</th><th>বিল.</th><th>ছুটি</th><th>%</th></tr>${MN.map((m,i)=>{const k=cnt(x.id,mk(Y,i)),p=pctOf([x.id],mk(Y,i));return `<tr><td>${m}</td><td>${bn(k.p)}</td><td>${bn(k.a)}</td><td>${bn(k.l)}</td><td>${bn(k.h)}</td><td>${p==null?"—":bn(p)+"%"}</td></tr>`}).join("")}</table></div>`;
+ else if(profTab=="log")c=`<div class="card"><h2>যোগাযোগ লগ</h2>${logs.map(l=>{const t=new Date(l.t);return `<div class="row" style="align-items:flex-start"><span class="pl ${l.ch=="wa"?"g":"b"}">${l.ch=="wa"?"WhatsApp":"SMS"}</span><div class="f" style="font-size:13px;white-space:pre-wrap">${esc(l.tx)}<small>${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div></div>`}).join("")||'<div class="em">কোনো বার্তা পাঠানো হয়নি</div>'}</div>`;
+ else{txM=false;c=txnBody(x.id,"render()")}
+ return `<div class="lk" style="margin-bottom:10px" onclick="profId='';render()">← শিক্ষার্থী তালিকায় ফিরুন</div>
+ <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#3b5bdb,#5b4bdb);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${S.school.logo?`<img class="av" style="width:30px;height:30px" src="${S.school.logo}">`:"🕌"}</span>${esc(S.school.name)}</div>
+ <div style="padding:0 14px 14px"><div style="margin-top:-30px;display:inline-block;border:3px solid var(--card);border-radius:50%;line-height:0">${avt(x,64)}</div><div style="margin-top:6px"><b style="font-size:20px">${esc(x.name)}</b> ${pill(esc(x.status||"সক্রিয়"),(x.status||"সক্রিয়")=="সক্রিয়"?"g":"r")}</div><small style="color:var(--mu)">${esc(x.cls)} শ্রেণি${x.branch?" · "+esc(x.branch)+" শাখা":""} · রোল: ${esc(x.roll)}</small>
+ <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},S.school.name)">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
+ <div class="g2">${stat(bn(pr)+"%","উপস্থিতির হার",bn(pcn)+"/"+bn(ad.length)+" দিন","#16a34a")}${stat(bn(ab),"অনুপস্থিত দিন","মোট দিন থেকে","#e11d48")}${stat(bn(subj),"মোট বিষয়","ফলাফল প্রবেশিত","#3b5bdb")}${stat(bn(logs.length),"SMS লগ","পাঠানো বার্তা","#7c3aed")}</div>
+ <div class="sub">${TB.map(t=>`<button class="${profTab==t[0]?"on":""}" onclick="profTab='${t[0]}';render()">${t[1]}</button>`).join("")}</div>${c}`;
+}
 const FEES=[["monthly","মাসিক বেতন (৳)","মাসিক বেতন"],["adm","ভর্তি ফি (৳)","ভর্তি ফি"],["book","বই ফি (৳)","বই ফি"],["elec","বিদ্যুৎ বিল (৳/মাস)","বিদ্যুৎ বিল"],["other","অন্যান্য ফি (৳)","অন্যান্য ফি"]];
 const DIVS=["স্কুল/কিন্ডারগার্টেন","নূরানী","হিফজ","কিতাব","মক্তব"];
 const TYPES={"অনাবাসিক":"সাধারণ দিবা শিক্ষার্থী","আবাসিক":"হোস্টেলে থেকে পড়ে","ডেকেয়ার":"দিনের বেলা তত্ত্বাবধানে থাকে"};
@@ -152,7 +427,7 @@ let draft={},step=1,editId=null;
 function stuForm(id){editId=id||null;const s=S.students.find(x=>x.id==id);draft=s?{...s}:{type:"অনাবাসিক",status:"সক্রিয়",division:DIVS[0],admDate:today(),fees:{}};step=1;drawStu()}
 function grab(){
  const g=id=>{const e=$(id);return e?e.value.trim():undefined};
- if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass","monthlyFee"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
+ if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass","monthlyFee","blood"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
  else{draft.fees=draft.fees||{};FEES.forEach(f=>{const v=g("f_"+f[0]);if(v!==undefined)draft.fees[f[0]]=v})}
 }
 function setType(t){grab();draft.type=t;drawStu()}
@@ -179,6 +454,7 @@ function drawStu(){
   ${sel("বিভাগ","division",DIVS)}
   ${fld("রোল নম্বর","roll","","text",0,'inputmode="numeric"')}
   ${sel("লিঙ্গ","gender",["ছেলে","মেয়ে"],1,"নির্বাচন করুন")}
+  ${sel("রক্তের গ্রুপ","blood",["A+","A-","B+","B-","AB+","AB-","O+","O-"],0,"নির্বাচন করুন")}
   ${fld("জন্ম তারিখ","dob","","date")}
   ${fld("ভর্তির তারিখ","admDate","","date")}
   ${fld("অভিভাবকের নাম","guardian")}
@@ -223,7 +499,7 @@ async function pickPhoto(){
  if(err)alert("ছবি খোলা যায়নি: "+err);
  $("ph").click();
 }
-function stuDel(id){if(!confirm("এই শিক্ষার্থী ও তার ফি রেকর্ড মুছে ফেলবেন?"))return;S.students=S.students.filter(x=>x.id!=id);S.fees=S.fees.filter(f=>f.sid!=id);save();closeM();render()}
+function stuDel(id){if(!confirm("এই শিক্ষার্থী ও তার ফি রেকর্ড মুছে ফেলবেন?"))return;S.students=S.students.filter(x=>x.id!=id);S.fees=S.fees.filter(f=>f.sid!=id);delete selS[id];logA("edit","শিক্ষার্থী","শিক্ষার্থী মুছে ফেলা হয়েছে");save();closeM();render()}
 
 let attView="list",attGroup="stu",attSub="daily",attFilter="all",attYear=new Date().getFullYear(),attMonth=new Date().getMonth(),attCls="",attBr="",attDraft={},qrMsg="";
 const ST={p:["উপস্থিত","#16a34a"],a:["অনুপস্থিত","#e11d48"],l:["বিলম্ব","#f59e0b"],h:["ছুটি","#6b7385"]};
@@ -353,9 +629,9 @@ function examAdd(){
 function examMarks(){
  const e=S.exams.find(x=>x.id==curExam);if(!e){curExam="";return exam()}
  const l=S.students.filter(s=>s.cls==e.cls);
- return `<div class="card"><h2>${esc(e.name)} · শ্রেণি ${esc(e.cls)}</h2><small style="color:var(--mu)">পূর্ণমান ${bn(e.total)}</small>${l.map(s=>{const m=e.marks[s.id];return `<div class="row"><div class="f">${esc(s.name)}<small>রোল ${esc(s.roll)}${m!==undefined?" · গ্রেড "+gr(m/e.total*100):""}</small></div><input id="m_${s.id}" type="number" inputmode="decimal" value="${m??""}" style="width:80px;margin:0"></div>`}).join("")||'<div class="em">এই শ্রেণিতে শিক্ষার্থী নেই</div>'}</div><button class="btn" style="width:100%" onclick="saveMarks()">নম্বর সংরক্ষণ করুন</button><button class="btn r" style="width:100%;margin-top:8px" onclick="delExam()">পরীক্ষা মুছুন</button>`;
+ return `<div class="card"><h2>${esc(e.name)} · শ্রেণি ${esc(e.cls)}</h2><small style="color:var(--mu)">পূর্ণমান ${bn(e.total)}</small>${l.map(s=>{const m=e.marks[s.id];return `<div class="row"><div class="f">${esc(s.name)}<small>রোল ${esc(s.roll)}${m!==undefined?" · গ্রেড "+gr(m/e.total*100):""}</small></div><input id="m_${s.id}" type="number" inputmode="decimal" value="${m??""}" style="width:80px;margin:0"></div>`}).join("")||'<div class="em">এই শ্রেণিতে শিক্ষার্থী নেই</div>'}</div>${routineCard(e)}<button class="btn" style="width:100%" onclick="saveMarks()">নম্বর সংরক্ষণ করুন</button><button class="btn r" style="width:100%;margin-top:8px" onclick="delExam()">পরীক্ষা মুছুন</button>`;
 }
-function saveMarks(){const e=S.exams.find(x=>x.id==curExam);S.students.filter(s=>s.cls==e.cls).forEach(s=>{const v=$("m_"+s.id).value;if(v==="")delete e.marks[s.id];else e.marks[s.id]=Math.min(+v,e.total)});save();render()}
+function saveMarks(){const e=S.exams.find(x=>x.id==curExam);S.students.filter(s=>s.cls==e.cls).forEach(s=>{if(e.sub&&(e.sub[s.id]||[]).length)return;const v=$("m_"+s.id).value;if(v==="")delete e.marks[s.id];else e.marks[s.id]=Math.min(+v,e.total)});save();render()}
 function delExam(){if(!confirm("পরীক্ষাটি মুছবেন?"))return;S.exams=S.exams.filter(x=>x.id!=curExam);curExam="";save();render()}
 
 function report(){
@@ -365,7 +641,7 @@ function report(){
  const ex=S.exams.filter(e=>e.cls==s.cls&&e.marks[s.id]!==undefined),ad=Object.values(S.att).filter(d=>d[s.id]),pc=ad.filter(d=>d[s.id]=="p").length;
  let T=0,M=0;
  h+=`<div class="card"><h2>${esc(S.school.name)}</h2><p style="font-size:13px;color:var(--mu)">${esc(s.name)} · শ্রেণি ${esc(s.cls)} · রোল ${esc(s.roll)}</p>`;
- h+=ex.map(e=>{const m=e.marks[s.id];T+=e.total;M+=m;return `<div class="row"><div class="f">${esc(e.name)}<small>${bn(e.date)}</small></div><div style="text-align:right">${bn(m)}/${bn(e.total)}<small>${gr(m/e.total*100)}</small></div></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>';
+ h+=ex.map(e=>{const m=e.marks[s.id];const ft=(e.full&&e.full[s.id])||e.total;T+=ft;M+=m;return `<div class="row"><div class="f">${esc(e.name)}<small>${bn(e.date)}</small></div><div style="text-align:right">${bn(m)}/${bn(ft)}<small>${gr(m/ft*100)}</small></div></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>';
  if(T)h+=`<div class="row"><div class="f"><b>সর্বমোট</b></div><b>${bn(M)}/${bn(T)} · ${bn((M/T*100).toFixed(1))}% · ${gr(M/T*100)}</b></div>`;
  h+=`<div class="row"><div class="f">উপস্থিতি</div>${bn(pc)}/${bn(ad.length)} দিন</div>`;
  return h+"</div>";
