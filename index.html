@@ -49,6 +49,15 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .ar{padding:10px 0;border-bottom:1px solid var(--ln)}.ah{display:flex;align-items:center;gap:10px}.ai{width:22px;color:var(--mu);font-size:13px}
 .ab{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.ab button{border:1px solid var(--ln);background:none;border-radius:20px;padding:6px 12px;font:inherit;font-size:12px;color:var(--mu)}.ab button.on{border-color:var(--c);color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);font-weight:700}
 .tb{width:100%;border-collapse:collapse;font-size:13px}.tb th{text-align:left;color:var(--mu);font-weight:600;padding:8px 6px;background:var(--bg);white-space:nowrap}.tb td{padding:9px 6px;border-bottom:1px solid var(--ln);white-space:nowrap}.ov{overflow-x:auto}
+.hero{position:relative}.hero .lg{width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;flex:none}.hero .lg img{width:100%;height:100%;object-fit:cover}
+.hero small{display:block;font-size:11px;opacity:.85;line-height:1.5}.tick{background:#fff;color:#444;border-radius:12px;padding:8px 10px;margin-top:12px;font-size:13px;display:flex;gap:8px;align-items:center}.live{background:#fee2e2;color:#e11d48;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;flex:none}
+.st{position:relative;overflow:hidden;border-radius:16px}.st:after{content:"";position:absolute;right:-20px;top:-20px;width:84px;height:84px;border-radius:50%;background:#ffffff26}.st .ic{position:absolute;right:12px;top:14px;width:34px;height:34px;border-radius:10px;background:#ffffff33;display:flex;align-items:center;justify-content:center;font-size:16px;z-index:1}
+.bd{position:absolute;top:-6px;right:-9px;background:#e11d48;color:#fff;border-radius:10px;font-size:10px;padding:0 5px;font-weight:600}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ch h2{margin:0}.lk{color:var(--pri);font-size:13px}
+.mini{border-radius:12px;padding:10px 6px;text-align:center;font-size:12px}.mini b{display:block;font-size:14px;margin:4px 0}
+.lg2{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}.lg2 i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.ac{border-radius:16px;padding:14px;color:#fff;position:relative;overflow:hidden}.ac b{display:block;font-size:22px;margin:4px 0}.ac small{opacity:.9;font-size:12px}
+.bars{display:flex;align-items:flex-end;gap:10px;height:150px;margin:10px 0}.bars div{flex:1;border-radius:10px 10px 0 0;color:#fff;text-align:center;font-size:12px;padding-top:6px}
 </style>
 </head>
 <body>
@@ -56,7 +65,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 <nav id="nv"></nav></div>
 <script>
 const KEY="smart-edu-v1";
-const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[]});
+const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[]});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};
 const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -76,17 +85,55 @@ function render(){
 }
 function go(t){tab=t;q="";sub="";curExam="";render();$("v").scrollTop=0}
 
+let homeCls="",logAll=false,photoCb=null;
+const p2=n=>String(n).padStart(2,"0");
+function logA(ty,cat,tx){S.log.unshift({t:Date.now(),ty,cat,tx});S.log=S.log.slice(0,60)}
+function autoFees(){const d=new Date(),ym=mk(d.getFullYear(),d.getMonth());S.students.forEach(s=>{if(s.status=="নিষ্ক্রিয়"||!(+s.monthlyFee>0))return;if(!S.fees.some(f=>f.sid==s.id&&f.auto==ym))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+MN[d.getMonth()]+" "+bn(d.getFullYear()),amt:+s.monthlyFee,paid:0,date:today(),auto:ym})})}
+function bnDate(d){const Y=d.getFullYear(),st=new Date(d<new Date(Y,3,14)?Y-1:Y,3,14),sy=st.getFullYear(),n=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-st)/864e5),lp=(y=>y%4==0&&(y%100!=0||y%400==0))(sy+1),L=[31,31,31,31,31,30,30,30,30,30,lp?30:29,30],M=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];let m=0,r=n;while(m<11&&r>=L[m]){r-=L[m];m++}return bn(r+1)+" "+M[m]+", "+bn(sy-593)+" বাংলা"}
+function hijri(d){try{return new Intl.DateTimeFormat("bn-BD-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric"}).formatToParts(d).filter(x=>x.type!="era").map(x=>x.value).join("").trim()+" হিজরী"}catch(e){return ""}}
+function donut(segs,z,sw,t1,t2,c1){const r=(z-sw)/2,C=2*Math.PI*r,tot=segs.reduce((a,x)=>a+x.v,0);let off=0,cs="";
+ if(!tot)cs=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="#e3e7f0" stroke-width="${sw}"/>`;
+ else segs.forEach(x=>{if(x.v>0){const l=C*x.v/tot;cs+=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="${x.c}" stroke-width="${sw}" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${z/2} ${z/2})"/>`;off+=l}});
+ return `<svg viewBox="0 0 ${z} ${z}" width="${z}" height="${z}" style="display:block;margin:4px auto">${cs}<text x="50%" y="${t2?"50%":"56%"}" text-anchor="middle" font-size="${t2?17:22}" font-weight="700" fill="${c1||"currentColor"}">${t1}</text>${t2?`<text x="50%" y="63%" text-anchor="middle" font-size="9" fill="#6b7385">${t2}</text>`:""}</svg>`}
+function nav(t,sb){closeM();tab=t;sub=sb||"";curExam="";q="";render();$("v").scrollTop=0}
+function drawer(){modal(`<h2 style="margin-bottom:6px">${esc(S.school.name)}</h2>`+[["home","","🏠","ড্যাশবোর্ড"],["stu","","👥","শিক্ষার্থী"],["att","","✅","উপস্থিতি"],["fee","","👛","ফি"]].concat(MENU.map(m=>["more",m[0],m[1],m[2]])).map(x=>`<div class="row" onclick="nav('${x[0]}','${x[1]}')"><span style="font-size:20px">${x[2]}</span><div class="f">${x[3]}</div></div>`).join(""))}
+function pickLogo(){photoCb=u=>{S.school.logo=u;save();render()};pickPhoto()}
+function saveSchool(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("sn"),addr:g("sa"),est:g("se"),year:g("sy"),director:g("sd"),phone:g("sp")};save();alert("সংরক্ষিত হয়েছে")}
+
 function home(){
- const day=S.att[today()]||{},pr=Object.values(day).filter(x=>x=="p").length,ab=Object.values(day).filter(x=>x=="a").length;
- const td=S.fees.reduce((a,f)=>a+due(f),0),pd=S.fees.reduce((a,f)=>a+f.paid,0);
- return `<div class="hero"><h1>${esc(S.school.name)}</h1><p>📍 ${esc(S.school.addr)}</p><div class="clk" id="clk"></div><p>${new Date().toLocaleDateString("bn-BD",{day:"numeric",month:"long",year:"numeric"})}</p></div>
- <div class="g2">
- <div class="st" style="background:#3b82f6"><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div>
- <div class="st" style="background:#8b5cf6"><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div>
- <div class="st" style="background:#16a34a"><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div>
- <div class="st" style="background:#e11d48"><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
- <div class="card"><h2>ফি পরিস্থিতি</h2><div class="row"><div class="f">আদায়কৃত</div><b style="color:var(--gr)">${money(pd)}</b></div><div class="row"><div class="f">মোট বকেয়া</div><b style="color:var(--rd)">${money(td)}</b></div></div>
- <div class="card"><h2>নোটিশ</h2>${S.notices.length?S.notices.slice(-3).reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div></div>`).join(""):'<div class="em">কোনো নোটিশ নেই</div>'}</div>`;
+ const T=today(),day=S.att[T]||{},ids=S.students.map(s=>s.id),pr=ids.filter(i=>day[i]=="p").length,ab=ids.filter(i=>day[i]=="a").length;
+ const sc=S.school,d=new Date(),ym=mk(d.getFullYear(),d.getMonth());
+ const tex=S.exams.filter(e=>e.date==T),upc=S.exams.filter(e=>e.date>T).sort((a,b)=>a.date>b.date?1:-1);
+ const hw=S.hw.filter(h=>h.date==T&&(!homeCls||h.cls==homeCls));
+ const stuDue=sid=>S.fees.filter(f=>f.sid==sid).reduce((a,f)=>a+due(f),0);
+ const TY=[["অনাবাসিক","#3b82f6","#eff6ff","🏫"],["আবাসিক","#16a34a","#f0fdf4","🏠"],["ডেকেয়ার","#8b5cf6","#faf5ff","☺"]];
+ const ty=TY.map(t=>{const ss=S.students.filter(x=>(x.type||"অনাবাসিক")==t[0]),dd=ss.map(x=>stuDue(x.id));return {t,n:ss.length,k:dd.filter(x=>x>0).length,a:dd.reduce((x,y)=>x+y,0)}});
+ const totDue=S.fees.reduce((a,f)=>a+due(f),0),nDue=S.fees.filter(f=>due(f)>0).length;
+ const fp=S.fees.filter(f=>f.amt>0&&f.paid>=f.amt),fd=S.fees.filter(f=>f.paid==0&&f.amt>0),fa=S.fees.filter(f=>f.paid>0&&f.paid<f.amt),sum=(l,fn)=>l.reduce((a,f)=>a+fn(f),0);
+ const books=S.books.map(b=>({b,av:b.copies-b.issues.filter(i=>!i.ret).length})),copies=sum(S.books,b=>b.copies),iss=sum(S.books,b=>b.issues.filter(i=>!i.ret).length),stockOut=books.filter(x=>x.av<=0).length;
+ const recs=S.fees.filter(f=>f.auto==ym),pend=recs.filter(f=>due(f)>0),mcount=S.students.filter(x=>+x.monthlyFee>0&&x.status!="নিষ্ক্রিয়").length;
+ const pd=sum(S.fees,f=>f.paid),oi=sum(S.txns.filter(t=>t.type=="in"),t=>t.amt),eo=sum(S.txns.filter(t=>t.type=="out"),t=>t.amt),net=pd+oi-eo;
+ const done=S.exams.filter(e=>Object.keys(e.marks).length).length,bars=[["মোট",S.exams.length,"#10b981"],["আজ",tex.length,"#f59e0b"],["আসন্ন",upc.length,"#3b82f6"],["ফলাফল",done,"#8b5cf6"]],mx=Math.max(1,...bars.map(b=>b[1]));
+ const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
+ const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
+ return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span><span style="position:relative" onclick="nav('more','notice')">🔔${nt.length?`<b class="bd">${bn(nt.length)}</b>`:""}</span></div></div>
+ <div class="hero"><div style="display:flex;gap:12px"><div class="lg">${sc.logo?`<img src="${sc.logo}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
+ <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${d.toLocaleTimeString("bn-BD")}</div><small>📅 ${d.toLocaleDateString("bn-BD",{day:"numeric",month:"long",year:"numeric"})} ইং</small></div><div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div></div>
+ <div class="tick"><span class="live">● লাইভ</span><span>${nt.length?esc(nt[0].title):"কোনো নোটিশ নেই!"}</span></div></div>
+ <div class="g2"><div class="st" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><span class="ic">👥</span><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#a855f7,#7c3aed)"><span class="ic">🎓</span><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#10b981,#059669)"><span class="ic">📅</span><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48)"><span class="ic">⚠️</span><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
+ <div class="g2" style="margin-bottom:6px"><div class="card" style="margin:0;background:#e0f2fe;border-left:3px solid #0ea5e9;padding:10px"><small style="color:#0369a1">📖 আজকের পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center;color:#0369a1">${tex.length?tex.map(e=>esc(e.name)+" ("+esc(e.cls)+")").join(", "):"আজ কোনো পরীক্ষা নেই"}</div></div><div class="card" style="margin:0;background:#e0e7ff;border-left:3px solid #4f46e5;padding:10px"><small style="color:#3730a3">আসন্ন পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center">${upc.length?esc(upc[0].name)+" · "+bn(upc[0].date):"কোনো আসন্ন পরীক্ষা নেই"}</div></div></div>
+ <div style="text-align:center;margin-bottom:12px"><span class="lk" onclick="nav('more','exam')">সব পরীক্ষা দেখুন</span></div>
+ <div class="card"><div class="ch"><h2>🔔 নোটিশ</h2><span class="lk" onclick="nav('more','notice')">সব দেখুন →</span></div>${nt.slice(0,3).map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div></div>`).join("")||'<div class="em">কোনো নোটিশ নেই</div>'}</div>
+ <div class="card"><div class="ch"><h2>📗 আজকের পড়া ও বাড়ির কাজ</h2><select style="width:110px;margin:0" onchange="homeCls=this.value;render()"><option value="">শ্রেণি</option>${classes().map(c=>`<option ${homeCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>${hw.map(h=>`<div class="row"><div class="f"><b>${esc(h.subject)}</b> <span class="tag">${esc(h.cls)}</span><small>${esc(h.text)}</small></div></div>`).join("")||'<div class="em">📖<br>আজকের পড়া এখনো আপডেট হয়নি</div>'}</div>
+ <div class="card"><div class="ch"><h2>ⓘ ধরন অনুযায়ী বকেয়া ফি</h2><span class="lk" onclick="nav('fee')">সব দেখুন →</span></div>${donut(ty.map(x=>({v:x.a,c:x.t[1]})),150,18,money(totDue),"মোট বকেয়া","#e11d48")}
+ <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">${ty.map(x=>`<div class="mini" style="background:${x.t[2]};color:#333"><span style="color:${x.t[1]}">${x.t[3]} ${x.t[0]}</span><b style="color:${x.a?"var(--rd)":x.t[1]}">${x.a?money(x.a):"বকেয়া নেই"}</b><span class="tag" style="font-size:10px">${bn(x.n)} জন</span>${x.k?`<div style="color:#6b7385;margin-top:4px">${bn(x.k)} জনের বকেয়া</div>`:""}</div>`).join("")}</div></div>
+ <div class="g2"><div class="card" style="margin:0;padding:10px"><b style="font-size:14px">ফি পরিস্থিতি</b>${donut([{v:fp.length,c:"#10b981"},{v:fd.length,c:"#ef4444"},{v:fa.length,c:"#f59e0b"}],120,16,bn(S.fees.length),"মোট রেকর্ড")}${fl("#10b981","পরিশোধিত",fp.length,sum(fp,f=>f.paid))}${fl("#ef4444","বকেয়া",fd.length,sum(fd,f=>due(f)))}${fl("#f59e0b","আংশিক",fa.length,sum(fa,f=>due(f)))}</div>
+ <div class="card" style="margin:0;padding:10px;background:#eff6ff"><div class="ch" style="margin:0"><b style="font-size:13px">📖 লাইব্রেরি</b><span class="lk" style="font-size:11px" onclick="nav('more','lib')">যান →</span></div>${donut([{v:books.length-stockOut,c:"#10b981"},{v:stockOut,c:"#ef4444"}],120,16,bn(S.books.length),"শিরোনাম")}<div class="lg2"><span><i style="background:#10b981"></i>উপলব্ধ: ${bn(books.length-stockOut)}</span><span><i style="background:#ef4444"></i>স্টক শেষ: ${bn(stockOut)}</span></div><div style="display:flex;justify-content:space-around;font-size:11px;margin-top:6px;text-align:center"><div>মোট ভলি<b style="display:block;color:#3b82f6">${bn(copies)}</b></div><div>উপলব্ধ<b style="display:block;color:#16a34a">${bn(copies-iss)}</b></div><div>ইস্যুকৃত<b style="display:block;color:#f59e0b">${bn(iss)}</b></div></div></div></div>
+ <div class="card" style="background:#f0fdf4;margin-top:12px"><div class="ch"><h2 style="font-size:14px">${MN[d.getMonth()]}, ${bn(d.getFullYear())} — স্বয়ংক্রিয় বকেয়া বেতন</h2>${mcount&&recs.length>=mcount?'<span class="tag g">তৈরি সম্পূর্ণ</span>':""}</div>
+ ${mcount?`<div class="g2" style="margin-bottom:6px"><div><b style="color:#f97316;font-size:20px">${money(sum(pend,f=>due(f)))}</b><small style="display:block;color:var(--mu)">মোট বকেয়া (${bn(pend.length)} রেকর্ড)</small></div><div><b style="color:#3b82f6;font-size:20px">${bn(mcount)}</b><small style="display:block;color:var(--mu)">শিক্ষার্থীর মাসিক বেতন নির্ধারিত</small></div></div><div style="color:var(--gr);font-size:12px;margin-bottom:6px">✓ এই মাসের সকল বকেয়া বেতন স্বয়ংক্রিয়ভাবে তৈরি হয়ে গেছে।</div>${pend.slice(0,4).map(f=>`<div class="row" style="padding:6px 0;font-size:13px"><div class="f">${esc(stuName(f.sid))}</div><b style="color:var(--rd)">${money(due(f))}</b></div>`).join("")}`:'<div class="em" style="padding:8px 0">শিক্ষার্থীর ভর্তি বা সম্পাদনার সময় মাসিক বেতন দিলে প্রতি মাসে বকেয়া এখানে স্বয়ংক্রিয়ভাবে তৈরি হবে।</div>'}<div style="margin-top:8px"><span class="lk" onclick="nav('fee')">ফি পেজে দেখুন →</span></div></div>
+ <div class="g2"><div class="ac" style="background:linear-gradient(135deg,#fb923c,#f97316)"><small>বকেয়া</small><b>${money(totDue)}</b><small>${bn(nDue)}টি বকেয়া রেকর্ড</small></div><div class="ac" style="background:linear-gradient(135deg,#34d399,#10b981)"><small>মোট আয়</small><b>${money(pd+oi)}</b><small>ফি সংগ্রহ: ${money(pd)}</small></div><div class="ac" style="background:linear-gradient(135deg,#f87171,#ef4444)"><small>মোট ব্যয়</small><b>${money(eo)}</b><small>সর্বমোট</small></div><div class="ac" style="background:linear-gradient(135deg,#a78bfa,#8b5cf6)"><small>নিট ব্যালেন্স</small><b>${money(net)}</b><small>${net>=0?"উদ্বৃত্ত":"ঘাটতি"}</small></div></div>
+ <div class="card"><div class="ch"><h2>〰 সাম্প্রতিক কার্যক্রম</h2><span class="lk" onclick="logAll=!logAll;render()">${logAll?"কম দেখুন":"সব দেখুন →"}</span></div>${lg.map(x=>{const t=new Date(x.t);return `<div class="row" style="align-items:flex-start"><span class="av" style="width:30px;height:30px;font-size:14px;background:${x.ty=="add"?"#dcfce7":"#e8edff"}">${x.ty=="add"?"+":"✎"}</span><div class="f"><b style="font-size:13px">${esc(x.cat)}</b><small>${esc(x.tx)}</small></div><small style="font-size:10px;white-space:nowrap">${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div>`}).join("")||'<div class="em">এখনো কোনো কার্যক্রম নেই</div>'}</div>
+ <div class="card"><div class="ch"><h2>📅 পরীক্ষা পরিস্থিতি</h2><span class="tag">${bn(S.exams.length)}টি পরীক্ষা</span></div>${S.exams.length?`<div class="bars">${bars.map(b=>`<div style="background:${b[2]};height:${30+b[1]/mx*100}px">${bn(b[1])}<br><small style="font-size:11px">${b[0]}</small></div>`).join("")}</div><div style="text-align:center"><span class="lk" onclick="nav('more','exam')">সব পরীক্ষা দেখুন</span></div>`:'<div class="em">কোনো পরীক্ষা নেই</div>'}</div>`;
 }
 setInterval(()=>{const c=$("clk");if(c)c.textContent=new Date().toLocaleTimeString("bn-BD")},1000);
 
@@ -105,7 +152,7 @@ let draft={},step=1,editId=null;
 function stuForm(id){editId=id||null;const s=S.students.find(x=>x.id==id);draft=s?{...s}:{type:"অনাবাসিক",status:"সক্রিয়",division:DIVS[0],admDate:today(),fees:{}};step=1;drawStu()}
 function grab(){
  const g=id=>{const e=$(id);return e?e.value.trim():undefined};
- if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
+ if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass","monthlyFee"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
  else{draft.fees=draft.fees||{};FEES.forEach(f=>{const v=g("f_"+f[0]);if(v!==undefined)draft.fees[f[0]]=v})}
 }
 function setType(t){grab();draft.type=t;drawStu()}
@@ -140,6 +187,7 @@ function drawStu(){
   ${sel("অবস্থা","status",["সক্রিয়","নিষ্ক্রিয়"])}
   <label class="lb">ঠিকানা</label><textarea id="s_addr" rows="3">${esc(draft.addr)}</textarea>
   ${fld("লগইন পাসওয়ার্ড","pass","শিক্ষার্থীর পাসওয়ার্ড (ঐচ্ছিক)")}
+  ${isNew?"":fld("মাসিক বেতন (৳)","monthlyFee","","number")}
   <div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="stuNext()">${isNew?"পরবর্তী: ফি নির্ধারণ":"সংরক্ষণ করুন"}</button></div>
   ${isNew?"":`<button class="btn r" style="width:100%;margin-top:10px" onclick="stuDel('${editId}')">মুছে ফেলুন</button>`}`;
  }else{
@@ -154,11 +202,11 @@ function stuBack(){grab();step=1;drawStu()}
 function stuAdmit(){grab();commit()}
 function commit(){
  const {fees,...o}=draft;
- if(editId)Object.assign(S.students.find(x=>x.id==editId),o);
- else{const id=uid();S.students.push({id,...o});FEES.forEach(f=>{const a=+((fees||{})[f[0]]);if(a>0)S.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})})}
- save();closeM();render();
+ if(editId){o.monthlyFee=+o.monthlyFee||0;Object.assign(S.students.find(x=>x.id==editId),o);logA("edit","শিক্ষার্থী","শিক্ষার্থীর তথ্য আপডেট: "+o.name)}
+ else{const id=uid();S.students.push({id,...o,monthlyFee:+((fees||{}).monthly)||0});FEES.forEach(f=>{if(f[0]=="monthly")return;const a=+((fees||{})[f[0]]);if(a>0)S.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})});logA("add","শিক্ষার্থী","নতুন শিক্ষার্থী ভর্তি: "+o.name)}
+ autoFees();save();closeM();render();
 }
-function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=160;const x=c.getContext("2d"),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,160,160);grab();draft.photo=c.toDataURL("image/jpeg",.75);drawStu()};im.onerror=()=>alert("ছবিটি পড়া যায়নি");im.src=url}
+function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=c.height=160;const x=c.getContext("2d"),m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,160,160);const u=c.toDataURL("image/jpeg",.75);if(photoCb){const f=photoCb;photoCb=null;f(u);return}grab();draft.photo=u;drawStu()};im.onerror=()=>alert("ছবিটি পড়া যায়নি");im.src=url}
 function photoFile(f){if(!f)return;if(f.size>5*1024*1024){alert("ছবি ৫ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=()=>shrink(r.result);r.readAsDataURL(f)}
 async function pickPhoto(){
  const P=window.Capacitor&&Capacitor.Plugins;let err="";
@@ -195,7 +243,7 @@ function initDraft(){attDraft={...(S.att[adate]||{})};fillDraft()}
 function setView(v){attView=v;attSub="daily";if(v=="take")initDraft();render()}
 function setGrp(g){attGroup=g;attCls="";attBr="";if(attView=="take")fillDraft();render()}
 function setAtt(id,k){attDraft[id]=k;const y=$("v").scrollTop;render();$("v").scrollTop=y}
-function saveAtt(){S.att[adate]={...(S.att[adate]||{}),...attDraft};save();alert("হাজিরা সংরক্ষিত হয়েছে");render()}
+function saveAtt(){S.att[adate]={...(S.att[adate]||{}),...attDraft};logA("edit","উপস্থিতি","হাজিরা সংরক্ষণ — "+adate);save();alert("হাজিরা সংরক্ষিত হয়েছে");render()}
 function staffAdd(){ask("কর্মী যোগ",[["n","নাম","text"],["r","পদবি","text"],["p","মোবাইল","tel"]],v=>{if(!v[0]){alert("নাম দিন");return false}S.staff.push({id:uid(),name:v[0],role:v[1],phone:v[2]})})}
 function staffDel(id){if(attGroup=="staff"&&confirm("এই কর্মীকে মুছবেন?")){S.staff=S.staff.filter(x=>x.id!=id);save();render()}}
 function qrIn(){
@@ -276,6 +324,7 @@ function feeSave(id){
  if(!t||!a){alert("ধরন ও টাকার পরিমাণ লিখুন");return}
  if(id)Object.assign(S.fees.find(x=>x.id==id),{title:t,amt:a,paid:Math.min(p,a)});
  else S.fees.push({id:uid(),sid:$("g1").value,title:t,amt:a,paid:Math.min(p,a),date:today()});
+ logA(id?"edit":"add","ফি",(id?"ফি আপডেট: ":"নতুন ফি: ")+stuName(id?S.fees.find(x=>x.id==id).sid:$("g1").value)+" — "+t+" ("+money(a)+")");
  save();closeM();render();
 }
 
@@ -290,7 +339,7 @@ function more(){
 }
 function teach(){return `<div class="card"><h2>শিক্ষক (${bn(S.teachers.length)})</h2>${S.teachers.map(t=>`<div class="row" onclick="tForm('${t.id}')"><div class="f"><b>${esc(t.name)}</b><small>${esc(t.sub)} · ${esc(t.phone)}</small></div></div>`).join("")}<button class="btn o s" onclick="tForm()">+ শিক্ষক যোগ করুন</button></div>`}
 function notice(){return `<div class="card"><h2>নোটিশ বোর্ড</h2>${S.notices.slice().reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div><button class="btn r s" onclick="S.notices=S.notices.filter(x=>x.id!='${n.id}');save();render()">মুছুন</button></div>`).join("")}<button class="btn o s" onclick="nForm()">+ নোটিশ দিন</button></div>`}
-function setng(){return `<div class="card"><h2>স্কুল প্রোফাইল</h2><input id="sn" value="${esc(S.school.name)}"><input id="sa" value="${esc(S.school.addr)}"><button class="btn" onclick="S.school={name:$('sn').value,addr:$('sa').value};save();alert('সংরক্ষিত হয়েছে')">সংরক্ষণ করুন</button></div>
+function setng(){return `<div class="card"><h2>স্কুল প্রোফাইল</h2><div class="row" style="border:0" onclick="pickLogo()"><div class="av" style="width:52px;height:52px">${S.school.logo?`<img class="av" style="width:52px;height:52px" src="${S.school.logo}">`:"🕌"}</div><div class="f"><span style="color:var(--pri)">লোগো আপলোড করুন</span></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''"><input id="sn" placeholder="প্রতিষ্ঠানের নাম" value="${esc(S.school.name)}"><input id="sa" placeholder="ঠিকানা" value="${esc(S.school.addr)}"><input id="se" placeholder="স্থাপিত (যেমন: ২০২৪ ইং)" value="${esc(S.school.est)}"><input id="sy" placeholder="শিক্ষাবর্ষ (যেমন: ২০২৬ ইং)" value="${esc(S.school.year)}"><input id="sd" placeholder="পরিচালকের নাম" value="${esc(S.school.director)}"><input id="sp" type="tel" placeholder="ফোন" value="${esc(S.school.phone)}"><button class="btn" onclick="saveSchool()">সংরক্ষণ করুন</button></div>
  <div class="card"><h2>ব্যাকআপ</h2><p style="font-size:13px;color:var(--mu);margin-bottom:10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর আগে ব্যাকআপ নিন।</p><button class="btn g s" onclick="exp()">ব্যাকআপ নিন</button> <button class="btn o s" onclick="pickRestore()">ফাইল থেকে রিস্টোর</button> <button class="btn o s" onclick="pasteImp()">টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept="*/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"></div>`}
 
 function exam(){
@@ -362,10 +411,10 @@ function tForm(id){
 }
 function tSave(id){
  const o={name:$("t1").value.trim(),sub:$("t2").value.trim(),phone:$("t3").value.trim()};if(!o.name){alert("নাম লিখুন");return}
- if(id)Object.assign(S.teachers.find(x=>x.id==id),o);else S.teachers.push({id:uid(),...o});save();closeM();render();
+ if(id)Object.assign(S.teachers.find(x=>x.id==id),o);else S.teachers.push({id:uid(),...o});logA(id?"edit":"add","শিক্ষক",(id?"শিক্ষকের তথ্য আপডেট: ":"নতুন শিক্ষক যোগ: ")+o.name);save();closeM();render();
 }
 function nForm(){modal(`<h2 style="margin-bottom:10px">নতুন নোটিশ</h2><textarea id="n1" rows="4" placeholder="নোটিশ লিখুন"></textarea><button class="btn" style="width:100%" onclick="nSave()">প্রকাশ করুন</button>`)}
-function nSave(){const t=$("n1").value.trim();if(!t){alert("নোটিশ লিখুন");return}S.notices.push({id:uid(),title:t,date:today()});save();closeM();render()}
+function nSave(){const t=$("n1").value.trim();if(!t){alert("নোটিশ লিখুন");return}S.notices.push({id:uid(),title:t,date:today()});logA("add","নোটিশ","নতুন নোটিশ: "+t);save();closeM();render()}
 async function exp(){
  const data=JSON.stringify(S),name="madrasa-backup-"+today()+".json",P=window.Capacitor&&Capacitor.Plugins;
  if(P&&P.Filesystem&&P.Share){
@@ -392,7 +441,7 @@ function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=
 
 function modal(h){closeM();const m=document.createElement("div");m.className="mt";m.id="mt";m.onclick=e=>{if(e.target==m)closeM()};m.innerHTML="<div>"+h+"</div>";document.body.appendChild(m)}
 function closeM(){const m=$("mt");if(m)m.remove()}
-render();
+autoFees();save();render();
 </script>
 </body>
 </html>
