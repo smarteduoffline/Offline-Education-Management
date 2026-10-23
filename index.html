@@ -89,6 +89,21 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .lx-m{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:8px 14px}.lx-m small{color:var(--mu);font-size:12px;display:block}.lx-m b{font-size:18px}
 .lx-e{border:2px dashed var(--ln);border-radius:12px;padding:28px 10px;text-align:center;color:var(--mu)}
 .lx-ob{border:1px solid #fdba74;background:var(--card);color:#ea580c;border-radius:8px;padding:8px 12px;font:inherit;font-size:12px;margin-bottom:12px}
+
+.sx-t{display:flex;gap:2px;overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:4px;margin-bottom:12px}
+.sx-t button{flex:none;border:0;background:none;color:var(--mu);font:inherit;font-size:13px;padding:7px 12px;border-radius:8px;white-space:nowrap}
+.sx-t button.on{background:var(--bg);color:var(--tx);font-weight:700;box-shadow:0 0 0 1px var(--ln)}
+.sx-c{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px}
+.sx-c i{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px;flex:none}
+.sx-c b{font-size:24px;display:block;line-height:1.1}.sx-c small{color:var(--mu);font-size:12px}
+.sx-bt{border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;background:var(--card);border:1px solid}
+.sx-p{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--ln)}
+.sx-p:last-child{border:0}.sx-p .a{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.sx-p small{display:block;color:var(--mu);font-size:12px}.sx-p em{color:var(--mu);font-size:12px;font-style:italic}
+.sx-bub{max-width:85%;padding:8px 12px;border-radius:12px 12px 2px 12px;background:#dcfce7;color:#14532d;margin:0 0 8px auto;font-size:13px;white-space:pre-wrap;word-break:break-word}
+.sx-bub small{display:block;font-size:10px;opacity:.7;margin-top:3px;text-align:right}
+.sx-tp{display:inline-block;border-radius:99px;padding:1px 10px;font-size:12px;white-space:nowrap}
+.sx-tb td,.sx-tb th{padding:10px 8px;text-align:left;border-bottom:1px solid var(--ln);vertical-align:middle;font-size:13px}.sx-tb th{color:var(--mu);font-weight:500}
 </style>
 </head>
 <body>
@@ -276,8 +291,8 @@ const MT="প্রিয় অভিভাবক,\n\nআপনার সন্
 const GP=p=>p>=80?5:p>=70?4:p>=60?3.5:p>=50?3:p>=40?2:p>=33?1:0;
 const openExt=u=>{const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()};
 function waLink(ph,t){let d=String(ph||"").replace(/\D/g,"");if(d.startsWith("0"))d="88"+d;return "https://wa.me/"+d+"?text="+encodeURIComponent(t)}
-function sendTo(x,ch,tx){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx});S.smslog=S.smslog.slice(0,300);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
-const fillT=(t,x)=>t.replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"").replace(/\{বকেয়া\}/g,money(S.fees.filter(f=>f.sid==x.id).reduce((a,f)=>a+(f.amt-f.paid),0)));
+function sendTo(x,ch,tx,ty){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx,ty:ty||""});S.smslog=S.smslog.slice(0,300);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
+const fillT=(t,x)=>t.replace(/\{ফল:([^}]+)\}/g,(m,n)=>smRes(x,n)).replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"").replace(/\{বকেয়া\}/g,money(S.fees.filter(f=>f.sid==x.id).reduce((a,f)=>a+(f.amt-f.paid),0)));
 const pill=(t,k)=>`<span class="pl ${k||""}">${t}</span>`;
 
 /* ---- QR (byte mode, ECC M, v1-10) ---- */
@@ -403,7 +418,7 @@ function drawMsg(){
 }
 function msgAll(on){mctx.sel=on?Object.fromEntries(mctx.ids.map(i=>[i,1])):{};drawMsg()}
 function msgTog(id){if(mctx.sel[id])delete mctx.sel[id];else mctx.sel[id]=1;drawMsg()}
-function msgOne(id,ch){const x=pOf(id);mctx.done[id]=1;if(mctx.cb)mctx.cb();sendTo(x,ch,fillT(mctx.txt,x));setTimeout(drawMsg,400)}
+function msgOne(id,ch){const x=pOf(id);mctx.done[id]=1;if(mctx.cb)mctx.cb();sendTo(x,ch,fillT(mctx.txt,x),mctx.ty);setTimeout(drawMsg,400)}
 function msgNext(){const id=mctx.ids.find(i=>mctx.sel[i]&&!mctx.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}msgOne(id,"wa")}
 
 /* ---- admit card / id card ---- */
@@ -1555,12 +1570,52 @@ function libDelBook(id){if(confirm("বইটি মুছবেন? এর স�
 function libAct(bid,k){const b=S.books.find(x=>x.id==bid),i=b&&b.issues[k];if(!i)return;if(!i.ret){if(confirm("বইটি ফেরত নেওয়া হয়েছে?")){i.ret=true;save();render()}}else if(confirm("রেকর্ডটি মুছবেন?")){b.issues.splice(k,1);save();render()}}
 function retBook(bid,sid){const b=S.books.find(x=>x.id==bid),i=b.issues.find(x=>x.sid==sid&&!x.ret);if(i)i.ret=true;save();render()}
 
+let smT=0,smSub=0,smSid="",smQ="",lgQ="";
+const SMT=["SMS কেন্দ্র","অভিভাবক মেসেজিং","WhatsApp/SMS লগ"];
+const smStu=()=>S.students.filter(x=>x.status!="নিষ্ক্রিয়");
+const smPh=()=>smStu().filter(x=>x.phone);
+const smAbs=()=>{const d=S.att[today()]||{};return smStu().filter(x=>d[x.id]=="a")};
+const smResSt=()=>smStu().filter(x=>S.exams.some(e=>e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!==""));
+function smRes(x,n){const ps=S.exams.filter(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="");return ps.map(p=>p.subject+" "+bn(p.marks[x.id])+"/"+bn(p.total||100)).join(", ")||"—"}
+const smTy=l=>l.ty||(/বকেয়া/.test(l.tx||"")?"বকেয়া":"বার্তা");
+const smTyC={"নোটিশ":"background:#dbeafe;color:#1d4ed8","অনুপস্থিতি":"background:#ffe4e9;color:#be123c","ফলাফল":"background:#dcfce7;color:#15803d","বকেয়া":"background:#fef3c7;color:#b45309","বার্তা":"background:var(--bg);color:var(--mu)"};
+function smSend(ids,txt,ty){if(!ids.length){alert("মোবাইল নম্বরসহ কোনো অভিভাবক নেই");return}msgM(ids,txt);if($("mt"))mctx.ty=ty}
+function smAll(){smSend(smPh().map(x=>x.id),"প্রিয় অভিভাবক,\n\n"+S.school.name+" থেকে জানানো হচ্ছে: ","বার্তা")}
+function smAbsSend(ids){smSend(ids||smAbs().filter(x=>x.phone).map(x=>x.id),"প্রিয় অভিভাবক, আপনার সন্তান {নাম} আজ ("+bn(today())+") মাদ্রাসায় অনুপস্থিত ছিল। - "+S.school.name,"অনুপস্থিতি")}
+function smNot(id){const n=S.notices.find(x=>x.id==id);if(n)smSend(smPh().map(x=>x.id),n.title+"\n- "+S.school.name,"নোটিশ")}
+function smResSend(n){const ids=smPh().filter(x=>S.exams.some(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="")).map(x=>x.id);smSend(ids,"প্রিয় অভিভাবক, {নাম}-এর "+n+" পরীক্ষার ফলাফল: {ফল:"+n+"}। - "+S.school.name,"ফলাফল")}
 function sms(){
- const l=S.students.filter(s=>(!smsCls||s.cls==smsCls)&&s.phone),nums=l.map(s=>s.phone).join(",");
- const dues=S.students.map(s=>({s,d:S.fees.filter(f=>f.sid==s.id).reduce((a,f)=>a+due(f),0)})).filter(x=>x.d>0&&x.s.phone);
- return `<div class="card"><h2>অভিভাবককে বার্তা</h2><select onchange="smsCls=this.value;render()"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${smsCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><textarea id="sm" rows="3" placeholder="বার্তা লিখুন" oninput="smsMsg=this.value;document.getElementById('sl').href='sms:${nums}?body='+encodeURIComponent(smsMsg)">${esc(smsMsg)}</textarea><a id="sl" class="btn g" style="display:block;text-align:center;text-decoration:none" href="sms:${nums}?body=${encodeURIComponent(smsMsg)}">${bn(l.length)} জনকে SMS পাঠান</a><div class="hint" style="margin-top:6px">আপনার ফোনের SMS অ্যাপ খুলবে, সেখান থেকে পাঠান। ইন্টারনেট লাগে না।</div></div>
- <div class="card"><h2>বকেয়া রিমাইন্ডার</h2>${dues.map(x=>`<div class="row"><div class="f">${esc(x.s.name)}<small>বকেয়া ${money(x.d)}</small></div><a class="btn s g" style="text-decoration:none" href="sms:${x.s.phone}?body=${encodeURIComponent(x.s.name+"-এর "+bn(x.d)+" টাকা ফি বকেয়া আছে। - "+S.school.name)}">SMS</a></div>`).join("")||'<div class="em">কোনো বকেয়া নেই</div>'}</div>`;
+ const head=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-size:22px;font-weight:700">${smT==1?"💬 অভিভাবক মেসেজিং":smT==2?"WhatsApp / SMS লগ":"SMS কেন্দ্র"}</div><div style="color:var(--mu);font-size:13px">${smT==1?"শিক্ষার্থীর অভিভাবকদের সাথে সরাসরি যোগাযোগ করুন":smT==2?"মোট "+bn(S.smslog.length)+"টি বার্তা পাঠানো হয়েছে":"অভিভাবকদের মোবাইলে ফলাফল, উপস্থিতি ও নোটিশ পাঠান"}</div></div>${smT==1?'<button class="ob" style="padding:8px 12px" onclick="smAll()">🔔</button>':""}</div>`;
+ const tabs=`<div class="sx-t">${SMT.map((t,i)=>`<button class="${i==smT?"on":""}" onclick="smT=${i};smSid='';smQ='';lgQ='';render()">${t}</button>`).join("")}</div>`;
+ return tabs+head+(smT==0?smCenter():smT==1?smChat():smLog());
 }
+function smCenter(){
+ const ph=smPh(),ab=smAbs(),st=[["👥","মোট অভিভাবক",ph.length,"#3b82f6","rgba(59,130,246,.15)"],["⚠️","আজ অনুপস্থিত",ab.length,"#dc2626","rgba(239,68,68,.15)"],["🔔","সক্রিয় নোটিশ",S.notices.length,"#d97706","rgba(245,158,11,.15)"],["📖","ফলাফলসহ ছাত্র",smResSt().length,"#059669","rgba(16,185,129,.15)"]];
+ return `<div class="g2">${st.map(x=>`<div class="sx-c"><i style="background:${x[4]};color:${x[3]}">${x[0]}</i><div><b>${bn(x[2])}</b><small>${x[1]}</small></div></div>`).join("")}</div>
+<div class="card"><h2>দ্রুত বার্তা পাঠান</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sx-bt" style="border-color:#fca5a5;color:#dc2626" onclick="smAbsSend()">⚠ আজকের অনুপস্থিতি SMS (${bn(ab.filter(x=>x.phone).length)} জন)</button><button class="sx-bt" style="border-color:#16a34a;color:#16a34a" onclick="smAll()">💬 সকল অভিভাবক (${bn(ph.length)} জন)</button></div></div>
+<div class="sx-t" style="width:max-content;max-width:100%">${["🔔 নোটিশ SMS","📖 ফলাফল SMS","📅 উপস্থিতি SMS"].map((t,i)=>`<button class="${i==smSub?"on":""}" onclick="smSub=${i};render()">${t}</button>`).join("")}</div>${smSubBody()}`;
+}
+function smSubBody(){
+ let h="";
+ if(smSub==0)h=S.notices.slice().reverse().map(n=>`<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n.title)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">📅 ${bn(n.date)}</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smNot('${n.id}')">💬 SMS পাঠান</button></div>`).join("")||'<div class="em">কোনো নোটিশ নেই</div>';
+ if(smSub==1){const ns=[...new Set(S.exams.filter(e=>e.marks&&Object.keys(e.marks).length).map(e=>e.name))];h=ns.map(n=>{const c=S.exams.filter(e=>e.name==n).reduce((a,e)=>a.concat(Object.keys(e.marks||{})),[]);const k=new Set(c).size;return `<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">ফলাফলসহ ${bn(k)} জন</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smResSend(this.dataset.n)" data-n="${esc(n)}">💬 SMS পাঠান</button></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>'}
+ if(smSub==2){const ab=smAbs();h=(ab.length?`<div class="card" style="padding:6px">${ab.map(x=>`<div class="sx-p"><div style="flex:1;min-width:0"><b>${esc(x.name)}</b><small>${esc(x.cls||"")}${x.phone?" · 📞 "+esc(x.phone):" · ⚠ ফোন নেই"}</small></div>${x.phone?`<button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smAbsSend(['${x.id}'])">💬 SMS</button>`:""}</div>`).join("")}</div>`:'<div class="em">আজ কেউ অনুপস্থিত নেই</div>')}
+ return h;
+}
+function smChat(){
+ if(smSid){const x=sOf(smSid);if(!x){smSid="";return smChat()}const lg=S.smslog.filter(l=>l.sid==x.id).slice().reverse();
+  return `<button class="btn o s" style="margin-bottom:10px" onclick="smSid='';render()">← তালিকা</button><div class="card"><div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><div class="sx-p" style="padding:0;border:0"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div></div><div style="flex:1"><b>${esc(x.name)}</b><small style="display:block;color:var(--mu);font-size:12px">${esc(x.cls||"")}${x.guardian?" · অভিভাবক: "+esc(x.guardian):""}${x.phone?" · "+esc(x.phone):""}</small></div></div><div style="max-height:40vh;overflow:auto;margin-bottom:10px">${lg.map(l=>`<div class="sx-bub">${esc(l.tx)}<small>${l.ch=="wa"?"WhatsApp":"SMS"} · ${new Date(l.t).toLocaleString("bn-BD")}</small></div>`).join("")||'<div class="em">কোনো বার্তা নেই</div>'}</div>
+  ${x.phone?`<textarea id="smx" rows="3" placeholder="বার্তা লিখুন"></textarea><div class="g2" style="margin:0"><button class="btn g" onclick="smDirect('wa')">WhatsApp</button><button class="btn o" onclick="smDirect('sms')">SMS</button></div>`:'<div class="hint">এই শিক্ষার্থীর অভিভাবকের ফোন নম্বর নেই।</div>'}</div>`}
+ return `<input id="smq" placeholder="🔍 শিক্ষার্থী খুঁজুন..." value="${esc(smQ)}" oninput="smQ=this.value;smLst()"><div class="card" style="padding:0;margin-top:8px" id="sml">${smLstH()}</div>`;
+}
+const smAv=x=>x.gender=="মেয়ে"?"background:#fce7f3;color:#be185d":"background:#dbeafe;color:#1d4ed8";
+function smLstH(){const k=smQ.trim().toLowerCase();return smStu().filter(x=>!k||[x.name,x.cls,x.guardian,x.phone].join(" ").toLowerCase().includes(k)).map(x=>{const l=S.smslog.find(m=>m.sid==x.id);return `<div class="sx-p" onclick="smSid='${x.id}';render()"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div><div style="flex:1;min-width:0"><b style="font-weight:500">${esc(x.name)}</b> ${x.phone?"":'<span style="color:#d97706;font-size:12px">⚠</span>'}<small>${esc(x.cls||"")}</small>${l?`<small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.tx.replace(/\n/g," "))}</small>`:"<em>কোনো বার্তা নেই</em>"}</div></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}
+function smLst(){const e=$("sml");if(e)e.innerHTML=smLstH()}
+function smDirect(ch){const t=$("smx").value.trim(),x=sOf(smSid);if(!t){alert("বার্তা লিখুন");return}sendTo(x,ch,t,"বার্তা");setTimeout(render,500)}
+function smLog(){return `<input id="lgq" placeholder="🔍 নাম বা ফোন নম্বর খুঁজুন..." value="${esc(lgQ)}" oninput="lgQ=this.value;lgLst()"><div class="card ov" style="padding:0;margin-top:8px" id="lgl">${lgH()}</div>`}
+function lgH(){const k=lgQ.trim().toLowerCase();const r=S.smslog.map(l=>({l,x:pOf(l.sid)||{}})).filter(o=>!k||[o.x.guardian,o.x.name,o.x.phone].join(" ").toLowerCase().includes(k));
+ return r.length?`<table class="sx-tb" style="min-width:560px;width:100%;border-collapse:collapse"><tr><th>অভিভাবক</th><th>শিক্ষার্থী</th><th>ফোন</th><th>ধরন</th><th>মাধ্যম</th><th>বার্তা</th></tr>${r.map(o=>{const t=smTy(o.l);return `<tr><td><b style="font-weight:500">${esc(o.x.guardian||"—")}</b></td><td>${esc(o.x.name||"—")}</td><td>${esc(o.x.phone||"")}</td><td><span class="sx-tp" style="${smTyC[t]||smTyC["বার্তা"]}">${t}</span></td><td><span class="sx-tp" style="${o.l.ch=="wa"?"border:1px solid #86efac;color:#15803d":"border:1px solid #86efac;color:#15803d"}">${o.l.ch=="wa"?"WhatsApp":"SMS"}</span></td><td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((o.l.tx||"").replace(/\n/g," "))}</td></tr>`}).join("")}</table>`:'<div class="em">কোনো লগ নেই</div>'}
+function lgLst(){const e=$("lgl");if(e)e.innerHTML=lgH()}
 function tForm(id){
  const t=S.teachers.find(x=>x.id==id)||{};
  modal(`<h2 style="margin-bottom:10px">শিক্ষক</h2><input id="t1" placeholder="নাম" value="${esc(t.name)}"><input id="t2" placeholder="বিষয়" value="${esc(t.sub)}"><input id="t3" type="tel" placeholder="ফোন" value="${esc(t.phone)}">
