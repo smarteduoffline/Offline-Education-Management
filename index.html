@@ -71,6 +71,24 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .hb small{display:block;margin-top:2px}.hb .pl{white-space:nowrap;margin:0}
 .xch{font-size:9px;color:#fff;border-radius:4px;padding:1px 3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 .f>small{display:block}
+
+.lx-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.lx-s{border-radius:14px;padding:12px 14px}.lx-s small{font-size:12px;display:block}.lx-s b{font-size:26px;display:block;margin-top:2px}
+.lx-b{height:8px;border-radius:9px;background:var(--ln);overflow:hidden;margin:4px 0 10px}.lx-b i{display:block;height:100%}
+.lx-r{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:14px}
+.lx-t{display:flex;gap:2px;overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:4px;margin-bottom:12px}
+.lx-t button{flex:none;border:0;background:none;color:var(--mu);font:inherit;font-size:13px;padding:7px 12px;border-radius:8px;white-space:nowrap}
+.lx-t button.on{background:var(--bg);color:var(--tx);font-weight:700;box-shadow:0 0 0 1px var(--ln)}
+.lx-i{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+.lx-i .m{color:var(--mu);font-size:12px;margin-top:4px;line-height:1.6}
+.lx-i .x{border:0;background:none;color:var(--mu);font-size:20px;padding:0 6px}
+.lx-c{display:inline-block;background:#e8edff;color:var(--pri);border-radius:99px;padding:1px 10px;font-size:12px;margin-right:4px}
+.lx-c.g{background:#dcfce7;color:#15803d}.lx-c.r{background:#ffe4e9;color:#be123c}.lx-c.y{background:#fef3c7;color:#b45309}.lx-c.n{background:var(--bg);color:var(--mu)}
+.lx-f{display:flex;gap:8px;overflow-x:auto;margin-bottom:12px}
+.lx-f button{flex:none;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:99px;padding:6px 14px;font:inherit;font-size:13px}.lx-f button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.lx-m{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:8px 14px}.lx-m small{color:var(--mu);font-size:12px;display:block}.lx-m b{font-size:18px}
+.lx-e{border:2px dashed var(--ln);border-radius:12px;padding:28px 10px;text-align:center;color:var(--mu)}
+.lx-ob{border:1px solid #fdba74;background:var(--card);color:#ea580c;border-radius:8px;padding:8px 12px;font:inherit;font-size:12px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -78,7 +96,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 <nav id="nv"></nav></div>
 <script>
 const KEY="smart-edu-v1";
-const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[]});
+const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[]});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};
 const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -1471,16 +1489,70 @@ function notice(){return `<div class="card"><h2>নোটিশ বোর্ড<
 function setng(){return `<div class="card"><h2>স্কুল প্রোফাইল</h2><div class="row" style="border:0" onclick="pickLogo()"><div class="av" style="width:52px;height:52px">${S.school.logo?`<img class="av" style="width:52px;height:52px" src="${S.school.logo}">`:"🕌"}</div><div class="f"><span style="color:var(--pri)">লোগো আপলোড করুন</span></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''"><input id="sn" placeholder="প্রতিষ্ঠানের নাম" value="${esc(S.school.name)}"><input id="sa" placeholder="ঠিকানা" value="${esc(S.school.addr)}"><input id="se" placeholder="স্থাপিত (যেমন: ২০২৪ ইং)" value="${esc(S.school.est)}"><input id="sy" placeholder="শিক্ষাবর্ষ (যেমন: ২০২৬ ইং)" value="${esc(S.school.year)}"><input id="sd" placeholder="পরিচালকের নাম" value="${esc(S.school.director)}"><input id="sp" type="tel" placeholder="ফোন" value="${esc(S.school.phone)}"><button class="btn" onclick="saveSchool()">সংরক্ষণ করুন</button></div>
  <div class="card"><h2>ব্যাকআপ</h2><p style="font-size:13px;color:var(--mu);margin-bottom:10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর আগে ব্যাকআপ নিন।</p><button class="btn g s" onclick="exp()">ব্যাকআপ নিন</button> <button class="btn o s" onclick="pickRestore()">ফাইল থেকে রিস্টোর</button> <button class="btn o s" onclick="pasteImp()">টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept="*/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"></div>`}
 
+let lt=0,lq="",lflt=0,lrb=0,lrm=new Date().getMonth(),lry=new Date().getFullYear();
+const LTN=["বইয়ের তালিকা","ইস্যু রেকর্ড","বই ও পণ্য বিক্রয়","পণ্য মজুত","রিপোর্ট"];
+const lAv=b=>b.copies-b.issues.filter(i=>!i.ret).length;
+const lOpen=()=>S.books.flatMap(b=>b.issues.filter(i=>!i.ret).map(i=>({b,i})));
+const lOd=i=>!i.ret&&i.due&&i.due<today();
+const lm=s=>!lq||String(s).toLowerCase().includes(lq.toLowerCase());
 function lib(){
- return `<button class="btn" style="width:100%;margin-bottom:12px" onclick="bookAdd()">+ নতুন বই</button>${S.books.map(b=>{const op=b.issues.filter(i=>!i.ret);return `<div class="card"><div class="row" style="border:0;padding-top:0"><div class="f"><b>${esc(b.title)}</b><small>${esc(b.author)} · মোট ${bn(b.copies)} · পাওয়া যাবে ${bn(b.copies-op.length)}</small></div><button class="btn s" onclick="issue('${b.id}')">ইস্যু</button><button class="btn r s" onclick="if(confirm('বইটি মুছবেন?')){S.books=S.books.filter(x=>x.id!='${b.id}');save();render()}">✕</button></div>${op.map(i=>`<div class="row"><div class="f">${esc(stuName(i.sid))}<small>${bn(i.date)}</small></div><button class="btn g s" onclick="retBook('${b.id}','${i.sid}')">ফেরত</button></div>`).join("")}</div>`}).join("")||'<div class="em">কোনো বই নেই</div>'}`;
+ const op=lOpen(),tot=S.books.reduce((a,b)=>a+b.copies,0),od=op.filter(x=>lOd(x.i)).length,td=op.filter(x=>x.i.due==today()).length,n=S.books.length,av=S.books.filter(b=>lAv(b)>0).length,pc=n?av/n*100:0,occ=tot?Math.round(op.length/tot*100):0;
+ const cc={};S.books.forEach(b=>{const k=b.cat||"পাঠ্যবই";cc[k]=(cc[k]||0)+b.copies});
+ const st=[["মোট বই",tot,"59,130,246","#3b82f6","📖"],["ইস্যু করা",op.length,"168,85,247","#a855f7","🔖"],["মেয়াদোত্তীর্ণ",od,"239,68,68","#ef4444","⚠️"],["আজ শেষ হবে",td,"245,158,11","#d97706","🕒"]];
+ return `<div style="font-size:22px;font-weight:700">লাইব্রেরি ম্যানেজমেন্ট</div><div style="color:var(--mu);font-size:13px;margin:2px 0 12px">বইয়ের তালিকা, ইস্যু ট্র্যাকিং ও জরিমানা</div>
+<button class="lx-ob" onclick="libNotify()">🔔 সব overdue নোটিফিকেশন</button>
+<div class="lx-g">${st.map(x=>`<div class="lx-s" style="background:rgba(${x[2]},.13);color:${x[3]}"><small>${x[0]} ${x[4]}</small><b>${bn(x[1])}</b></div>`).join("")}</div>
+<div class="card"><h2>বই প্রাপ্যতা</h2><div class="lx-r"><span style="color:#16a34a">✔ উপলব্ধ</span><b style="color:#16a34a">${bn(av)}/${bn(n)}</b></div><div class="lx-b"><i style="width:${pc}%;background:#059669"></i></div><div class="lx-r"><span style="color:#dc2626">⚠ অনুপলব্ধ</span><b style="color:#dc2626">${bn(n-av)}/${bn(n)}</b></div><div class="lx-b"><i style="width:${100-pc}%;background:#dc2626"></i></div><div class="lx-r" style="border-top:1px solid var(--ln);margin-top:4px"><small style="color:var(--mu)">মোট বই</small><b>${bn(n)}</b></div><div class="lx-r"><small style="color:var(--mu)">মোট কপি</small><b>${bn(tot)}</b></div></div>
+<div class="card"><h2>বিভাগ অনুযায়ী বই</h2>${Object.keys(cc).map(k=>{const p=Math.round(cc[k]/tot*100);return `<div class="lx-r"><span class="lx-c">${esc(k)}</span><span>${bn(cc[k])} (${bn(p)}%)</span></div><div class="lx-b"><i style="width:${p}%;background:#bfdbfe"></i></div>`}).join("")||'<div class="em" style="padding:8px">কোনো বই নেই</div>'}</div>
+<div class="card"><h2>দ্রুত পরিসংখ্যান</h2><div class="lx-r"><span>শেলফ দখল</span><b>${bn(occ)}%</b></div><div class="lx-r"><span>গড় জরিমানা</span><b>৳${bn(0)}</b></div><div class="lx-r"><span>সক্রিয় ইস্যু</span><b>${bn(op.length)}</b></div><div class="lx-r"><span>আজকের পুনরায় আইন</span><b>${bn(0)}</b></div></div>
+<div class="lx-t">${LTN.map((t,i)=>`<button class="${i==lt?"on":""}" onclick="lt=${i};lq='';render()">${t}</button>`).join("")}</div>${lt==4?libRep():libTop()+'<div id="ll">'+libList()+'</div>'}`;
 }
-function bookAdd(){ask("নতুন বই",[["t","বইয়ের নাম","text"],["a","লেখক","text"],["c","কপি সংখ্যা","number","1"]],v=>{if(!v[0]){alert("বইয়ের নাম দিন");return false}S.books.push({id:uid(),title:v[0],author:v[1],copies:+v[2]||1,issues:[]})})}
-function issue(id){
- const b=S.books.find(x=>x.id==id);
+function libTop(){
+ const bt=[["libBook()","নতুন বই"],["libIssue()","বই ইস্যু"],["libSale()","নতুন বই ও পণ্য বিক্রয়"],["libGood()","নতুন পণ্য"]][lt];
+ let mini="";
+ if(lt==2){let t=0,q=0;S.libSales.forEach(r=>{t+=r.q*r.p;q+=+r.q});mini=`<div class="lx-m"><small>মোট বিক্রয়</small><b style="color:#16a34a">${money(t)}</b></div><div class="lx-m"><small>বিক্রি পরিমাণ</small><b style="color:var(--pri)">${bn(q)}</b></div>`}
+ if(lt==3){mini=`<div class="lx-m"><small>মোট পণ্য</small><b style="color:var(--pri)">${bn(S.libGoods.length)}</b></div><div class="lx-m"><small>মোট মজুত</small><b style="color:#16a34a">${bn(S.libGoods.reduce((a,g)=>a+(+g.s||0),0))}</b></div>`}
+ return `<div style="display:flex;gap:8px;margin-bottom:12px"><input style="margin:0;flex:1" placeholder="🔍 খুঁজুন..." value="${esc(lq)}" oninput="lq=this.value;libRefresh()"><button class="btn" onclick="${bt[0]}">＋ ${bt[1]}</button></div>${mini?`<div style="display:flex;gap:8px;margin-bottom:12px">${mini}</div>`:""}`;
+}
+function libRefresh(){const e=$("ll");if(e)e.innerHTML=libList()}
+function libItem(t,chips,meta,act){return `<div class="lx-i"><div style="min-width:0"><b>${t}</b> ${chips}<div class="m">${meta}</div></div><button class="x" onclick="${act}">⋯</button></div>`}
+function libList(){
+ let h="";
+ if(lt==0)S.books.forEach(b=>{if(lm(b.title+(b.author||"")+(b.code||"")))h+=libItem(esc(b.title),`<span class="lx-c">${esc(b.cat||"পাঠ্যবই")}</span>${b.cls?`<span class="lx-c n">${esc(b.cls)}</span>`:""}`,`✍ ${esc(b.author||"—")}${b.code?" &nbsp; কোড: "+esc(b.code):""}${b.sh?" &nbsp; ডাক: "+esc(b.sh):""}<br>মোট: ${bn(b.copies)} <span class="lx-c g">উপলব্ধ: ${bn(lAv(b))}</span>`,`libDelBook('${b.id}')`)});
+ if(lt==1){
+  const all=S.books.flatMap(b=>b.issues.map((i,k)=>({b,i,k}))).sort((x,y)=>(y.i.date||"")>(x.i.date||"")?1:-1),od=all.filter(x=>lOd(x.i)).length;
+  h=`<div class="lx-f">${["সব","ইস্যু করা","মেয়াদোত্তীর্ণ ("+bn(od)+")","ফেরত"].map((t,i)=>`<button class="${i==lflt?"on":""}" onclick="lflt=${i};libFlt()">${t}</button>`).join("")}</div>`;
+  all.forEach(x=>{const o=lOd(x.i);if(lflt==1&&x.i.ret||lflt==2&&!o||lflt==3&&!x.i.ret)return;const nm=stuName(x.i.sid);if(!lm(nm+x.b.title))return;
+   h+=libItem(esc(nm),`<span class="lx-c ${x.i.ret?"g":o?"r":""}">${x.i.ret?"ফেরত":o?"মেয়াদোত্তীর্ণ":"ইস্যু করা"}</span>`,`📖 ${esc(x.b.title)}<br>ইস্যু: ${x.i.date}${x.i.due?" &nbsp; শেষ: "+x.i.due:""}`,`libAct('${x.b.id}',${x.k})`)});
+ }
+ if(lt==2)S.libSales.forEach(r=>{if(lm(r.who+r.item))h+=libItem(esc(r.who),`<span class="lx-c g">${money(r.q*r.p)}</span>`,`তারিখ: ${r.d}<br><span class="lx-c n">${esc(r.type)}</span> ${esc(r.item)} &nbsp; ${bn(r.q)} × ${money(r.p)}`,`libDel('libSales','${r.id}')`)});
+ if(lt==3)S.libGoods.forEach(g=>{if(lm(g.n))h+=libItem("📦 "+esc(g.n),`<span class="lx-c">${esc(g.c||"")}</span>`,`একক: ${esc(g.u)} &nbsp; দাম: ${money(g.p)}<br><span class="lx-c g">মজুত: ${bn(g.s)}</span>`,`libDel('libGoods','${g.id}')`)});
+ return lt==1?h:(h||'<div class="lx-e">কোনো তথ্য নেই</div>');
+}
+function libFlt(){const e=$("ll");if(e)e.innerHTML=libList()}
+function libRep(){
+ const MNs=["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
+ const rs=S.libSales.filter(r=>+r.d.slice(0,4)==lry&&(lrb==1||+r.d.slice(5,7)-1==lrm)),inc=rs.reduce((a,r)=>a+r.q*r.p,0),qt=rs.reduce((a,r)=>a+(+r.q),0),lbl=lrb==1?bn(lry):MNs[lrm]+", "+bn(lry);
+ const sec=(t,c)=>{const a=rs.filter(r=>r.type==t);return `<div class="card"><div class="lx-r"><span class="lx-c ${c}">${t}</span><small style="color:var(--mu)">${bn(a.length)} রেকর্ড</small></div><b style="font-size:20px">${bn(a.reduce((x,r)=>x+(+r.q),0))}</b> পরিমাণ<div style="color:#16a34a;font-weight:700">${money(a.reduce((x,r)=>x+r.q*r.p,0))}</div></div>`};
+ return `<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><label class="lb">ভিত্তি</label><select onchange="lrb=+this.value;render()"><option value="0" ${lrb==0?"selected":""}>মাস অনুযায়ী</option><option value="1" ${lrb==1?"selected":""}>বছর অনুযায়ী</option></select></div><div><label class="lb">মাস</label><select onchange="lrm=+this.value;render()">${MNs.map((x,i)=>`<option value="${i}" ${i==lrm?"selected":""}>${x}</option>`).join("")}</select></div><div><label class="lb">সাল</label><input type="number" value="${lry}" onchange="lry=+this.value;render()"></div></div></div>
+<div class="card" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35)"><h2>🗒 সামারি — ${lbl}</h2><div class="lx-g" style="margin:0"><div>মোট আয়<b style="display:block;color:#16a34a;font-size:18px">${money(inc)}</b></div><div>বিক্রি পরিমাণ<b style="display:block;color:#16a34a;font-size:18px">${bn(qt)}</b></div><div>পণ্য প্রকার<b style="display:block;color:#9333ea;font-size:18px">${bn(new Set(rs.map(r=>r.item)).size)}</b></div><div>বিক্রয় সংখ্যা<b style="display:block;color:#d97706;font-size:18px">${bn(rs.length)}</b></div></div></div>
+${sec("বই","")}${sec("পণ্য","g")}${sec("ম্যানুয়াল","y")}
+<div class="card"><h2>📊 পণ্যভিত্তিক বিক্রয় — ${lbl}</h2>${rs.length?rs.map(r=>`<div class="lx-r"><span>${esc(r.item)}</span><b>${money(r.q*r.p)}</b></div>`).join(""):'<div class="lx-e"><b>এই সময়ে কোনো বিক্রয় নেই</b><br><small>নির্দিষ্ট তারিখ বা মাস নির্বাচন করুন</small></div>'}</div>
+<div class="card"><h2>বিক্রয় তালিকা — ${lbl}</h2>${rs.length?rs.map(r=>`<div class="lx-r"><span>${esc(r.who)} · ${r.d}</span><b>${money(r.q*r.p)}</b></div>`).join(""):'<div class="lx-e"><b>কোনো বিক্রয় নেই</b></div>'}</div>`;
+}
+function libNotify(){const o=lOpen().filter(x=>lOd(x.i));alert(o.length?"মেয়াদোত্তীর্ণ ইস্যু:\n"+o.map(x=>stuName(x.i.sid)+" — "+x.b.title+" (শেষ: "+x.i.due+")").join("\n"):"কোনো মেয়াদোত্তীর্ণ ইস্যু নেই")}
+function libBook(){ask("নতুন বই",[["t","বইয়ের নাম","text"],["a","লেখক/প্রকাশক","text"],["k","বিভাগ","text","পাঠ্যবই"],["l","শ্রেণি","text"],["e","কোড","text"],["h","শেলফ/ডাক","text"],["c","কপি সংখ্যা","number","1"]],v=>{if(!v[0]){alert("বইয়ের নাম দিন");return false}S.books.push({id:uid(),title:v[0],author:v[1],cat:v[2],cls:v[3],code:v[4],sh:v[5],copies:+v[6]||1,issues:[]})})}
+function libIssue(){
  if(!S.students.length){alert("আগে শিক্ষার্থী যোগ করুন");return}
- if(b.copies-b.issues.filter(i=>!i.ret).length<=0){alert("বইটির সব কপি ইস্যু করা আছে");return}
- ask("বই ইস্যু",[["s","শিক্ষার্থী","select",S.students.map(s=>[s.id,s.name+" ("+s.cls+")"])]],v=>{b.issues.push({sid:v[0],date:today(),ret:false})});
+ const bs=S.books.filter(b=>lAv(b)>0);if(!bs.length){alert("ইস্যু করার মতো কোনো বই নেই");return}
+ const d=new Date(Date.now()+12096e5),dd=d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+ ask("বই ইস্যু",[["s","শিক্ষার্থী","select",S.students.map(s=>[s.id,s.name+" ("+s.cls+")"])],["b","বই","select",bs.map(b=>[b.id,b.title])],["d","ফেরতের তারিখ","date",dd]],v=>{const b=S.books.find(x=>x.id==v[1]);if(!b||lAv(b)<1){alert("বইটির কপি উপলব্ধ নেই");return false}b.issues.push({sid:v[0],date:today(),due:v[2],ret:false})});
 }
+function libSale(){ask("নতুন বিক্রয়",[["w","ক্রেতার নাম","text"],["t","ধরন","select",[["বই","বই"],["পণ্য","পণ্য"],["ম্যানুয়াল","ম্যানুয়াল"]]],["i","আইটেম","text"],["q","পরিমাণ","number","1"],["p","একক দাম (৳)","number","0"]],v=>{if(!v[0]||!v[2]){alert("নাম ও আইটেম দিন");return false}const q=+v[3]||1;S.libSales.unshift({id:uid(),who:v[0],type:v[1],item:v[2],q,p:+v[4]||0,d:today()});const g=S.libGoods.find(x=>x.n==v[2]);if(v[1]=="পণ্য"&&g)g.s=Math.max(0,(+g.s||0)-q)})}
+function libGood(){ask("নতুন পণ্য",[["n","পণ্যের নাম","text"],["c","বিভাগ","text"],["u","একক","text","পিস"],["p","দাম (৳)","number","0"],["s","মজুত","number","0"]],v=>{if(!v[0]){alert("পণ্যের নাম দিন");return false}S.libGoods.push({id:uid(),n:v[0],c:v[1],u:v[2],p:+v[3]||0,s:+v[4]||0})})}
+function libDel(k,id){if(confirm("মুছে ফেলবেন?")){S[k]=S[k].filter(x=>x.id!=id);save();render()}}
+function libDelBook(id){if(confirm("বইটি মুছবেন? এর সব ইস্যু রেকর্ডও মুছে যাবে।")){S.books=S.books.filter(x=>x.id!=id);save();render()}}
+function libAct(bid,k){const b=S.books.find(x=>x.id==bid),i=b&&b.issues[k];if(!i)return;if(!i.ret){if(confirm("বইটি ফেরত নেওয়া হয়েছে?")){i.ret=true;save();render()}}else if(confirm("রেকর্ডটি মুছবেন?")){b.issues.splice(k,1);save();render()}}
 function retBook(bid,sid){const b=S.books.find(x=>x.id==bid),i=b.issues.find(x=>x.sid==sid&&!x.ret);if(i)i.ret=true;save();render()}
 
 function sms(){
