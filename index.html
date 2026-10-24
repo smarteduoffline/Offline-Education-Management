@@ -142,6 +142,12 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .nt-mn div{padding:9px 10px;font-size:14px;border-radius:8px;display:flex;gap:8px;align-items:center}
 .nt-ck{width:22px;height:22px;border-radius:7px;border:2px solid var(--ln);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex:none}.nt-ck.on{background:var(--pri);border-color:var(--pri)}
 .npf{position:fixed;right:16px;bottom:84px;width:48px;height:48px;border-radius:50%;border:0;background:#475569;color:#fff;font-size:20px;box-shadow:0 4px 14px #0004;z-index:4}
+
+nav button.bk{margin:6px 8px;padding:6px 0;border:1.5px solid #9db0ff;border-radius:12px;background:rgba(76,110,245,.07);color:var(--pri);font-weight:600;font-size:13px}
+nav button.bk b{display:inline;font-size:16px}
+.hmenu{position:absolute;top:14px;right:14px;width:46px;height:46px;border-radius:10px;border:0;background:#fff;color:#2b3350;font-size:24px;line-height:1;box-shadow:0 2px 8px #0003;z-index:2}
+.mq{display:inline-block;white-space:nowrap;padding-left:100%;animation:mqs 15s linear infinite}
+@keyframes mqs{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 </style>
 </head>
 <body>
@@ -159,13 +165,21 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const money=n=>"৳"+bn(Number(n||0).toLocaleString("en-US"));
 const $=id=>document.getElementById(id);
 let tab="home",q="",cls="",adate=today();
-const TABS=[["home","🏠","হোম"],["att","✅","উপস্থিতি"],["stu","👥","শিক্ষার্থী"],["fee","👛","ফি"],["more","☰","আরও"]];
+const TABS=[["home","🏠","হোম"],["att","✅","উপস্থিতি"],["stu","👥","শিক্ষার্থী"],["fee","👛","ফি"],["back","←","ফিরে যান"]];
 const stuName=id=>(S.students.find(s=>s.id==id)||{}).name||"—";
 const due=f=>f.amt-f.paid;
 
+let hist=[],curKey="",goingBack=false;
 function render(){
- $("nv").innerHTML=TABS.map(t=>`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
+ const k=JSON.stringify([tab,sub,curExam,profId]);if(curKey&&k!==curKey&&!goingBack){hist.push(curKey);if(hist.length>60)hist.shift()}curKey=k;goingBack=false;
+ $("nv").innerHTML=TABS.map(t=>t[0]=="back"?`<button class="bk" onclick="goBack()"><b>${t[1]}</b> ${t[2]}</button>`:`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
  $("v").innerHTML=({home,att,stu,fee,more})[tab]();
+}
+function goBack(){
+ if($("mt")){closeM();return}
+ if(hist.length){const a=JSON.parse(hist.pop());goingBack=true;tab=a[0];sub=a[1];curExam=a[2];profId=a[3];q="";render();$("v").scrollTop=0;return}
+ if(tab!="home"){go("home");return}
+ toast("আপনি হোম পেইজে আছেন")
 }
 function go(t){tab=t;q="";sub="";curExam="";profId="";render();$("v").scrollTop=0}
 
@@ -174,7 +188,13 @@ const p2=n=>String(n).padStart(2,"0");
 function logA(ty,cat,tx){S.log.unshift({t:Date.now(),ty,cat,tx});S.log=S.log.slice(0,60)}
 function autoFees(){const d=new Date(),ym=mk(d.getFullYear(),d.getMonth());S.students.forEach(s=>{if(s.status=="নিষ্ক্রিয়"||!(+s.monthlyFee>0))return;if(!S.fees.some(f=>f.sid==s.id&&f.auto==ym))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+MN[d.getMonth()]+" "+bn(d.getFullYear()),amt:+s.monthlyFee,paid:0,date:today(),auto:ym,ym,type:"মাসিক বেতন"})})}
 function bnDate(d){const Y=d.getFullYear(),st=new Date(d<new Date(Y,3,14)?Y-1:Y,3,14),sy=st.getFullYear(),n=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-st)/864e5),lp=(y=>y%4==0&&(y%100!=0||y%400==0))(sy+1),L=[31,31,31,31,31,30,30,30,30,30,lp?30:29,30],M=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];let m=0,r=n;while(m<11&&r>=L[m]){r-=L[m];m++}return bn(r+1)+" "+M[m]+", "+bn(sy-593)+" বাংলা"}
-function hijri(d){try{return new Intl.DateTimeFormat("bn-BD-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric"}).formatToParts(d).filter(x=>x.type!="era").map(x=>x.value).join("").trim()+" হিজরী"}catch(e){return ""}}
+const HJM=["মুহাররম","সফর","রবিউল আউয়াল","রবিউস সানি","জমাদিউল আউয়াল","জমাদিউস সানি","রজব","শাবান","রমজান","শাওয়াল","জিলকদ","জিলহজ"];
+function hjTab(d){const jdn=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)+2440588;let l=jdn-1948440+10632;const n=Math.floor((l-1)/10631);l=l-10631*n+354;const j=Math.floor((10985-l)/5316)*Math.floor(50*l/17719)+Math.floor(l/5670)*Math.floor(43*l/15238);l=l-Math.floor((30-j)/15)*Math.floor(17719*j/50)-Math.floor(j/16)*Math.floor(15238*j/43)+29;const m=Math.floor(24*l/709);return[l-Math.floor(709*m/24),m,30*n+j-30]}
+function hijri(d){
+ const dd=new Date(d.getTime()+((+(S.set&&S.set.hj)||0))*864e5);let r=hjTab(dd);
+ try{const p=new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn",{day:"numeric",month:"numeric",year:"numeric"}).formatToParts(dd),g=t=>+(p.find(x=>x.type==t)||{}).value,y=g("year"),m=g("month"),da=g("day");
+  if(y==r[2]&&Math.abs(m-r[1])<=1&&da>=1&&da<=30&&Math.abs(da-r[0])<=2)r=[da,m,y]}catch(e){}
+ return bn(r[0])+" "+HJM[r[1]-1]+", "+bn(r[2])+" হিজরী"}
 function donut(segs,z,sw,t1,t2,c1){const r=(z-sw)/2,C=2*Math.PI*r,tot=segs.reduce((a,x)=>a+x.v,0);let off=0,cs="";
  if(!tot)cs=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="#e3e7f0" stroke-width="${sw}"/>`;
  else segs.forEach(x=>{if(x.v>0){const l=C*x.v/tot;cs+=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="${x.c}" stroke-width="${sw}" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${z/2} ${z/2})"/>`;off+=l}});
@@ -201,9 +221,9 @@ function home(){
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
  return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="nav('more','notice')">🔔${nt.length?`<b class="bd">${bn(nt.length)}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
- <div class="hero"><div style="display:flex;gap:12px"><div class="lg">${sc.logo?`<img src="${sc.logo}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
+ <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${sc.logo}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
  <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${d.toLocaleTimeString("bn-BD")}</div><small>📅 ${d.toLocaleDateString("bn-BD",{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
- <div class="tick"><span class="live">● লাইভ</span><span>${S.set.bar?esc(S.set.bar):nt.length?esc(nt[0].title):"কোনো নোটিশ নেই!"}</span></div></div>
+ <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
  <div class="g2"><div class="st" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><span class="ic">👥</span><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#a855f7,#7c3aed)"><span class="ic">🎓</span><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#10b981,#059669)"><span class="ic">📅</span><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48)"><span class="ic">⚠️</span><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
  <div class="g2" style="margin-bottom:6px"><div class="card" style="margin:0;background:#e0f2fe;border-left:3px solid #0ea5e9;padding:10px"><small style="color:#0369a1">📖 আজকের পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center;color:#0369a1">${tex.length?tex.map(e=>esc(e.name)+" — "+esc(e.subject||"")+" ("+esc(e.cls)+")").join(", "):"আজ কোনো পরীক্ষা নেই"}</div></div><div class="card" style="margin:0;background:#e0e7ff;border-left:3px solid #4f46e5;padding:10px"><small style="color:#3730a3">আসন্ন পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center">${upc.length?esc(upc[0].name)+" — "+esc(upc[0].subject||"")+" · "+bn(upc[0].date):"কোনো আসন্ন পরীক্ষা নেই"}</div></div></div>
  <div style="text-align:center;margin-bottom:12px"><span class="lk" onclick="nav('more','xr')">সব পরীক্ষা দেখুন</span></div>
@@ -1641,9 +1661,9 @@ function stGen(){
  const th=S.set.theme,M=[["auto","🔄","অটো মোড"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
  return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো মোডে সময় অনুযায়ী (সকাল ৬টা–বিকাল ৬টা ডে, রাত নাইট) স্বয়ংক্রিয় পরিবর্তন হবে</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
 <div class="card"><h2>🌐 ভাষা / Language</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপের ভাষা নির্বাচন করুন</div><div class="st-lg"><div class="on"><span style="font-size:24px">🇧🇩</span><br>বাংলা<br><u style="text-decoration:none;background:var(--pri);color:#fff;border-radius:6px;font-size:10px;padding:1px 8px">সক্রিয়</u></div><div class="off" onclick="alert('English ইন্টারফেস শীঘ্রই আসছে')"><span style="font-size:24px">🇬🇧</span><br>English<br><small style="font-weight:400;color:var(--mu)">শীঘ্রই</small></div></div></div>
-<div class="card"><h2>📅 তারিখ প্রদর্শন</h2>${stTg("হোমে আরবি ও বাংলা তারিখ দেখান","বন্ধ থাকলে হোমে শুধু সময় ও ইংরেজি তারিখ দেখাবে","dates")}</div>
+<div class="card"><h2>📅 তারিখ প্রদর্শন</h2>${stTg("হোমে আরবি ও বাংলা তারিখ দেখান","বন্ধ থাকলে হোমে শুধু সময় ও ইংরেজি তারিখ দেখাবে","dates")}<label class="lb">হিজরী তারিখ সমন্বয় (চাঁদ দেখা অনুযায়ী)</label><select onchange="stSet('hj',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.hj||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select></div>
 <div class="card"><h2>🧩 ইন্টারফেস এলিমেন্ট</h2>${stTg("গ্রিটিং মেসেজ","হোমের ওপরে শুভ সকাল/দুপুর/বিকাল/রাত্রি দেখান","greet")}${stTg("নোটিফিকেশন বেল","হোমের ওপরে নোটিশ বেল আইকন দেখান","bell")}${stTg("থিম টগল","হোমের ওপরে ডার্ক/লাইট মোড টগল বাটন দেখান","tbtn")}</div>`}
-function stBar(){return `<div class="card"><h2>📢 লাইভ স্কুল বার</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">এখানে কিছু লিখলে তা হোমের "লাইভ" বারে নোটিশের জায়গায় দেখাবে। খালি রাখলে সর্বশেষ নোটিশ দেখাবে।</div><label class="lb">স্কুল টেক্সট</label><textarea id="sbt" rows="3" placeholder="যেমন: আগামীকাল স্কুল বন্ধ থাকবে...">${esc(S.set.bar)}</textarea><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="S.set.bar=$('sbt').value.trim();save();alert('সেট করা হয়েছে')">📢 সেট করুন</button><button class="btn o" onclick="S.set.bar='';save();render()">মুছুন</button></div></div>`}
+function stBar(){return `<div class="card"><h2>📢 লাইভ স্কুল বার</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">এখানে কিছু লিখলে তা হোমের "লাইভ" বারে নোটিশের জায়গায় ডান থেকে বামে স্ক্রল করে দেখাবে। খালি রাখলে সর্বশেষ নোটিশ দেখাবে।</div><label class="lb">স্কুল টেক্সট</label><textarea id="sbt" rows="3" placeholder="যেমন: আগামীকাল স্কুল বন্ধ থাকবে...">${esc(S.set.bar)}</textarea><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="S.set.bar=$('sbt').value.trim();save();alert('সেট করা হয়েছে')">📢 সেট করুন</button><button class="btn o" onclick="S.set.bar='';save();render()">মুছুন</button></div></div>`}
 function stCfg(){
  const sc=S.school,tc=S.teachers.length+S.staff.length;
  if(stEd)return `<div class="card"><h2>প্রতিষ্ঠানের তথ্য সম্পাদনা</h2><div class="row" style="border:0" onclick="pickLogo()"><div class="av" style="width:52px;height:52px">${sc.logo?`<img class="av" style="width:52px;height:52px" src="${sc.logo}">`:"🕌"}</div><div class="f"><span style="color:var(--pri)">লোগো আপলোড করুন</span></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">
