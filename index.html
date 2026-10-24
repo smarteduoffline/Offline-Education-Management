@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3b5bdb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="স্মার্ট এডু">
 <title>স্মার্ট এডুকেশন সিস্টেম</title>
 <style>
 :root{--bg:#f3f5fa;--card:#fff;--tx:#1d2433;--mu:#6b7385;--pri:#3b5bdb;--gr:#16a34a;--rd:#e11d48;--pu:#7c3aed;--ln:#e3e7f0}
@@ -1601,7 +1608,7 @@ function nsAll(on){nsM.sel=on?Object.fromEntries(nsM.ids.map(i=>[i,1])):{};nsDra
 function nsWA(){if(!nsM.txt.trim()){alert("বার্তা লিখুন");return}const id=nsM.ids.find(i=>nsM.sel[i]&&!nsM.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}nsM.done[id]=1;const x=pOf(id);sendTo(x,"wa",fillT(nsM.txt,x),"নোটিশ");setTimeout(nsDraw,400)}
 function nsSMS(){const t=nsM.txt.replace(/\{[^}]+\}/g,"").trim();if(!t){alert("বার্তা লিখুন");return}const xs=nsM.ids.filter(i=>nsM.sel[i]).map(pOf).filter(Boolean);if(!xs.length){alert("কাউকে নির্বাচন করা হয়নি");return}
  xs.forEach(x=>S.smslog.unshift({t:Date.now(),sid:x.id,ch:"sms",tx:t,ty:"নোটিশ"}));S.smslog=S.smslog.slice(0,300);save();location.href="sms:"+xs.map(x=>x.phone).join(",")+"?body="+encodeURIComponent(t)}
-const APP_VER="v2.5.0",DEV_MAIL="tofsirahmedparvez@gmail.com",DEV_PH="01918427848",GH_URL="https://github.com/smarteduoffline/SEMS";
+const APP_VER="v2.5.0",DEV_MAIL="tofsirahmedparvez@gmail.com",DEV_PH="01918427848",GH_URL="https://github.com/smarteduoffline/Offline-Education-Management",APP_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 const HTABS=[["ha","এপ সম্পর্কে"],["hg","ইউজার গাইডলাইন"],["hf","ফিডব্যাক"]];
 const GCATS=["পরিচিতি","ড্যাশবোর্ড","শিক্ষার্থী","উপস্থিতি","ফি","ফাইন্যান্স","পরীক্ষা","লাইব্রেরি","মাদ্রাসা","অন্যান্য"];
 const FBT=["মতামত","সমস্যা/বাগ","পরামর্শ","অন্যান্য"];
@@ -1614,7 +1621,7 @@ function hAbout(){
 <div class="g2">${st.map(x=>`<div class="st-cn" style="background:rgba(59,91,219,.08)"><b style="color:var(--pri)">${bn(x[1])}</b><small>${x[0]}</small></div>`).join("")}</div>
 <div style="font-weight:700;margin:14px 0 8px">প্রধান বৈশিষ্ট্য</div>${ft.map(x=>`<div class="hp-f"><i>${x[0]}</i><div><b>${x[1]}</b><small>${x[2]}</small></div></div>`).join("")}
 <div class="card" style="margin-top:14px"><h2>এপটি সম্পর্কে</h2><p style="font-size:14px;line-height:1.8;color:var(--mu)">এই এপ্লিকেশনটি <b style="color:var(--tx)">আধুনিক শিক্ষা প্রতিষ্ঠানগুলির জন্য</b> একটি সম্পূর্ণ ডিজিটাল সমাধান প্রদান করে। শিক্ষক, প্রশাসক এবং অভিভাবকদের জন্য এটি একটি কেন্দ্রীভূত প্ল্যাটফর্ম।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)">আমরা বিশ্বাস করি যে প্রযুক্তি শিক্ষাকে আরও সহজ, কার্যকর এবং স্বচ্ছ করতে পারে। এই লক্ষ্যে আমরা ক্রমাগত নতুন ফিচার ও উন্নতি যোগ করছি।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)"><b style="color:var(--tx)">মূল লক্ষ্য:</b> প্রতিটি প্রতিষ্ঠানকে ডিজিটাল যাত্রায় সফল হতে সাহায্য করা এবং শিক্ষার মান উন্নয়নে ভূমিকা রাখা।</p></div>
-<div class="hp-v"><small style="color:var(--mu)">বর্তমান সংস্করণ</small><div style="font-size:26px;font-weight:700;color:var(--pri);margin:2px 0 8px">${APP_VER}</div><div style="margin-bottom:12px">${["বাংলা সমর্থিত","অফলাইন-ভিত্তিক","মোবাইল-বান্ধব","নিরাপদ"].map(t=>`<span class="pl" style="background:var(--card);border:1px solid var(--ln);color:var(--mu)">${t}</span>`).join("")}</div><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln);margin-bottom:8px" onclick="openExt('${GH_URL}')">GitHub</button><button class="btn" style="width:100%" onclick="fbForm()">💬 Feedback / সমস্যা জানান</button></div>
+<div class="hp-v"><small style="color:var(--mu)">বর্তমান সংস্করণ</small><div style="font-size:26px;font-weight:700;color:var(--pri);margin:2px 0 8px">${APP_VER}</div><div style="margin-bottom:12px">${["বাংলা সমর্থিত","অফলাইন-ভিত্তিক","মোবাইল-বান্ধব","নিরাপদ"].map(t=>`<span class="pl" style="background:var(--card);border:1px solid var(--ln);color:var(--mu)">${t}</span>`).join("")}</div><button class="btn g" style="width:100%;margin-bottom:8px" onclick="installApp()">📲 ফোনে অ্যাপ ইনস্টল করুন</button><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln);margin-bottom:8px" onclick="openExt('${GH_URL}')">GitHub</button><button class="btn" style="width:100%" onclick="fbForm()">💬 Feedback / সমস্যা জানান</button></div>
 <div class="card" style="margin-top:14px;background:#fef9e7;border-left:4px solid #f59e0b;color:#78350f;font-size:13px;line-height:1.7"><b>গোপনীয়তা এবং নিরাপত্তা:</b> আপনার সমস্ত তথ্য এই ডিভাইসেই সংরক্ষিত থাকে এবং আপনার অনুমতি ছাড়া কোথাও পাঠানো হয় না। নিয়মিত ব্যাকআপ রাখুন।</div>
 <div class="hp-dev"><div style="font-weight:700">App Builder</div><b>Tofsir Ahamed Parvez</b><div style="font-size:12px">mail: ${DEV_MAIL} &nbsp; Phone: ${DEV_PH}</div></div>`}
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:""}
@@ -1920,6 +1927,15 @@ function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=
 function modal(h){closeM();const m=document.createElement("div");m.className="mt";m.id="mt";m.onclick=e=>{if(e.target==m)closeM()};m.innerHTML="<div>"+h+"</div>";document.body.appendChild(m)}
 function closeM(){const m=$("mt");if(m)m.remove()}
 migrateExams();autoFees();save();applyTheme();render();lockCheck();setInterval(()=>{if(S.set.theme=="auto")applyTheme()},60000);
+let dip=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e});
+window.addEventListener("appinstalled",()=>{dip=null;toast("✅ অ্যাপ ইনস্টল হয়েছে")});
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)&&!window.Capacitor)navigator.serviceWorker.register("sw.js").catch(()=>{});
+async function installApp(){
+ if(window.matchMedia&&matchMedia("(display-mode: standalone)").matches){toast("আপনি ইতিমধ্যে অ্যাপে আছেন");return}
+ if(dip){dip.prompt();try{await dip.userChoice}catch(e){}dip=null;return}
+ modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2>📲 ফোনে ইনস্টল করুন</h2><div style="font-size:14px;line-height:1.9;margin:8px 0">১. Chrome-এ GitHub-এর কোড পেইজ নয়, <b>অ্যাপের লিংক</b> খুলুন:<br><span style="color:var(--pri);word-break:break-all">${APP_URL}</span><br>২. একবার ইন্টারনেটসহ পেইজ পুরো লোড হতে দিন।<br>৩. Chrome-এর ⋮ মেনু → <b>Install app</b> (বা <b>Add to Home screen</b>) চাপুন।</div><button class="btn" style="width:100%" onclick="openExt(APP_URL)">অ্যাপের লিংক খুলুন</button>`)
+}
 </script>
 </body>
 </html>
