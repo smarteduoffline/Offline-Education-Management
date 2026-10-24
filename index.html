@@ -126,6 +126,13 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .st-kv{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--ln)}.st-kv:last-child{border:0}.st-kv small{display:block;color:var(--mu);font-size:12px}
 .st-cn{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px;text-align:center}.st-cn b{display:block;font-size:22px}.st-cn small{color:var(--mu);font-size:12px}
 .st-rd{border-color:#fca5a5!important}
+
+.hp-f{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-bottom:10px}
+.hp-f i{width:40px;height:40px;border-radius:10px;background:rgba(59,91,219,.12);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:18px;flex:none}
+.hp-f b{display:block;font-size:14px}.hp-f small{color:var(--mu);font-size:12px}
+.hp-dev{background:#000;color:#fff;border-radius:14px;padding:22px 12px;text-align:center;margin-top:14px}
+.hp-dev b{display:block;font-size:20px;color:#7dd3fc;margin:4px 0 8px}
+.hp-v{background:rgba(59,91,219,.08);border:1px solid var(--ln);border-radius:14px;padding:16px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -133,7 +140,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 <nav id="nv"></nav></div>
 <script>
 const KEY="smart-edu-v1";
-const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],users:[],set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
+const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],users:[],guides:[],feedback:[],set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};
 const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -164,7 +171,7 @@ function donut(segs,z,sw,t1,t2,c1){const r=(z-sw)/2,C=2*Math.PI*r,tot=segs.reduc
  else segs.forEach(x=>{if(x.v>0){const l=C*x.v/tot;cs+=`<circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="${x.c}" stroke-width="${sw}" stroke-dasharray="${l} ${C-l}" stroke-dashoffset="${-off}" transform="rotate(-90 ${z/2} ${z/2})"/>`;off+=l}});
  return `<svg viewBox="0 0 ${z} ${z}" width="${z}" height="${z}" style="display:block;margin:4px auto">${cs}<text x="50%" y="${t2?"50%":"56%"}" text-anchor="middle" font-size="${t2?17:22}" font-weight="700" fill="${c1||"currentColor"}">${t1}</text>${t2?`<text x="50%" y="63%" text-anchor="middle" font-size="9" fill="#6b7385">${t2}</text>`:""}</svg>`}
 function nav(t,sb){closeM();tab=t;sub=sb||"";curExam="";q="";profId="";render();$("v").scrollTop=0}
-function drawer(){modal(`<h2 style="margin-bottom:6px">${esc(S.school.name)}</h2>`+[["home","","🏠","ড্যাশবোর্ড"],["stu","","👥","শিক্ষার্থী"],["att","","✅","উপস্থিতি"],["fee","","👛","ফি"]].concat(MENU.map(m=>["more",m[0],m[1],m[2]])).map(x=>`<div class="row" onclick="nav('${x[0]}','${x[1]}')"><span style="font-size:20px">${x[2]}</span><div class="f">${x[3]}</div></div>`).join(""))}
+function drawer(){modal(`<h2 style="margin-bottom:6px">${esc(S.school.name)}</h2>`+[["home","","🏠","ড্যাশবোর্ড"],["stu","","👥","শিক্ষার্থী"],["att","","✅","উপস্থিতি"],["fee","","👛","ফি"]].concat(MENU.map(m=>["more",m[0],m[1],m[2]])).map(x=>`<div class="row" onclick="nav('${x[0]}','${x[1]}')"><span style="font-size:20px">${x[2]}</span><div class="f">${x[3]}</div></div>`).join("")+`<div class="row" onclick="const e=$('dhl');e.style.display=e.style.display=='none'?'block':'none'"><span style="font-size:20px">❓</span><div class="f">সাহায্য</div><span style="color:var(--mu)">⌄</span></div><div id="dhl" style="display:none;padding-left:14px">${[["ha","ℹ️","এপ সম্পর্কে"],["hg","🎥","ইউজার গাইডলাইন"],["hf","💬","ফিডব্যাক"]].map(x=>`<div class="row" onclick="nav('more','${x[0]}')"><span style="font-size:18px">${x[1]}</span><div class="f" style="font-size:14px">${x[2]}</div></div>`).join("")}</div>`)}
 function pickLogo(){photoCb=u=>{S.school.logo=u;save();render()};pickPhoto()}
 function saveSchool(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("sn"),addr:g("sa"),est:g("se"),year:g("sy"),director:g("sd"),phone:g("sp")};save();alert("সংরক্ষিত হয়েছে")}
 
@@ -1429,8 +1436,8 @@ function slEditSave(){const r=S.sal.find(x=>x.id==slC.rid);if(r.type!="adv")r.ba
 function slDel(id){if(!confirm("এই রেকর্ড মুছবেন?"))return;S.sal=S.sal.filter(x=>x.id!=id);save();render()}
 const MENU=[["xh","📝","পরীক্ষা ও ফলাফল"],["fh","💰","ফিন্যান্স ও হিসাব"],["cp","📘","শ্রেণী ও পাঠ্য"],["lib","📖","লাইব্রেরি"],["sms","💬","SMS (অভিভাবক)"],["teach","🎓","শিক্ষক"],["staff","🧑‍💼","কর্মকর্তা/কর্মচারী"],["notice","🔔","নোটিশ বোর্ড"],["set","⚙️","সেটিংস ও ব্যাকআপ"]];
 function more(){
- if(!sub)return `<div class="g2">${MENU.map(m=>`<div class="card" style="text-align:center;margin:0" onclick="sub='${m[0]}';render()"><div style="font-size:28px">${m[1]}</div><div style="font-size:14px;margin-top:6px">${m[2]}</div></div>`).join("")}</div>`;
- return `<button class="btn o s" style="margin-bottom:12px" onclick="${sub=="exam"&&curExam?"curExam=''":["rt","ev","hw","bk"].includes(sub)?"sub='cp'":["xr","xc","xt","xs"].includes(sub)?"sub='xh'":["ie","sl","pd","py"].includes(sub)?"sub='fh'":"sub=''"};render()">← ফিরে যান</button>`+({cp:clsHub,xh:xHub,xr,xc,xt,xs,rt,ev,hw,bk,fh:fHub,ie,sl,pd:pdash,py,lib,sms,teach,staff,notice,set:setng})[sub]();
+ if(!sub)return `<div class="g2">${MENU.concat([["ha","❓","সাহায্য"]]).map(m=>`<div class="card" style="text-align:center;margin:0" onclick="sub='${m[0]}';render()"><div style="font-size:28px">${m[1]}</div><div style="font-size:14px;margin-top:6px">${m[2]}</div></div>`).join("")}</div>`;
+ return `<button class="btn o s" style="margin-bottom:12px" onclick="${sub=="exam"&&curExam?"curExam=''":["rt","ev","hw","bk"].includes(sub)?"sub='cp'":["xr","xc","xt","xs"].includes(sub)?"sub='xh'":["ie","sl","pd","py"].includes(sub)?"sub='fh'":"sub=''"};render()">← ফিরে যান</button>`+({cp:clsHub,xh:xHub,xr,xc,xt,xs,rt,ev,hw,bk,fh:fHub,ie,sl,pd:pdash,py,lib,sms,teach,staff,notice,set:setng,ha:hAbout,hg:hGuide,hf:hFeed})[sub]();
 }
 let tq="",sq="",sDept="",sStat="",sView="card";
 const FD=(k,l,t,o,r,p,full)=>({k,l,t,o,r,p,full});
@@ -1523,6 +1530,49 @@ function staff(){
  <div id="slst" ${sView=="list"?'class="card ov" style="padding:6px"':""}>${sView=="list"?pTable("staff",l):staffCards(l)}</div>`;
 }
 function notice(){return `<div class="card"><h2>নোটিশ বোর্ড</h2>${S.notices.slice().reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div><button class="btn r s" onclick="S.notices=S.notices.filter(x=>x.id!='${n.id}');save();render()">মুছুন</button></div>`).join("")}<button class="btn o s" onclick="nForm()">+ নোটিশ দিন</button></div>`}
+const APP_VER="v2.5.0",DEV_MAIL="tofsirahmedparvez@gmail.com",DEV_PH="01918427848",GH_URL="https://github.com/smarteduoffline/SEMS";
+const HTABS=[["ha","এপ সম্পর্কে"],["hg","ইউজার গাইডলাইন"],["hf","ফিডব্যাক"]];
+const GCATS=["পরিচিতি","ড্যাশবোর্ড","শিক্ষার্থী","উপস্থিতি","ফি","ফাইন্যান্স","পরীক্ষা","লাইব্রেরি","মাদ্রাসা","অন্যান্য"];
+const FBT=["মতামত","সমস্যা/বাগ","পরামর্শ","অন্যান্য"];
+let guQ="",guC="",guPlay="",fbFiles=[];
+const hTabs=()=>`<div class="st-tabs" style="margin-bottom:12px">${HTABS.map(t=>`<button class="${sub==t[0]?"on":""}" onclick="sub='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`;
+function hAbout(){
+ const st=[["শিক্ষার্থী",S.students.length],["শিক্ষক/কর্মচারী",S.teachers.length+S.staff.length],["ফি লেনদেন",S.fees.length],["বই",S.books.length]];
+ const ft=[["👥","শিক্ষার্থী ব্যবস্থাপনা","সম্পূর্ণ ছাত্র-ছাত্রী রেকর্ড এবং তথ্য সংরক্ষণ"],["📊","ফলাফল ব্যবস্থাপনা","পরীক্ষার নম্বর এবং গ্রেড ট্র্যাকিং"],["⚡","স্বয়ংক্রিয় অ্যালার্ট","বাবা-মায়েদের জন্য স্বয়ংক্রিয় বিজ্ঞপ্তি ও SMS"],["💰","আর্থিক ব্যবস্থাপনা","বেতন, আয়-ব্যয় এবং পেমেন্ট ট্র্যাকিং"],["✅","উপস্থিতি ট্র্যাকিং","শিক্ষার্থী এবং শিক্ষক উপস্থিতি রেকর্ড"],["🤍","ব্যবহারকারী-বান্ধব","সহজ এবং আকর্ষণীয় ইন্টারফেস"]];
+ return hTabs()+`<div style="font-size:20px;font-weight:700">শিক্ষা ব্যবস্থাপনা সমাধান</div><div style="color:var(--mu);font-size:13px;margin-bottom:12px">আধুনিক, নির্ভরযোগ্য এবং সম্পূর্ণ স্কুল ম্যানেজমেন্ট সিস্টেম</div>
+<div class="g2">${st.map(x=>`<div class="st-cn" style="background:rgba(59,91,219,.08)"><b style="color:var(--pri)">${bn(x[1])}</b><small>${x[0]}</small></div>`).join("")}</div>
+<div style="font-weight:700;margin:14px 0 8px">প্রধান বৈশিষ্ট্য</div>${ft.map(x=>`<div class="hp-f"><i>${x[0]}</i><div><b>${x[1]}</b><small>${x[2]}</small></div></div>`).join("")}
+<div class="card" style="margin-top:14px"><h2>এপটি সম্পর্কে</h2><p style="font-size:14px;line-height:1.8;color:var(--mu)">এই এপ্লিকেশনটি <b style="color:var(--tx)">আধুনিক শিক্ষা প্রতিষ্ঠানগুলির জন্য</b> একটি সম্পূর্ণ ডিজিটাল সমাধান প্রদান করে। শিক্ষক, প্রশাসক এবং অভিভাবকদের জন্য এটি একটি কেন্দ্রীভূত প্ল্যাটফর্ম।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)">আমরা বিশ্বাস করি যে প্রযুক্তি শিক্ষাকে আরও সহজ, কার্যকর এবং স্বচ্ছ করতে পারে। এই লক্ষ্যে আমরা ক্রমাগত নতুন ফিচার ও উন্নতি যোগ করছি।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)"><b style="color:var(--tx)">মূল লক্ষ্য:</b> প্রতিটি প্রতিষ্ঠানকে ডিজিটাল যাত্রায় সফল হতে সাহায্য করা এবং শিক্ষার মান উন্নয়নে ভূমিকা রাখা।</p></div>
+<div class="hp-v"><small style="color:var(--mu)">বর্তমান সংস্করণ</small><div style="font-size:26px;font-weight:700;color:var(--pri);margin:2px 0 8px">${APP_VER}</div><div style="margin-bottom:12px">${["বাংলা সমর্থিত","অফলাইন-ভিত্তিক","মোবাইল-বান্ধব","নিরাপদ"].map(t=>`<span class="pl" style="background:var(--card);border:1px solid var(--ln);color:var(--mu)">${t}</span>`).join("")}</div><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln);margin-bottom:8px" onclick="openExt('${GH_URL}')">GitHub</button><button class="btn" style="width:100%" onclick="fbForm()">💬 Feedback / সমস্যা জানান</button></div>
+<div class="card" style="margin-top:14px;background:#fef9e7;border-left:4px solid #f59e0b;color:#78350f;font-size:13px;line-height:1.7"><b>গোপনীয়তা এবং নিরাপত্তা:</b> আপনার সমস্ত তথ্য এই ডিভাইসেই সংরক্ষিত থাকে এবং আপনার অনুমতি ছাড়া কোথাও পাঠানো হয় না। নিয়মিত ব্যাকআপ রাখুন।</div>
+<div class="hp-dev"><div style="font-weight:700">App Builder</div><b>Tofsir Ahamed Parvez</b><div style="font-size:12px">mail: ${DEV_MAIL} &nbsp; Phone: ${DEV_PH}</div></div>`}
+function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:""}
+function hGuide(){
+ const cs=[...new Set(S.guides.map(g=>g.cat))];
+ return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div><button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>
+<input placeholder="🔍 গাইড খুঁজুন..." value="${esc(guQ)}" oninput="guQ=this.value;guLst()"><div class="lx-f" style="margin-top:8px"><button class="${!guC?"on":""}" onclick="guC='';guLst(true)">সব</button>${cs.map(c=>`<button class="${guC==c?"on":""}" onclick="guC=this.dataset.c;guLst(true)" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gul">${guH()}</div>`}
+function guH(){
+ const k=guQ.trim().toLowerCase(),L=S.guides.filter(g=>(!guC||g.cat==guC)&&(!k||(g.t+(g.desc||"")).toLowerCase().includes(k)));
+ if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br><small>নতুন গাইড যোগ করুন</small><br><button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button></div>`;
+ return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div><button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button></div>
+${guPlay==g.id&&y?`<iframe src="https://www.youtube-nocookie.com/embed/${y}" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:10px" allowfullscreen></iframe>`:""}<button class="btn o s" style="margin-top:10px" onclick="${y?`guPlay=guPlay=='${g.id}'?'':'${g.id}';guLst()`:`openExt(S.guides.find(x=>x.id=='${g.id}').url)`}">${y?(guPlay==g.id?"⏹ বন্ধ করুন":"▶ ভিডিও দেখুন"):"🔗 লিংক খুলুন"}</button></div>`}).join("")}
+function guLst(full){if(full){render();return}const e=$("gul");if(e)e.innerHTML=guH()}
+function guForm(id){const g=id?S.guides.find(x=>x.id==id):{};
+ modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center">${id?"গাইড সম্পাদনা":"নতুন গাইড যোগ করুন"}</h2>${stF("শিরোনাম *","gu_t",g.t||"")}${stF("ভিডিও লিংক *","gu_u",g.url||"")}<div class="hint" style="margin:-4px 0 8px">YouTube লিংক হলে সরাসরি ভেতরে প্লে হবে</div><label class="lb">বিভাগ</label><select id="gu_c">${GCATS.map(c=>`<option ${g.cat==c?"selected":""}>${c}</option>`).join("")}</select><label class="lb">বিবরণ</label><textarea id="gu_d" rows="3" placeholder="ভিডিও সম্পর্কে সংক্ষিপ্ত বিবরণ">${esc(g.desc||"")}</textarea><button class="btn" style="width:100%" onclick="guSave('${id||""}')">সংরক্ষণ</button><button class="btn o" style="width:100%;margin-top:8px;color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button>`)}
+function guSave(id){const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
+ const o={t,url:/^https?:\/\//i.test(u)?u:"https://"+u,cat:$("gu_c").value,desc:$("gu_d").value.trim()};
+ if(id)Object.assign(S.guides.find(x=>x.id==id),o);else S.guides.unshift({id:uid(),date:today(),...o});save();closeM();render()}
+function guMenu(id){const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
+function hFeed(){
+ return hTabs()+`<div style="font-size:20px;font-weight:700">ফিডব্যাক</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">মতামত, সমস্যা বা পরামর্শ ডেভেলপারকে জানান</div><button class="btn" style="margin-bottom:12px" onclick="fbForm()">＋ নতুন ফিডব্যাক</button>`+(S.feedback.map(f=>`<div class="card"><div style="display:flex;justify-content:space-between"><span class="lx-c">${esc(f.ty)}</span><small style="color:var(--mu)">${bn(f.date)}</small></div><div style="font-size:14px;margin:8px 0;white-space:pre-wrap">${esc(f.tx)}</div>${f.files&&f.files.length?`<div style="font-size:12px;color:var(--mu)">📎 ${f.files.map(esc).join("، ")}</div>`:""}<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><button class="btn o s" onclick="fbSend('${f.id}','m')">✉️ ইমেইল</button><button class="btn o s" style="color:#16a34a;border-color:#86efac" onclick="fbSend('${f.id}','w')">💬 WhatsApp</button><button class="btn o s" style="color:#dc2626;border-color:#fca5a5" onclick="fbDel('${f.id}')">মুছুন</button></div></div>`).join("")||'<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">💬</div><b style="color:var(--tx)">কোনো ফিডব্যাক নেই</b><br><small>নতুন ফিডব্যাক লিখুন</small></div>')}
+function fbForm(){fbFiles=[];
+ modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center">Feedback / সমস্যা জানান</h2><label class="lb">ধরন</label><select id="fb_t">${FBT.map(x=>`<option>${x}</option>`).join("")}</select><label class="lb">বিস্তারিত *</label><textarea id="fb_x" rows="4" placeholder="আপনার মতামত, সমস্যা বা পরামর্শ এখানে লিখুন..."></textarea><label class="lb">ছবি / ভিডিও আপলোড</label><div class="g2" style="margin-bottom:6px"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="$('fb_i').click()">🖼 ছবি</button><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="$('fb_v').click()">🎥 ভিডিও</button></div><input id="fb_i" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="fbPick(this)"><input id="fb_v" type="file" accept="video/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="fbPick(this)"><div id="fb_l" class="hint" style="margin-bottom:8px">ফাইল সংযুক্ত করলে ইমেইল/WhatsApp অ্যাপে নিজে সংযুক্ত করে পাঠাতে হবে।</div><button class="btn" style="width:100%" onclick="hfSave()">পাঠান</button><button class="btn o" style="width:100%;margin-top:8px;color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button>`)}
+function fbPick(el){const f=el.files[0];if(f){fbFiles.push(f.name);$("fb_l").textContent="📎 "+fbFiles.join("، ")}el.value=""}
+function fbMsg(f){return "["+f.ty+"] "+S.school.name+" ("+APP_VER+")\n\n"+f.tx+(f.files&&f.files.length?"\n\nসংযুক্তি (নিজে যুক্ত করুন): "+f.files.join(", "):"")}
+function hfSave(){const tx=$("fb_x").value.trim();if(!tx){alert("বিস্তারিত লিখুন");return}const f={id:uid(),ty:$("fb_t").value,tx,files:fbFiles.slice(),date:today()};S.feedback.unshift(f);save();closeM();sub="hf";render();fbSend(f.id,confirm("ইমেইলে পাঠাবেন? (বাতিল চাপলে WhatsApp-এ)")?"m":"w")}
+function fbSend(id,ch){const f=S.feedback.find(x=>x.id==id);if(!f)return;const m=fbMsg(f);openExt(ch=="m"?"mailto:"+DEV_MAIL+"?subject="+encodeURIComponent("Feedback — "+f.ty)+"&body="+encodeURIComponent(m):waLink(DEV_PH,m))}
+function fbDel(id){if(confirm("ফিডব্যাক মুছবেন?")){S.feedback=S.feedback.filter(x=>x.id!=id);save();render()}}
+
 let stT=0,stEd=false,usQ="",usR="";
 const ST_T=[["সাধারণ","⚙️"],["স্কুল বার","📢"],["কনফিগারেশন","🛡"],["সব স্কুল","🏢"],["নিরাপত্তা","🔒"],["ব্যবহারকারী","👥"],["সাবস্ক্রিপশন","💳"],["ব্যাকআপ","🗄"],["বিপজ্জনক","⚠️"]];
 const isDark=()=>document.documentElement.dataset.theme=="dark";
