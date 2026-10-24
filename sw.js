@@ -1,6 +1,6 @@
 // অফলাইন সাপোর্ট: আগে ইন্টারনেট থেকে নতুন ফাইল নেয়, না পেলে সেভ করা কপি দেখায়
-const CACHE = "smart-edu-v1";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE = "smart-edu-v2";
+const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
