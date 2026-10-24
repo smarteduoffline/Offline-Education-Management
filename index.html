@@ -133,6 +133,15 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-
 .hp-dev{background:#000;color:#fff;border-radius:14px;padding:22px 12px;text-align:center;margin-top:14px}
 .hp-dev b{display:block;font-size:20px;color:#7dd3fc;margin:4px 0 8px}
 .hp-v{background:rgba(59,91,219,.08);border:1px solid var(--ln);border-radius:14px;padding:16px;margin-top:14px}
+
+.nt-g{background:var(--card)!important;color:var(--tx)!important;border:1px solid var(--ln)!important;white-space:nowrap}
+.nt-b{white-space:nowrap;flex:none}
+.nt-wa{background:var(--card);border:1px solid #86efac;color:#16a34a;border-radius:10px;padding:8px 14px;font:inherit;font-size:13px}
+.nt-sm{background:var(--card);border:1px solid #93c5fd;color:#2563eb;border-radius:10px;padding:8px 14px;font:inherit;font-size:13px}
+.nt-mn{position:absolute;right:12px;top:40px;background:var(--card);border:1px solid var(--ln);border-radius:12px;box-shadow:0 8px 24px #0003;padding:6px;z-index:5;min-width:200px}
+.nt-mn div{padding:9px 10px;font-size:14px;border-radius:8px;display:flex;gap:8px;align-items:center}
+.nt-ck{width:22px;height:22px;border-radius:7px;border:2px solid var(--ln);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex:none}.nt-ck.on{background:var(--pri);border-color:var(--pri)}
+.npf{position:fixed;right:16px;bottom:84px;width:48px;height:48px;border-radius:50%;border:0;background:#475569;color:#fff;font-size:20px;box-shadow:0 4px 14px #0004;z-index:4}
 </style>
 </head>
 <body>
@@ -1529,7 +1538,49 @@ function staff(){
  <div class="seg" style="width:60%">${[["card","কার্ড"],["list","তালিকা"]].map(v=>`<button class="${sView==v[0]?"on":""}" onclick="sView='${v[0]}';render()">${v[1]}</button>`).join("")}</div>
  <div id="slst" ${sView=="list"?'class="card ov" style="padding:6px"':""}>${sView=="list"?pTable("staff",l):staffCards(l)}</div>`;
 }
-function notice(){return `<div class="card"><h2>নোটিশ বোর্ড</h2>${S.notices.slice().reverse().map(n=>`<div class="row"><div class="f">${esc(n.title)}<small>${bn(n.date)}</small></div><button class="btn r s" onclick="S.notices=S.notices.filter(x=>x.id!='${n.id}');save();render()">মুছুন</button></div>`).join("")}<button class="btn o s" onclick="nForm()">+ নোটিশ দিন</button></div>`}
+const NT_TY=["সাধারণ","পরীক্ষা","ছুটি","অনুষ্ঠান","জরুরি"],NT_AU=["সকল","শিক্ষার্থী","শিক্ষক","অভিভাবক"];
+const NT_C={"সাধারণ":"background:var(--ln);color:var(--mu)","পরীক্ষা":"background:#f3e8ff;color:#7e22ce","ছুটি":"background:#dcfce7;color:#15803d","অনুষ্ঠান":"background:#fef3c7;color:#b45309","জরুরি":"background:#ffe4e9;color:#be123c"};
+let nMenu="",nBoard=false,nsM=null;
+const nDt=d=>d?d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4):"";
+const nText=n=>n.title+(n.body?"\n"+n.body:"")+"\n- "+S.school.name;
+function nRecip(a){const st=S.students.filter(x=>x.status!="নিষ্ক্রিয়"&&x.phone),te=S.teachers.filter(x=>x.phone);return(a=="শিক্ষক"?te:a=="সকল"?st.concat(te):st).map(x=>x.id)}
+document.addEventListener("click",e=>{if(nMenu&&!(e.target.closest&&e.target.closest(".nt-mn,.nmb"))){nMenu="";if(tab=="more"&&sub=="notice")render()}});
+function notice(){
+ if(nBoard)return nBoardH();
+ const L=S.notices.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:-1);
+ return `<div style="font-size:22px;font-weight:700">নোটিশ বোর্ড</div><div style="color:var(--mu);font-size:13px">ঘোষণা ও বিজ্ঞপ্তি ব্যবস্থাপনা</div>
+<div style="display:flex;gap:8px;margin:12px 0;overflow-x:auto;padding-bottom:2px"><button class="btn nt-b nt-g" onclick="nBoard=true;render()">↗ নোটিশবোর্ড</button><button class="btn nt-b nt-g" onclick="nSms()">➤ SMS পাঠান</button><button class="btn nt-b" onclick="nForm()">＋ নতুন নোটিশ</button></div>
+${L.length?L.map(nCard).join(""):`<div class="lx-e" style="padding:40px 10px"><div style="font-size:30px;background:var(--bg);width:56px;height:56px;border-radius:14px;margin:0 auto 10px;line-height:56px">🔔</div><b style="color:var(--tx)">কোনো নোটিশ নেই</b><br><small>নতুন নোটিশ তৈরি করুন</small></div>`}<button class="npf" onclick="nPrint()">🖨</button>`}
+function nCard(n){const a=n.aud||"সকল",ty=n.ty||"সাধারণ",ids=nRecip(a),op=nMenu==n.id;
+ return `<div class="card" style="position:relative"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div style="min-width:0"><b style="font-size:16px">${esc(n.title)}</b> <span class="pl" style="${NT_C[ty]}">${ty}</span><span class="pl" style="border:1px solid var(--ln);background:var(--card);color:var(--tx)">${a}</span></div><button class="nmb" style="border:0;background:none;color:var(--mu);font-size:20px;padding:0 6px" onclick="nMenu=nMenu=='${n.id}'?'':'${n.id}';render()">⋯</button></div>
+${n.body?`<div style="color:var(--mu);font-size:13px;margin:6px 0;white-space:pre-wrap">${esc(n.body)}</div>`:""}<div style="color:var(--mu);font-size:12px;margin-top:6px">📅 ${nDt(n.date)}</div>
+<div style="display:flex;gap:8px;margin-top:10px"><button class="nt-wa" onclick="nSend('${n.id}')">👥 WhatsApp (${bn(ids.length)})</button><button class="nt-sm" onclick="nSend('${n.id}')">💬 SMS (${bn(ids.length)})</button></div>
+${op?`<div class="nt-mn"><div onclick="nMenu='';nForm('${n.id}')">✏️ সম্পাদনা</div>${ids.slice(0,3).map(i=>{const x=pOf(i);return `<div style="color:#16a34a" onclick="nMenu='';nOne('${n.id}','${i}')">💬 ${esc(x.guardian||x.name)} কে পাঠান</div>`}).join("")}<div style="color:#dc2626" onclick="nDel('${n.id}')">🗑 মুছে ফেলুন</div></div>`:""}</div>`}
+function nBoardH(){
+ const L=S.notices.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:-1);
+ return `<button class="btn o s" style="margin-bottom:12px" onclick="nBoard=false;render()">← নোটিশ ম্যানেজমেন্টে ফিরুন</button><div style="text-align:center;margin:8px 0 16px"><div style="width:64px;height:64px;border-radius:16px;background:var(--pri);color:#fff;font-size:30px;line-height:64px;margin:0 auto 10px">🔔</div><div style="font-size:26px;font-weight:700">নোটিশ বোর্ড</div><div style="color:var(--mu);font-size:13px;margin-bottom:12px">${esc(S.school.name)}</div><button class="btn" onclick="nPrint()">⬇ PDF ডাউনলোড</button></div>`+(L.map(n=>{const ty=n.ty||"সাধারণ",u=ty=="জরুরি";return `<div class="card" style="border-left:4px solid ${u?"#dc2626":"var(--pri)"}"><div style="font-weight:700">${u?"🚨 ":""}${esc(n.title)}</div><div style="margin:6px 0"><span class="pl" style="${NT_C[ty]}">${ty}</span></div>${n.body?`<div style="color:var(--mu);font-size:13px;white-space:pre-wrap">${esc(n.body)}</div>`:""}<div style="color:var(--mu);font-size:12px;margin-top:6px">📅 ${nDt(n.date)}</div></div>`}).join("")||'<div class="em">কোনো নোটিশ নেই</div>')}
+function nPrint(){const L=S.notices.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:-1);if(!L.length){alert("প্রিন্ট করার মতো কোনো নোটিশ নেই");return}
+ printDoc("notice-board",`<div style="padding:24px;font-family:sans-serif"><h1 style="text-align:center;margin:0">${esc(S.school.name)}</h1><h2 style="text-align:center;margin:4px 0 18px">নোটিশ বোর্ড</h2>${L.map(n=>`<div style="border-left:4px solid ${n.ty=="জরুরি"?"#dc2626":"#2563eb"};padding:8px 12px;margin-bottom:12px"><b>${esc(n.title)}</b> <small>[${n.ty||"সাধারণ"} · ${n.aud||"সকল"}]</small>${n.body?`<div style="margin:4px 0;white-space:pre-wrap">${esc(n.body)}</div>`:""}<small>📅 ${nDt(n.date)}</small></div>`).join("")}</div>`)}
+function nForm(id){const n=id?S.notices.find(x=>x.id==id):{};
+ modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center;margin-bottom:10px">${id?"নোটিশ সম্পাদনা":"নতুন নোটিশ"}</h2>${stF("শিরোনাম *","nt_t",n.title||"")}<label class="lb">বিস্তারিত *</label><textarea id="nt_b" rows="4">${esc(n.body||"")}</textarea><div class="g2" style="margin:0"><div><label class="lb">ধরন *</label><select id="nt_y"><option value="" disabled ${n.ty?"":"selected"}>নির্বাচন</option>${NT_TY.map(x=>`<option ${n.ty==x?"selected":""}>${x}</option>`).join("")}</select></div><div><label class="lb">প্রাপক</label><select id="nt_a">${NT_AU.map(x=>`<option ${(n.aud||"সকল")==x?"selected":""}>${x}</option>`).join("")}</select></div></div><label class="lb">প্রকাশের তারিখ</label><input id="nt_d" type="date" value="${n.date||today()}"><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button><button class="btn" onclick="nSave('${id||""}')">সংরক্ষণ</button></div>`)}
+function nSave(id){const t=$("nt_t").value.trim(),b=$("nt_b").value.trim(),y=$("nt_y").value;if(!t||!b||!y){alert("শিরোনাম, বিস্তারিত ও ধরন দিন");return}
+ const o={title:t,body:b,ty:y,aud:$("nt_a").value,date:$("nt_d").value||today()};
+ if(id)Object.assign(S.notices.find(x=>x.id==id),o);else S.notices.push({id:uid(),...o});logA(id?"edit":"add","নোটিশ",(id?"নোটিশ আপডেট: ":"নতুন নোটিশ: ")+t);save();closeM();render()}
+function nDel(id){nMenu="";if(confirm("নোটিশটি মুছে ফেলবেন?")){S.notices=S.notices.filter(x=>x.id!=id);save()}render()}
+function nSend(id){const n=S.notices.find(x=>x.id==id);if(n)nsOpen(nRecip(n.aud||"সকল"),nText(n))}
+function nSms(){nsOpen(nRecip("সকল"),"")}
+function nOne(nid,pid){const n=S.notices.find(x=>x.id==nid);if(n)smSend([pid],nText(n),"নোটিশ")}
+function nsOpen(ids,txt){if(!ids.length){alert("মোবাইল নম্বরসহ কোনো অভিভাবক/শিক্ষক নেই");return}nsM={ids,sel:Object.fromEntries(ids.map(i=>[i,1])),txt,done:{}};nsDraw()}
+function nsDraw(){const l=nsM.ids.map(pOf).filter(Boolean),n=Object.keys(nsM.sel).length;
+ modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center;font-size:16px;margin-bottom:10px">অভিভাবকদের SMS / WhatsApp পাঠান</h2><label class="lb">বার্তা *</label><textarea rows="4" placeholder="বার্তা..." oninput="nsM.txt=this.value">${esc(nsM.txt)}</textarea>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0"><b style="font-size:13px">অভিভাবক নির্বাচন (${bn(n)}/${bn(l.length)})</b><span style="font-size:13px;color:var(--pri)" onclick="nsAll(${n==l.length?0:1})">${n==l.length?"সব বাতিল":"সব নির্বাচন"}</span></div>
+<div class="card" style="padding:4px;max-height:34vh;overflow:auto">${l.map(x=>`<div class="row" onclick="nsTog('${x.id}')"><div class="nt-ck ${nsM.sel[x.id]?"on":""}">${nsM.sel[x.id]?"✓":""}</div><div class="f"><b style="font-weight:600">${esc(x.guardian||x.name)}</b><small>${esc(x.phone)}${x.guardian?" — "+esc(x.name):""}${nsM.done[x.id]?" ✓ পাঠানো":""}</small></div></div>`).join("")}</div>
+<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button><button class="btn o" style="color:#16a34a;border-color:#86efac" onclick="nsWA()">💬 WhatsApp</button><button class="btn" onclick="nsSMS()">➤ SMS পাঠান</button></div><p style="font-size:11px;color:var(--mu);text-align:center;margin-top:8px">WhatsApp চাপলে একে একে পরের জনের চ্যাট খুলবে। {নাম} লিখলে WhatsApp-এ প্রত্যেকের নাম বসবে। SMS একসাথে ফোনের মেসেজ অ্যাপে খুলবে।</p>`);$("mt").onclick=null}
+function nsTog(id){if(nsM.sel[id])delete nsM.sel[id];else nsM.sel[id]=1;nsDraw()}
+function nsAll(on){nsM.sel=on?Object.fromEntries(nsM.ids.map(i=>[i,1])):{};nsDraw()}
+function nsWA(){if(!nsM.txt.trim()){alert("বার্তা লিখুন");return}const id=nsM.ids.find(i=>nsM.sel[i]&&!nsM.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}nsM.done[id]=1;const x=pOf(id);sendTo(x,"wa",fillT(nsM.txt,x),"নোটিশ");setTimeout(nsDraw,400)}
+function nsSMS(){const t=nsM.txt.replace(/\{[^}]+\}/g,"").trim();if(!t){alert("বার্তা লিখুন");return}const xs=nsM.ids.filter(i=>nsM.sel[i]).map(pOf).filter(Boolean);if(!xs.length){alert("কাউকে নির্বাচন করা হয়নি");return}
+ xs.forEach(x=>S.smslog.unshift({t:Date.now(),sid:x.id,ch:"sms",tx:t,ty:"নোটিশ"}));S.smslog=S.smslog.slice(0,300);save();location.href="sms:"+xs.map(x=>x.phone).join(",")+"?body="+encodeURIComponent(t)}
 const APP_VER="v2.5.0",DEV_MAIL="tofsirahmedparvez@gmail.com",DEV_PH="01918427848",GH_URL="https://github.com/smarteduoffline/SEMS";
 const HTABS=[["ha","এপ সম্পর্কে"],["hg","ইউজার গাইডলাইন"],["hf","ফিডব্যাক"]];
 const GCATS=["পরিচিতি","ড্যাশবোর্ড","শিক্ষার্থী","উপস্থিতি","ফি","ফাইন্যান্স","পরীক্ষা","লাইব্রেরি","মাদ্রাসা","অন্যান্য"];
@@ -1779,7 +1830,7 @@ const smTyC={"নোটিশ":"background:#dbeafe;color:#1d4ed8","অনুপ�
 function smSend(ids,txt,ty){if(!ids.length){alert("মোবাইল নম্বরসহ কোনো অভিভাবক নেই");return}msgM(ids,txt);if($("mt"))mctx.ty=ty}
 function smAll(){smSend(smPh().map(x=>x.id),"প্রিয় অভিভাবক,\n\n"+S.school.name+" থেকে জানানো হচ্ছে: ","বার্তা")}
 function smAbsSend(ids){smSend(ids||smAbs().filter(x=>x.phone).map(x=>x.id),"প্রিয় অভিভাবক, আপনার সন্তান {নাম} আজ ("+bn(today())+") মাদ্রাসায় অনুপস্থিত ছিল। - "+S.school.name,"অনুপস্থিতি")}
-function smNot(id){const n=S.notices.find(x=>x.id==id);if(n)smSend(smPh().map(x=>x.id),n.title+"\n- "+S.school.name,"নোটিশ")}
+function smNot(id){const n=S.notices.find(x=>x.id==id);if(n)smSend(smPh().map(x=>x.id),nText(n),"নোটিশ")}
 function smResSend(n){const ids=smPh().filter(x=>S.exams.some(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="")).map(x=>x.id);smSend(ids,"প্রিয় অভিভাবক, {নাম}-এর "+n+" পরীক্ষার ফলাফল: {ফল:"+n+"}। - "+S.school.name,"ফলাফল")}
 function sms(){
  const head=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-size:22px;font-weight:700">${smT==1?"💬 অভিভাবক মেসেজিং":smT==2?"WhatsApp / SMS লগ":"SMS কেন্দ্র"}</div><div style="color:var(--mu);font-size:13px">${smT==1?"শিক্ষার্থীর অভিভাবকদের সাথে সরাসরি যোগাযোগ করুন":smT==2?"মোট "+bn(S.smslog.length)+"টি বার্তা পাঠানো হয়েছে":"অভিভাবকদের মোবাইলে ফলাফল, উপস্থিতি ও নোটিশ পাঠান"}</div></div>${smT==1?'<button class="ob" style="padding:8px 12px" onclick="smAll()">🔔</button>':""}</div>`;
@@ -1822,8 +1873,6 @@ function tSave(id){
  const o={name:$("t1").value.trim(),sub:$("t2").value.trim(),phone:$("t3").value.trim()};if(!o.name){alert("নাম লিখুন");return}
  if(id)Object.assign(S.teachers.find(x=>x.id==id),o);else S.teachers.push({id:uid(),...o});logA(id?"edit":"add","শিক্ষক",(id?"শিক্ষকের তথ্য আপডেট: ":"নতুন শিক্ষক যোগ: ")+o.name);save();closeM();render();
 }
-function nForm(){modal(`<h2 style="margin-bottom:10px">নতুন নোটিশ</h2><textarea id="n1" rows="4" placeholder="নোটিশ লিখুন"></textarea><button class="btn" style="width:100%" onclick="nSave()">প্রকাশ করুন</button>`)}
-function nSave(){const t=$("n1").value.trim();if(!t){alert("নোটিশ লিখুন");return}S.notices.push({id:uid(),title:t,date:today()});logA("add","নোটিশ","নতুন নোটিশ: "+t);save();closeM();render()}
 async function exp(){
  S.set.lastBk=Date.now();save();const data=JSON.stringify(S),name="madrasa-backup-"+today()+".json",P=window.Capacitor&&Capacitor.Plugins;
  if(P&&P.Filesystem&&P.Share){
