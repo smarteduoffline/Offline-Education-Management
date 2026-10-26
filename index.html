@@ -171,6 +171,32 @@ nav button.bk b{display:inline;font-size:16px}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <script>
+  const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
+‎const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
+‎
+‎let sb = null;
+‎try {
+‎  if (
+‎    window.supabase &&
+‎    typeof window.supabase.createClient === "function" &&
+‎    SUPABASE_URL.startsWith("https://") &&
+‎    !SUPABASE_URL.includes("এখানে_")
+‎  ) {
+‎    sb = window.supabase.createClient(
+‎      SUPABASE_URL,
+‎      SUPABASE_PUBLISHABLE_KEY,
+‎      {
+‎        auth: {
+‎          persistSession: true,
+‎          autoRefreshToken: true,
+‎          detectSessionInUrl: true
+‎        }
+‎      }
+‎    );
+‎  }
+‎} catch (e) {
+‎  console.error("Supabase initialization failed:", e);
+‎}
 const KEY="smart-edu-v1";
 let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
