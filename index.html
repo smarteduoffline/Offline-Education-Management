@@ -197,6 +197,47 @@ nav button.bk b{display:inline;font-size:16px}
 ‎} catch (e) {
 ‎  console.error("Supabase initialization failed:", e);
 ‎}
+  
+async function testSupabaseSignup() {
+  if (!sb) {
+    alert("Supabase সংযোগ তৈরি হয়নি। URL ও Publishable Key পরীক্ষা করুন।");
+    return;
+  }
+
+  const email = prompt("আপনার ইমেইল ঠিকানা দিন:");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    alert("সঠিক ইমেইল ঠিকানা দিন।");
+    return;
+  }
+
+  const password = prompt("পরীক্ষার জন্য নতুন পাসওয়ার্ড দিন (কমপক্ষে ৬ অক্ষর):");
+  if (!password || password.length < 6) {
+    alert("কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড দিন।");
+    return;
+  }
+
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        emailRedirectTo:
+          "https://smarteduoffline.github.io/Offline-Education-Management/"
+      }
+    });
+
+    if (error) throw error;
+
+    if (data.session) {
+      alert("Supabase অ্যাকাউন্ট তৈরি হয়েছে এবং লগইন সম্পন্ন হয়েছে।");
+    } else {
+      alert("নিবন্ধনের অনুরোধ সফল। ইমেইল Inbox ও Spam ফোল্ডার পরীক্ষা করুন।");
+    }
+  } catch (e) {
+    alert("নিবন্ধন ব্যর্থ: " + e.message);
+  }
+}
+  
 const KEY="smart-edu-v1";
 let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
