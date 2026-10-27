@@ -171,45 +171,36 @@ nav button.bk b{display:inline;font-size:16px}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <script>
-  const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
-‎const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
-‎
-‎let sb = null;
-‎try {
-‎  if (
-‎    window.supabase &&
-‎    typeof window.supabase.createClient === "function" &&
-‎    SUPABASE_URL.startsWith("https://") &&
-‎    !SUPABASE_URL.includes("এখানে_")
-‎  ) {
-‎    sb = window.supabase.createClient(
-‎      SUPABASE_URL,
-‎      SUPABASE_PUBLISHABLE_KEY,
-‎      {
-‎        auth: {
-‎          persistSession: true,
-‎          autoRefreshToken: true,
-‎          detectSessionInUrl: true
-‎        }
-‎      }
-‎    );
-‎  }
-‎} catch (e) {
-‎  console.error("Supabase initialization failed:", e);
-‎}
-  
+const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
+let sb = null;
+try {
+  if (
+    window.supabase &&
+    typeof window.supabase.createClient === "function" &&
+    SUPABASE_URL.startsWith("https://")
+  ) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+  }
+} catch (e) {
+  console.error("Supabase initialization failed:", e);
+}
 async function testSupabaseSignup() {
   if (!sb) {
     alert("Supabase সংযোগ তৈরি হয়নি। URL ও Publishable Key পরীক্ষা করুন।");
     return;
   }
-
   const email = prompt("আপনার ইমেইল ঠিকানা দিন:");
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     alert("সঠিক ইমেইল ঠিকানা দিন।");
     return;
   }
-
   const password = prompt("পরীক্ষার জন্য নতুন পাসওয়ার্ড দিন (কমপক্ষে ৬ অক্ষর):");
   if (!password || password.length < 6) {
     alert("কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড দিন।");
