@@ -413,7 +413,24 @@ function userPanel(){
   const actions=u.role!=="admin"?`<button class="ob s" onclick="userForm('${u.id}')">✏️</button><button class="ob s" onclick="toggleUser('${u.id}')">${u.active===false?"চালু":"বন্ধ"}</button><button class="btn r s" onclick="deleteUser('${u.id}')">✕</button>`:`<span class="tag g">মূল অ্যাডমিন</span>`;
   return `<div class="row"><div class="f"><b>${esc(u.identifier)}</b><small>${u.role==="admin"?"অ্যাডমিন":"শিক্ষক"} · ${status}</small></div>${actions}</div>`;
  }).join("");
- return `<div class="card"><div class="ch"><h2>ব্যবহারকারী ও permissions</h2><button class="btn g s" onclick="userForm()">＋ শিক্ষক account</button></div>${rows||'<div class="em">কোনো user নেই</div>'}</div>`;
+ return `<div class="card">
+  <div class="ch">
+    <h2>ব্যবহারকারী ও permissions</h2>
+    <button class="btn g s" onclick="userForm()">
+      ＋ শিক্ষক account
+    </button>
+  </div>
+  ${rows||'<div class="em">কোনো user নেই</div>'}
+</div>
+${isSuper()?`<div class="card">
+  <div class="ch">
+    <h2>ইমেইল ব্যবহারকারী</h2>
+    <button class="btn g s" onclick="loadApprovalPanel()">
+      অনুমোদন পরিচালনা
+    </button>
+  </div>
+  <p>নতুন ব্যবহারকারীর অনুমোদন ও ব্লক করার জন্য খুলুন।</p>
+</div>`:""}`;
 }
 
 let hist=[],curKey="",goingBack=false;
@@ -426,19 +443,56 @@ function lerr(m){const e=$("loginError");if(e)e.textContent=m}
 function loginTabs(){return `<div style="display:flex;gap:6px;margin:6px 0 12px"><button class="${loginTab==="pin"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('pin')">PIN লগইন</button><button class="${loginTab==="email"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('email')">ইমেইল লগইন</button></div>`}
 function emailLoginView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>ইমেইল লগইন</h1><p>নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিন (ইন্টারনেট লাগবে)</p>${loginTabs()}<input id="emEmail" type="email" autocomplete="email" placeholder="ইমেইল"><input id="emPass" type="password" autocomplete="current-password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')emailLogin()"><button class="btn" style="width:100%" onclick="emailLogin()">ইমেইল দিয়ে লগইন</button><button class="ob" style="width:100%;margin-top:10px" onclick="emailReset()">পাসওয়ার্ড ভুলে গেছেন? (Forgot Password)</button><input id="emPass2" type="password" autocomplete="new-password" placeholder="নিবন্ধনের জন্য পাসওয়ার্ড আবার লিখুন" style="margin-top:14px"><button class="ob" style="width:100%;margin-top:10px" onclick="emailSignup()">নতুন ইমেইল নিবন্ধন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function emailLogin(){
-  if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
-  const email=($("emEmail").value||"").trim().toLowerCase(),pw=$("emPass").value||"";
-  if(!email||!pw)return lerr("ইমেইল ও পাসওয়ার্ড দিন");
+  if(!sb) return lerr("Supabase সংযোগ তৈরি হয়নি।");
+
+  const email=($("emEmail").value||"").trim().toLowerCase();
+  const pw=$("emPass").value||"";
+
+  if(!email||!pw) return lerr("ইমেইল ও পাসওয়ার্ড দিন");
   lerr("অপেক্ষা করুন...");
+
   try{
-    const {error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error)throw error;
-    if(!SUPER_ADMIN_EMAILS.includes(email) &&
-       email !== ADMIN_AUTH_EMAIL.trim().toLowerCase()){
+    const {data:authData,error}=await sb.auth.signInWithPassword({
+      email,
+      password:pw
+    });
+    if(error) throw error;
+
+    const authUser=authData.user;
+    if(!authUser){
+      await sb.auth.signOut();
+      return lerr("ব্যবহারকারীর তথ্য পাওয়া যায়নি।");
+    }
+
+    let u;
+
+    if(SUPER_ADMIN_EMAILS.includes(email)){
+      u=S.users.find(
+        x=>String(x.identifier).toLowerCase()===email
+      );
+
+      if(!u){
+        u={
+          id:uid(),
+          identifier:email,
+          pin:uid()+uid(),
+          role:"admin",
+          active:true,
+          permissions:[],
+          createdAt:Date.now()
+        };
+        S.users.push(u);
+      }else{
+        u.role="admin";
+        u.active=true;
+      }
+
+      save();
+    }else{
       const {data:access,error:accessError}=await sb
         .from("smartedu_user_access")
-        .select("status")
-        .eq("user_id",(await sb.auth.getUser()).data.user.id)
+        .select("status,roles")
+        .eq("user_id",authUser.id)
         .maybeSingle();
 
       if(accessError){
@@ -446,41 +500,173 @@ async function emailLogin(){
         return lerr("অনুমোদন যাচাই করা যায়নি। আবার চেষ্টা করুন।");
       }
 
-      if(!access || access.status !== "approved"){
+      if(!access || access.status!=="approved"){
         await sb.auth.signOut();
         return lerr(
-          access?.status === "blocked"
-            ? "আপনার অ্যাকাউন্ট বন্ধ করা হয়েছে।"
+          access?.status==="blocked"
+            ? "আপনার অ্যাকাউন্ট ব্লক করা হয়েছে।"
             : "আপনার অ্যাকাউন্ট Super Admin-এর অনুমোদনের অপেক্ষায় আছে।"
         );
       }
-    }
-    let u;
-    if(SUPER_ADMIN_EMAILS.includes(email)){
-      u=S.users.find(x=>String(x.identifier).toLowerCase()===email);
-      if(!u){u={id:uid(),identifier:email,pin:uid()+uid(),role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
-      else{u.role="admin";u.active=true}
-      save();
-    }else{
-      if(email !== ADMIN_AUTH_EMAIL.trim().toLowerCase()){
-        await sb.auth.signOut();
-        return lerr("এই ইমেইলটি অনুমোদিত নয়।");
+
+      if(email===ADMIN_AUTH_EMAIL.trim().toLowerCase()){
+        u=S.users.find(
+          x=>x.role==="admin" && x.active!==false
+        );
+
+        if(!u){
+          await sb.auth.signOut();
+          return lerr("বিদ্যমান অ্যাডমিন অ্যাকাউন্ট পাওয়া যায়নি।");
+        }
+      }else{
+        u=S.users.find(
+          x=>String(x.identifier).toLowerCase()===email
+        );
+
+        if(!u){
+          u={
+            id:uid(),
+            identifier:email,
+            pin:uid()+uid(),
+            role:"teacher",
+            active:true,
+            permissions:[],
+            createdAt:Date.now()
+          };
+          S.users.push(u);
+          save();
+        }
+
+        if(u.active===false){
+          await sb.auth.signOut();
+          return lerr("এই অ্যাকাউন্টটি নিষ্ক্রিয়।");
+        }
       }
-      u = S.users.find(
-        x => x.role === "admin" && x.active !== false
-      );
-      if(!u){
-        await sb.auth.signOut();
-        return lerr("বিদ্যমান অ্যাডমিন অ্যাকাউন্ট পাওয়া যায়নি।");
-      }
     }
-    activeUser = {
-      id: u.id,
-      identifier: u.identifier,
-      role: u.role
+
+    activeUser={
+      id:u.id,
+      identifier:u.identifier,
+      role:u.role
     };
-    sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render();
-  }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
+
+    sessionStorage.setItem(
+      "smartEduUser",
+      JSON.stringify(activeUser)
+    );
+
+    unlocked=true;
+    render();
+
+  }catch(e){
+    lerr("লগইন ব্যর্থ: "+e.message);
+  }
+}
+
+async function loadApprovalPanel(){
+  if(!isSuper()){
+    alert("শুধু Super Admin এই কাজ করতে পারবেন।");
+    return;
+  }
+
+  try{
+    const {data:users,error}=await sb.rpc(
+      "smartedu_list_user_access"
+    );
+
+    if(error) throw error;
+
+    const rows=(users||[]).map(u=>{
+      const statusText={
+        pending:"অনুমোদনের অপেক্ষায়",
+        approved:"অনুমোদিত",
+        blocked:"ব্লক করা"
+      }[u.status]||u.status;
+
+      const buttons=u.status==="pending"
+        ? `<button class="btn g s"
+             onclick="changeApprovalStatus('${u.user_id}','approved')">
+             অনুমোদন
+           </button>
+           <button class="btn r s"
+             onclick="changeApprovalStatus('${u.user_id}','blocked')">
+             ব্লক
+           </button>`
+        : u.status==="approved"
+        ? `<button class="btn r s"
+             onclick="changeApprovalStatus('${u.user_id}','blocked')">
+             ব্লক
+           </button>`
+        : `<button class="btn g s"
+             onclick="changeApprovalStatus('${u.user_id}','approved')">
+             অনুমোদন
+           </button>`;
+
+      return `<div class="row">
+        <div class="f">
+          <b>${esc(u.email||"ইমেইল নেই")}</b>
+          <small>${esc(statusText)}</small>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          ${buttons}
+        </div>
+      </div>`;
+    }).join("");
+
+    modal(`<div class="card">
+      <div class="ch">
+        <h2>নতুন ব্যবহারকারীর অনুমোদন</h2>
+        <button class="ob s" onclick="closeM()">বন্ধ</button>
+      </div>
+      ${rows||'<div class="em">কোনো ব্যবহারকারী নেই</div>'}
+    </div>`);
+
+  }catch(e){
+    alert("ব্যবহারকারীর তালিকা আনা যায়নি: "+e.message);
+  }
+}
+
+async function changeApprovalStatus(userId,status){
+  if(!isSuper()){
+    alert("শুধু Super Admin এই কাজ করতে পারবেন।");
+    return;
+  }
+
+  if(!["approved","blocked"].includes(status)) return;
+
+  if(!confirm(
+    status==="approved"
+      ? "এই ব্যবহারকারীকে অনুমোদন করবেন?"
+      : "এই ব্যবহারকারীকে ব্লক করবেন?"
+  )) return;
+
+  try{
+    const {data,error}=await sb.rpc(
+      "smartedu_set_user_status",
+      {
+        target_user_id:userId,
+        new_status:status
+      }
+    );
+
+    if(error) throw error;
+
+    if(data!==true){
+      alert("ব্যবহারকারীর অবস্থা পরিবর্তন করা যায়নি।");
+      return;
+    }
+
+    alert(
+      status==="approved"
+        ? "ব্যবহারকারী অনুমোদিত হয়েছেন।"
+        : "ব্যবহারকারী ব্লক হয়েছেন।"
+    );
+
+    await loadApprovalPanel();
+
+  }catch(e){
+    alert("পরিবর্তন ব্যর্থ: "+e.message);
+  }
 }
 async function emailSignup(){
   if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
@@ -2336,7 +2522,7 @@ function schSub(id){if(id=="main"){satT=2;render();return}schForm(id)}
 function usAll(){const tq=usQ.trim().toLowerCase(),me={me:1,name:S.school.director||"আপনি (অ্যাডমিন)",email:S.school.email||"",roles:["Super Admin"],sid:"main"};return[me].concat(S.invUsers).filter(u=>(!usR||u.roles.includes(usR))&&(!tq||((u.name||"")+(u.email||"")).toLowerCase().includes(tq)))}
 function stUsr(){
  const cnt=r=>S.invUsers.filter(u=>u.roles.includes(r)).length,st=[["Super Admin",1],["অ্যাডমিন",cnt("অ্যাডমিন")],["সহ-অ্যাডমিন",cnt("সহ-অ্যাডমিন")],["শিক্ষক",cnt("শিক্ষক")]];
- return `<div style="font-size:20px;font-weight:700">ইউজার ম্যানেজমেন্ট</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">ব্যবহারকারীর ভূমিকা, অ্যাক্সেস ও ব্লক নিয়ন্ত্রণ</div><button class="btn" style="margin-bottom:12px" onclick="usInv()">＋ নতুন ইউজার আমন্ত্রণ</button>
+ return `<div style="font-size:20px;font-weight:700">ইউজার ম্যানেজমেন্ট</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">ব্যবহারকারীর ভূমিকা, অ্যাক্সেস ও ব্লক নিয়ন্ত্রণ</div><button class="btn" style="margin-bottom:12px" onclick="usInv()">＋ নতুন ইউজার আমন্ত্রণ</button> <button class="btn g" style="margin-bottom:12px" onclick="loadApprovalPanel()">✅ ইমেইল ব্যবহারকারীর অনুমোদন</button>
 <div class="g2">${st.map(x=>`<div class="st-cn"><b>${bn(x[1])}</b><span class="pl" style="${UROLE_C[x[0]]}">${x[0]}</span></div>`).join("")}</div>
 <div class="card" style="background:rgba(239,68,68,.08);border-color:#fecaca;font-size:13px"><b style="color:#dc2626">🛡 Super Admin মোড সক্রিয়</b><br><span style="color:#dc2626">আপনি যেকোনো ইউজারকে ব্লক করতে, তাদের ভূমিকা পরিবর্তন করতে এবং মডিউল অ্যাক্সেস নির্ধারণ করতে পারবেন।</span></div>
 <input placeholder="🔍 নাম বা ইমেইল দিয়ে খুঁজুন..." value="${esc(usQ)}" oninput="usQ=this.value;stUl()"><select onchange="usR=this.value;stUl()"><option value="">সব ভূমিকা</option>${["Super Admin"].concat(UROLES).map(r=>`<option ${usR==r?"selected":""}>${r}</option>`).join("")}</select><div id="usl">${stUlH()}</div>`}
