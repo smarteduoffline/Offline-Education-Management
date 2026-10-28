@@ -433,6 +433,28 @@ async function emailLogin(){
   try{
     const {error}=await sb.auth.signInWithPassword({email,password:pw});
     if(error)throw error;
+    if(!SUPER_ADMIN_EMAILS.includes(email) &&
+       email !== ADMIN_AUTH_EMAIL.trim().toLowerCase()){
+      const {data:access,error:accessError}=await sb
+        .from("smartedu_user_access")
+        .select("status")
+        .eq("user_id",(await sb.auth.getUser()).data.user.id)
+        .maybeSingle();
+
+      if(accessError){
+        await sb.auth.signOut();
+        return lerr("অনুমোদন যাচাই করা যায়নি। আবার চেষ্টা করুন।");
+      }
+
+      if(!access || access.status !== "approved"){
+        await sb.auth.signOut();
+        return lerr(
+          access?.status === "blocked"
+            ? "আপনার অ্যাকাউন্ট বন্ধ করা হয়েছে।"
+            : "আপনার অ্যাকাউন্ট Super Admin-এর অনুমোদনের অপেক্ষায় আছে।"
+        );
+      }
+    }
     let u;
     if(SUPER_ADMIN_EMAILS.includes(email)){
       u=S.users.find(x=>String(x.identifier).toLowerCase()===email);
