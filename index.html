@@ -491,7 +491,7 @@ async function emailLogin(){
     }else{
       const {data:access,error:accessError}=await sb
         .from("smartedu_user_access")
-        .select("status,roles")
+        .select("status,roles,school_id,perms")
         .eq("user_id",authUser.id)
         .maybeSingle();
 
@@ -528,7 +528,7 @@ async function emailLogin(){
             id:uid(),
             identifier:email,
             pin:uid()+uid(),
-            role:"teacher",
+            role:((access.roles||[]).includes(UROLES[0])?"admin":"teacher"),
             active:true,
             permissions:[],
             createdAt:Date.now()
@@ -536,6 +536,12 @@ async function emailLogin(){
           S.users.push(u);
           save();
         }
+
+        const wantRole=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
+        if(u.role!==wantRole){u.role=wantRole;save();}
+        const pmx=(access.perms&&Object.keys(access.perms).length)?access.perms:pmDefault(access.roles);
+        u.permissions=[...new Set(["dashboard"].concat(PMK.filter(k=>pmx[k]).map(k=>PM_TO_PERM[k]).filter(Boolean)))];
+        save();
 
         if(u.active===false){
           await sb.auth.signOut();
@@ -568,59 +574,44 @@ async function loadApprovalPanel(){
     alert("শুধু Super Admin এই কাজ করতে পারবেন।");
     return;
   }
-
   try{
-    const {data:users,error}=await sb.rpc(
-      "smartedu_list_user_access"
-    );
-
+    const {data:users,error}=await sb.rpc("smartedu_list_user_access");
     if(error) throw error;
 
-    const rows=(users||[]).map(u=>{
-      const statusText={
-        pending:"অনুমোদনের অপেক্ষায়",
-        approved:"অনুমোদিত",
-        blocked:"ব্লক করা"
-      }[u.status]||u.status;
+    const order={pending:0,approved:1,blocked:2};
+    const list=(users||[]).slice().sort(
+      (a,b)=>(order[a.status]??3)-(order[b.status]??3)
+    );
+    window._apUsers=list;
+    const names={pending:"অনুমোদনের অপেক্ষায়",approved:"অনুমোদিত",blocked:"ব্লক করা"};
+    const cnt=k=>list.filter(u=>u.status===k).length;
 
-      const buttons=u.status==="pending"
-        ? `<button class="btn g s"
-             onclick="changeApprovalStatus('${u.user_id}','approved')">
-             অনুমোদন
-           </button>
-           <button class="btn r s"
-             onclick="changeApprovalStatus('${u.user_id}','blocked')">
-             ব্লক
-           </button>`
-        : u.status==="approved"
-        ? `<button class="btn r s"
-             onclick="changeApprovalStatus('${u.user_id}','blocked')">
-             ব্লক
-           </button>`
-        : `<button class="btn g s"
-             onclick="changeApprovalStatus('${u.user_id}','approved')">
-             অনুমোদন
-           </button>`;
-
+    const rows=list.map(u=>{
+      const isSup=SUPER_ADMIN_EMAILS.includes(String(u.email||"").toLowerCase());
+      const sch=schAll().find(x=>String(x.id)===String(u.school_id));
+      const roleTxt=isSup?"Super Admin":((u.roles&&u.roles.length)?u.roles.join(", "):"ভূমিকা নির্ধারণ হয়নি");
+      const info=u.status==="approved"?" · "+roleTxt+(sch?" · 🏛 "+sch.name:""):"";
+      const ok=`<button class="btn g s" onclick="changeApprovalStatus('${u.user_id}','approved')">অনুমোদন</button>`;
+      const no=`<button class="btn r s" onclick="changeApprovalStatus('${u.user_id}','blocked')">ব্লক</button>`;
+      const rl=`<button class="ob s" onclick="userRoleForm('${u.user_id}')">🔖 ভূমিকা</button>`;
+      const buttons=isSup?"":(u.status==="pending"?ok+no:(u.status==="approved"?rl+no:ok));
       return `<div class="row">
         <div class="f">
           <b>${esc(u.email||"ইমেইল নেই")}</b>
-          <small>${esc(statusText)}</small>
+          <small>${esc(names[u.status]||u.status)}${esc(info)}</small>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          ${buttons}
-        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${buttons}</div>
       </div>`;
     }).join("");
 
     modal(`<div class="card">
       <div class="ch">
-        <h2>নতুন ব্যবহারকারীর অনুমোদন</h2>
+        <h2>ইমেইল ব্যবহারকারী</h2>
         <button class="ob s" onclick="closeM()">বন্ধ</button>
       </div>
+      <small>অপেক্ষায়: ${cnt("pending")} · অনুমোদিত: ${cnt("approved")} · ব্লক: ${cnt("blocked")}</small>
       ${rows||'<div class="em">কোনো ব্যবহারকারী নেই</div>'}
     </div>`);
-
   }catch(e){
     alert("ব্যবহারকারীর তালিকা আনা যায়নি: "+e.message);
   }
@@ -668,6 +659,53 @@ async function changeApprovalStatus(userId,status){
     alert("পরিবর্তন ব্যর্থ: "+e.message);
   }
 }
+const PM_TO_PERM={stu:"students",att:"attendance",exam:"exams",res:"exams",card:"reports",cal:"exams",qb:"classes",lib:"library",not:"notices",msg:"messages",slog:"messages",sdash:"messages",fee:"fees",fin:"accounting",pay:"fees",tch:"teachers",set:"settings",bk:"settings"};
+function pmDefault(roles){
+  const o={};PMK.forEach(k=>o[k]=false);
+  (roles&&roles.length?roles:[UROLES[2]]).forEach(r=>{const d=defPerm(r);PMK.forEach(k=>{if(d[k])o[k]=true})});
+  return o;
+}
+function urSet(o){document.querySelectorAll("#ur_pm .st-sw").forEach(e=>e.classList.toggle("on",!!o[e.dataset.k]))}
+function urRoles(){return UROLES.filter((r,i)=>$("ur_r"+i).checked)}
+function urAll(v){const o={};PMK.forEach(k=>o[k]=!!v);urSet(o)}
+function userRoleForm(id){
+  const u=(window._apUsers||[]).find(x=>x.user_id===id);
+  if(!u) return;
+  const pm=(u.perms&&Object.keys(u.perms).length)?u.perms:pmDefault(u.roles);
+  modal(`<span onclick="loadApprovalPanel()" style="float:right;font-size:22px">×</span><h2>🛡️ অ্যাক্সেস পারমিশন নির্ধারণ</h2><small>${esc(u.email||"")}</small>
+<label class="lb">ভূমিকা (একাধিক নির্বাচন করা যাবে)</label><div class="g2" style="margin-bottom:8px">${UROLES.map((r,i)=>`<label class="st-tg" style="margin:0"><input type="checkbox" id="ur_r${i}" style="width:auto;margin:0" onchange="urSet(pmDefault(urRoles()))" ${(u.roles||[]).includes(r)?"checked":""}>${r}</label>`).join("")}</div><div class="hint">একসাথে একাধিক ভূমিকা দিলে ঐ ব্যক্তি সবগুলো মডিউলে অ্যাক্সেস পাবেন।</div>
+<div style="font-size:13px;color:var(--mu);margin:10px 0 6px">মডিউল অ্যাক্সেস</div><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn o s" style="color:var(--tx);border-color:var(--ln)" onclick="urAll(1)">সব অনুমোদন</button><button class="btn o s" style="color:var(--tx);border-color:var(--ln)" onclick="urAll(0)">সব বাতিল</button></div>
+<div id="ur_pm">${PMOD.map(g=>`<div style="font-size:12px;color:var(--mu);margin:10px 0 6px">${g[0]}</div>${g[1].map(x=>`<div class="st-tg" onclick="this.querySelector('.st-sw').classList.toggle('on')"><div style="flex:1;font-weight:600;font-size:14px">${x[1]}</div><div class="st-sw ${pm[x[0]]?"on":""}" data-k="${x[0]}"><i></i></div></div>`).join("")}`).join("")}</div>
+<div style="background:#fff7ed;color:#c2410c;border-radius:8px;padding:8px 10px;font-size:12px;margin:10px 0">⚠️ ভূমিকা বদলালে ডিফল্ট অ্যাক্সেস বসে যাবে; পরে প্রয়োজনমতো আলাদা মডিউল চালু/বন্ধ করুন। এই অ্যাক্সেস ইউজারের পরের লগইনে কার্যকর হবে।</div>
+<label class="lb" style="color:var(--pri)">🏛 কোন প্রতিষ্ঠানে নিয়োগ হবে নির্বাচন করুন</label><select id="ur_s"><option value="">— প্রতিষ্ঠান বাছাই করুন (ঐচ্ছিক) —</option>${schAll().map(x=>`<option value="${x.id}" ${String(u.school_id)===String(x.id)?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn o" onclick="loadApprovalPanel()">বাতিল</button><button class="btn" onclick="saveUserRoles('${id}')">সংরক্ষণ</button></div>`);
+}
+
+async function saveUserRoles(id){
+  if(!isSuper()){
+    alert("শুধু Super Admin এই কাজ করতে পারবেন।");
+    return;
+  }
+  let rs=urRoles();
+  if(!rs.length) rs=[UROLES[UROLES.length-1]];
+  const pm={};
+  PMK.forEach(k=>{pm[k]=!!document.querySelector('#ur_pm .st-sw[data-k="'+k+'"].on')});
+  if(rs.includes(UROLES[0])&&!confirm("অ্যাডমিন ভূমিকা দিলে এই ইউজার অ্যাপের সব তথ্যে পূর্ণ অ্যাক্সেস পাবেন। নিশ্চিত?")) return;
+  try{
+    const {data,error}=await sb.rpc("smartedu_set_user_roles",{
+      target_user_id:id,
+      new_roles:rs,
+      new_school:$("ur_s").value||"",
+      new_perms:pm
+    });
+    if(error) throw error;
+    alert(data===true?"অ্যাক্সেস সংরক্ষিত হয়েছে। ইউজারের পরের লগইনে কার্যকর হবে।":"পরিবর্তন করা যায়নি।");
+    await loadApprovalPanel();
+  }catch(e){
+    alert("পরিবর্তন ব্যর্থ: "+e.message);
+  }
+}
+
 async function emailSignup(){
   if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
   const email=($("emEmail").value||"").trim().toLowerCase(),pw=$("emPass").value||"",pw2=$("emPass2").value||"";
