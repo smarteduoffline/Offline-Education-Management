@@ -216,6 +216,12 @@ async function testSupabaseSignup() {
     return;
   }
 
+  const password2 = prompt("পাসওয়ার্ডটি আবার লিখুন (নিশ্চিত করতে):");
+  if (password2 !== password) {
+    alert("দুইবারের পাসওয়ার্ড মেলেনি। আবার চেষ্টা করুন।");
+    return;
+  }
+
   try {
     const { data, error } = await sb.auth.signUp({
       email: email.trim().toLowerCase(),
@@ -252,7 +258,7 @@ async function testSupabaseLogin() {
 
   try {
     const { data, error } = await sb.auth.signInWithPassword({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password: password
     });
 
@@ -391,7 +397,7 @@ function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
 function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
-function loginView(){const has=S.users.length>0;return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p><input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<button class="ob" style="width:100%;margin-top:10px" onclick="testSupabaseLogin()">Supabase লগইন পরীক্ষা করুন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function loginView(){const has=S.users.length>0;return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p><input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<button class="ob" style="width:100%;margin-top:10px" onclick="testSupabaseSignup()">Supabase অ্যাকাউন্ট পরীক্ষা</button><button class="ob" style="width:100%;margin-top:10px" onclick="testSupabaseLogin()">Supabase লগইন পরীক্ষা করুন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const u={id:uid(),identifier:id,pin,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];localStorage.setItem(AUTH_KEY,JSON.stringify(u));activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.pin===pin&&x.active!==false);if(u){activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
 function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");render()}
