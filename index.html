@@ -418,6 +418,7 @@ function userPanel(){
 
 let hist=[],curKey="",goingBack=false;
 var loginTab="pin";
+const ADMIN_AUTH_EMAIL = "aworker247@gmail.com";
 const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
 const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 function setLoginTab(t){loginTab=t;render()}
@@ -432,14 +433,30 @@ async function emailLogin(){
   try{
     const {error}=await sb.auth.signInWithPassword({email,password:pw});
     if(error)throw error;
-    let u=S.users.find(x=>String(x.identifier).toLowerCase()===email);
+    let u;
     if(SUPER_ADMIN_EMAILS.includes(email)){
+      u=S.users.find(x=>String(x.identifier).toLowerCase()===email);
       if(!u){u={id:uid(),identifier:email,pin:uid()+uid(),role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
       else{u.role="admin";u.active=true}
       save();
+    }else{
+      if(email !== ADMIN_AUTH_EMAIL.trim().toLowerCase()){
+        await sb.auth.signOut();
+        return lerr("এই ইমেইলটি অনুমোদিত নয়।");
+      }
+      u = S.users.find(
+        x => x.role === "admin" && x.active !== false
+      );
+      if(!u){
+        await sb.auth.signOut();
+        return lerr("বিদ্যমান অ্যাডমিন অ্যাকাউন্ট পাওয়া যায়নি।");
+      }
     }
-    if(!u||u.active===false){await sb.auth.signOut();return lerr("এই ইমেইলের জন্য অ্যাপে কোনো account নেই। অ্যাডমিনকে account যোগ করতে বলুন।")}
-    activeUser={id:u.id,identifier:u.identifier,role:u.role};
+    activeUser = {
+      id: u.id,
+      identifier: u.identifier,
+      role: u.role
+    };
     sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render();
   }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
 }
