@@ -397,7 +397,7 @@ function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
 function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
-function loginView(){const has=S.users.length>0;return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p><input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<button class="ob" style="width:100%;margin-top:10px" onclick="testSupabaseSignup()">Supabase অ্যাকাউন্ট পরীক্ষা</button><button class="ob" style="width:100%;margin-top:10px" onclick="testSupabaseLogin()">Supabase লগইন পরীক্ষা করুন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function loginView(){const has=S.users.length>0;if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const u={id:uid(),identifier:id,pin,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];localStorage.setItem(AUTH_KEY,JSON.stringify(u));activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.pin===pin&&x.active!==false);if(u){activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
 function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");render()}
@@ -417,6 +417,72 @@ function userPanel(){
 }
 
 let hist=[],curKey="",goingBack=false;
+var loginTab="pin";
+const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
+function setLoginTab(t){loginTab=t;render()}
+function lerr(m){const e=$("loginError");if(e)e.textContent=m}
+function loginTabs(){return `<div style="display:flex;gap:6px;margin:6px 0 12px"><button class="${loginTab==="pin"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('pin')">PIN লগইন</button><button class="${loginTab==="email"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('email')">ইমেইল লগইন</button></div>`}
+function emailLoginView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>ইমেইল লগইন</h1><p>নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিন (ইন্টারনেট লাগবে)</p>${loginTabs()}<input id="emEmail" type="email" autocomplete="email" placeholder="ইমেইল"><input id="emPass" type="password" autocomplete="current-password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')emailLogin()"><button class="btn" style="width:100%" onclick="emailLogin()">ইমেইল দিয়ে লগইন</button><button class="ob" style="width:100%;margin-top:10px" onclick="emailReset()">পাসওয়ার্ড ভুলে গেছেন? (Forgot Password)</button><input id="emPass2" type="password" autocomplete="new-password" placeholder="নিবন্ধনের জন্য পাসওয়ার্ড আবার লিখুন" style="margin-top:14px"><button class="ob" style="width:100%;margin-top:10px" onclick="emailSignup()">নতুন ইমেইল নিবন্ধন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+async function emailLogin(){
+  if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
+  const email=($("emEmail").value||"").trim().toLowerCase(),pw=$("emPass").value||"";
+  if(!email||!pw)return lerr("ইমেইল ও পাসওয়ার্ড দিন");
+  lerr("অপেক্ষা করুন...");
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error)throw error;
+    const u=S.users.find(x=>String(x.identifier).toLowerCase()===email&&x.active!==false);
+    if(!u){await sb.auth.signOut();return lerr("এই ইমেইলের জন্য অ্যাপে কোনো account নেই। অ্যাডমিনকে account যোগ করতে বলুন।")}
+    activeUser={id:u.id,identifier:u.identifier,role:u.role};
+    sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render();
+  }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
+}
+async function emailSignup(){
+  if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
+  const email=($("emEmail").value||"").trim().toLowerCase(),pw=$("emPass").value||"",pw2=$("emPass2").value||"";
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return lerr("সঠিক ইমেইল দিন");
+  if(pw.length<6)return lerr("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
+  if(pw!==pw2)return lerr("দুইবারের পাসওয়ার্ড মেলেনি");
+  try{
+    const {error}=await sb.auth.signUp({email,password:pw,options:{emailRedirectTo:SITE_URL}});
+    if(error)throw error;
+    lerr("");alert("নিবন্ধনের অনুরোধ সফল। ইমেইলের Inbox ও Spam ফোল্ডারে কনফার্মেশন লিংক দেখুন।");
+  }catch(e){lerr("নিবন্ধন ব্যর্থ: "+e.message)}
+}
+var recoveryMode=false;
+function recoveryView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔑</div><h1>নতুন পাসওয়ার্ড দিন</h1><p>কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড লিখুন</p><input id="emNew" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড"><input id="emNew2" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড আবার লিখুন" onkeydown="if(event.key==='Enter')saveNewPassword()"><button class="btn" style="width:100%" onclick="saveNewPassword()">পাসওয়ার্ড সংরক্ষণ করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelRecovery()">বাতিল</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+async function emailReset(){
+  if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
+  const email=($("emEmail").value||"").trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return lerr("উপরের ইমেইল ঘরে আপনার ইমেইল লিখে আবার চাপুন");
+  lerr("অপেক্ষা করুন...");
+  try{
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL});
+    if(error)throw error;
+    lerr("");alert("এই ইমেইলে account থাকলে পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। Inbox ও Spam ফোল্ডার দেখুন।");
+  }catch(e){lerr("ব্যর্থ: "+e.message)}
+}
+async function saveNewPassword(){
+  const p1=$("emNew").value||"",p2=$("emNew2").value||"";
+  if(p1.length<6)return lerr("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
+  if(p1!==p2)return lerr("দুইবারের পাসওয়ার্ড মেলেনি");
+  lerr("অপেক্ষা করুন...");
+  try{
+    const {error}=await sb.auth.updateUser({password:p1});
+    if(error)throw error;
+    await sb.auth.signOut();
+    recoveryMode=false;loginTab="email";
+    try{history.replaceState(null,"",location.pathname)}catch(_){}
+    alert("পাসওয়ার্ড পরিবর্তন হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।");render();
+  }catch(e){lerr("ব্যর্থ: "+e.message)}
+}
+async function cancelRecovery(){
+  try{await sb.auth.signOut()}catch(_){}
+  recoveryMode=false;loginTab="email";
+  try{history.replaceState(null,"",location.pathname)}catch(_){}
+  render();
+}
+if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recoveryMode=true;unlocked=false;render()}});
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
