@@ -282,7 +282,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
 const AUTH_KEY="smart-edu-auth-v2";
-let activeUser=JSON.parse(sessionStorage.getItem("smartEduUser")||"null");
+let activeUser=JSON.parse(sessionStorage.getItem("smartEduUser")||localStorage.getItem("smartEduRemember")||"null");
 let unlocked=!!activeUser;
 if(Array.isArray(S.users)&&S.users.some(u=>Array.isArray(u.roles))){S.invUsers=(S.invUsers||[]).concat(S.users.filter(u=>Array.isArray(u.roles)));S.users=S.users.filter(u=>!Array.isArray(u.roles))}
 const bn=n=>LANG=="en"?String(n):String(n).replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
@@ -400,7 +400,7 @@ function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"
 function loginView(){const has=S.users.length>0;if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const u={id:uid(),identifier:id,pin,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];localStorage.setItem(AUTH_KEY,JSON.stringify(u));activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.pin===pin&&x.active!==false);if(u){activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
-function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");render()}
+function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");applySessionSchool("");try{if(sb)sb.auth.signOut()}catch(e){}render()}
 function forgotLocal(){const id=(prompt("ইউজারনেম/ইমেইল লিখুন:")||"").trim().toLowerCase(),u=S.users.find(x=>x.identifier===id);if(!u)return alert("account পাওয়া যায়নি");const pin=prompt("নতুন ৪–৬ সংখ্যার PIN লিখুন:");if(!/^\d{4,6}$/.test(pin||""))return alert("PIN সঠিক নয়");u.pin=pin;save();alert("PIN পরিবর্তন হয়েছে")}
 function userPermissionInputs(u={}){return Object.entries(PERM_LABEL).map(([k,v])=>`<label style="display:flex;gap:8px;align-items:center;padding:6px 0;font-size:13px"><input class="cb up" type="checkbox" data-perm="${k}" ${u.permissions?.includes(k)?"checked":""}>${v}</label>`).join("")}
 function userForm(id){if(!isSuper()){alert("শুধু Super Admin এই কাজ করতে পারবেন");return}const u=S.users.find(x=>x.id===id)||{role:"teacher",active:true,permissions:[...RBAC.teacher.permissions]};modal(HND+`<h2 style="font-size:16px">${id?"শিক্ষক account সম্পাদনা":"নতুন শিক্ষক account"}</h2><label class="lb">ইউজারনেম/ইমেইল *</label><input id="u_id" value="${esc(u.identifier)}" placeholder="teacher@example.com"><label class="lb">${id?"নতুন PIN (খালি রাখলে অপরিবর্তিত)":"PIN *"}</label><input id="u_pin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যা"><label class="lb">Permissions</label><div class="card" style="padding:8px;max-height:260px;overflow:auto">${userPermissionInputs(u)}</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="saveUser('${id||""}')">সংরক্ষণ</button></div>`);$("mt").onclick=null}
@@ -464,6 +464,8 @@ async function emailLogin(){
       return lerr("ব্যবহারকারীর তথ্য পাওয়া যায়নি।");
     }
 
+    applySessionSchool("");
+    let sidSel="";
     let u;
 
     if(SUPER_ADMIN_EMAILS.includes(email)){
@@ -542,6 +544,7 @@ async function emailLogin(){
         const pmx=(access.perms&&Object.keys(access.perms).length)?access.perms:pmDefault(access.roles);
         u.permissions=[...new Set(["dashboard"].concat(PMK.filter(k=>pmx[k]).map(k=>PM_TO_PERM[k]).filter(Boolean)))];
         save();
+        applySessionSchool(access.school_id);sidSel=access.school_id||"";
 
         if(u.active===false){
           await sb.auth.signOut();
@@ -560,6 +563,7 @@ async function emailLogin(){
       "smartEduUser",
       JSON.stringify(activeUser)
     );
+    localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:sidSel}));
 
     unlocked=true;
     render();
@@ -752,6 +756,46 @@ async function cancelRecovery(){
   render();
 }
 if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recoveryMode=true;unlocked=false;render()}});
+var _mainSchool=null;
+function applySessionSchool(sid){
+  try{
+    if(_mainSchool){S.school=_mainSchool;_mainSchool=null}
+    const sc=(sid&&sid!=="main")?(S.schools||[]).find(x=>String(x.id)===String(sid)):null;
+    if(!sc)return;
+    _mainSchool=S.school;
+    Object.defineProperty(S,"toJSON",{value:function(){return _mainSchool?Object.assign({},this,{school:_mainSchool}):this},enumerable:false,configurable:true,writable:true});
+    S.school=Object.assign({},_mainSchool,{name:sc.name,logo:sc.logo,addr:sc.addr,phone:sc.phone,email:sc.email||"",est:sc.est});
+  }catch(e){}
+}
+function permsFromAccess(access){
+  const pmx=(access.perms&&Object.keys(access.perms).length)?access.perms:pmDefault(access.roles);
+  return [...new Set(["dashboard"].concat(PMK.filter(k=>pmx[k]).map(k=>PM_TO_PERM[k]).filter(Boolean)))];
+}
+async function refreshRemembered(){
+  try{
+    if(!sb||!activeUser||!localStorage.getItem("smartEduRemember")||!navigator.onLine)return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const email=String(session.user.email||"").toLowerCase();
+    if(SUPER_ADMIN_EMAILS.includes(email)||email===ADMIN_AUTH_EMAIL.trim().toLowerCase())return;
+    const {data:access,error}=await sb.from("smartedu_user_access")
+      .select("status,roles,school_id,perms").eq("user_id",session.user.id).maybeSingle();
+    if(error||!access)return;
+    if(access.status!=="approved"){logout();alert("আপনার অ্যাকাউন্ট আর সক্রিয় নেই। আবার লগইন করুন।");return}
+    const u=S.users.find(x=>x.id===activeUser.id);
+    if(!u)return;
+    u.role=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
+    u.permissions=permsFromAccess(access);
+    save();
+    activeUser.role=u.role;
+    localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:access.school_id||""}));
+    applySessionSchool(access.school_id);
+    render();
+  }catch(e){}
+}
+try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
+refreshRemembered();
+
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
