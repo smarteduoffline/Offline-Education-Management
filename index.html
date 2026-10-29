@@ -842,6 +842,15 @@ function applyPending(){
 applyPending();
 if(ACT_SID==="main")writeSchIdx();
 function doLogout(){closeM();if(confirm("আপনি কি লগআউট করতে চান?"))logout()}
+function fitMobileZoom(){
+  try{
+    const sw=screen.width,iw=window.innerWidth;
+    const z=(iw>sw*1.25&&iw>=500)?(iw/sw):1;
+    document.documentElement.style.zoom=z>1?String(z):"";
+  }catch(e){}
+}
+fitMobileZoom();
+addEventListener("resize",fitMobileZoom);
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
