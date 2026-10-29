@@ -272,12 +272,15 @@ async function testSupabaseLogin() {
   }
 }
   
-const KEY="smart-edu-v1";
+const MAIN_KEY="smart-edu-v1";
+const ACT_SID=localStorage.getItem("smartEduActiveSid")||"main";
+const KEY=ACT_SID==="main"?MAIN_KEY:MAIN_KEY+":sch:"+ACT_SID;
 let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
 const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};LANG=(S.set&&S.set.lang)||"bn";
-const save=()=>{S.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(S));if(typeof queueSync==="function")queueSync()};
+if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
+const save=()=>{S.updatedAt=Date.now();if(ACT_SID==="main")writeSchIdx();localStorage.setItem(KEY,JSON.stringify(S));if(typeof queueSync==="function")queueSync()};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
@@ -384,7 +387,7 @@ const RBAC={
 const PERM_LABEL={dashboard:"ড্যাশবোর্ড",attendance:"উপস্থিতি",students:"শিক্ষার্থী",fees:"ফি",reports:"রিপোর্ট",exams:"পরীক্ষা ও ফলাফল",accounting:"আয় ও ব্যয়",classes:"শ্রেণী ও পাঠ্য/বাড়ির কাজ",library:"লাইব্রেরি",messages:"SMS/WhatsApp",teachers:"শিক্ষক ব্যবস্থাপনা",staff:"কর্মী ব্যবস্থাপনা",notices:"নোটিশ",settings:"সেটিংস ও backup"};
 function initRBAC(){
  S.users=Array.isArray(S.users)?S.users:[];
- if(!S.users.length){
+ if(!S.users.length&&ACT_SID==="main"){
   let old=null;try{old=JSON.parse(localStorage.getItem(AUTH_KEY)||"null")}catch(e){}
   if(old&&old.identifier&&old.pin)S.users=[{id:uid(),identifier:old.identifier,pin:old.pin,role:old.role||"admin",active:true,permissions:old.permissions||[],createdAt:old.createdAt||Date.now()}];
  }
@@ -397,7 +400,7 @@ function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
 function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
-function loginView(){const has=S.users.length>0;if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const u={id:uid(),identifier:id,pin,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];localStorage.setItem(AUTH_KEY,JSON.stringify(u));activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.pin===pin&&x.active!==false);if(u){activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
 function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");applySessionSchool("");try{if(sb)sb.auth.signOut()}catch(e){}render()}
@@ -434,14 +437,14 @@ ${isSuper()?`<div class="card">
 }
 
 let hist=[],curKey="",goingBack=false;
-var loginTab="pin";
+var loginTab=(ACT_SID!=="main"&&!S.users.length)?"email":"pin";
 const ADMIN_AUTH_EMAIL = "aworker247@gmail.com";
 const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
 const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 function setLoginTab(t){loginTab=t;render()}
 function lerr(m){const e=$("loginError");if(e)e.textContent=m}
 function loginTabs(){return `<div style="display:flex;gap:6px;margin:6px 0 12px"><button class="${loginTab==="pin"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('pin')">PIN লগইন</button><button class="${loginTab==="email"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('email')">ইমেইল লগইন</button></div>`}
-function emailLoginView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>ইমেইল লগইন</h1><p>নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিন (ইন্টারনেট লাগবে)</p>${loginTabs()}<input id="emEmail" type="email" autocomplete="email" placeholder="ইমেইল"><input id="emPass" type="password" autocomplete="current-password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')emailLogin()"><button class="btn" style="width:100%" onclick="emailLogin()">ইমেইল দিয়ে লগইন</button><button class="ob" style="width:100%;margin-top:10px" onclick="emailReset()">পাসওয়ার্ড ভুলে গেছেন? (Forgot Password)</button><input id="emPass2" type="password" autocomplete="new-password" placeholder="নিবন্ধনের জন্য পাসওয়ার্ড আবার লিখুন" style="margin-top:14px"><button class="ob" style="width:100%;margin-top:10px" onclick="emailSignup()">নতুন ইমেইল নিবন্ধন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function emailLoginView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>ইমেইল লগইন</h1><p>নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিন (ইন্টারনেট লাগবে)</p>${schSel()}${loginTabs()}<input id="emEmail" type="email" autocomplete="email" placeholder="ইমেইল"><input id="emPass" type="password" autocomplete="current-password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')emailLogin()"><button class="btn" style="width:100%" onclick="emailLogin()">ইমেইল দিয়ে লগইন</button><button class="ob" style="width:100%;margin-top:10px" onclick="emailReset()">পাসওয়ার্ড ভুলে গেছেন? (Forgot Password)</button><input id="emPass2" type="password" autocomplete="new-password" placeholder="নিবন্ধনের জন্য পাসওয়ার্ড আবার লিখুন" style="margin-top:14px"><button class="ob" style="width:100%;margin-top:10px" onclick="emailSignup()">নতুন ইমেইল নিবন্ধন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function emailLogin(){
   if(!sb) return lerr("Supabase সংযোগ তৈরি হয়নি।");
 
@@ -509,6 +512,14 @@ async function emailLogin(){
             ? "আপনার অ্যাকাউন্ট ব্লক করা হয়েছে।"
             : "আপনার অ্যাকাউন্ট Super Admin-এর অনুমোদনের অপেক্ষায় আছে।"
         );
+      }
+
+      const tsid=access.school_id||"main";
+      if(tsid!==ACT_SID){
+        localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",permissions:permsFromAccess(access),sid:tsid}));
+        localStorage.setItem("smartEduActiveSid",tsid);
+        location.reload();
+        return;
       }
 
       if(email===ADMIN_AUTH_EMAIL.trim().toLowerCase()){
@@ -758,6 +769,7 @@ async function cancelRecovery(){
 if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recoveryMode=true;unlocked=false;render()}});
 var _mainSchool=null;
 function applySessionSchool(sid){
+  return;
   try{
     if(_mainSchool){S.school=_mainSchool;_mainSchool=null}
     const sc=(sid&&sid!=="main")?(S.schools||[]).find(x=>String(x.id)===String(sid)):null;
@@ -782,6 +794,13 @@ async function refreshRemembered(){
       .select("status,roles,school_id,perms").eq("user_id",session.user.id).maybeSingle();
     if(error||!access)return;
     if(access.status!=="approved"){logout();alert("আপনার অ্যাকাউন্ট আর সক্রিয় নেই। আবার লগইন করুন।");return}
+    const tsid=access.school_id||"main";
+    if(tsid!==ACT_SID){
+      localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",permissions:permsFromAccess(access),sid:tsid}));
+      localStorage.setItem("smartEduActiveSid",tsid);
+      sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");
+      location.reload();return;
+    }
     const u=S.users.find(x=>x.id===activeUser.id);
     if(!u)return;
     u.role=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
@@ -796,6 +815,31 @@ async function refreshRemembered(){
 try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
 refreshRemembered();
 
+function writeSchIdx(){try{localStorage.setItem("smartEduSchIdx",JSON.stringify(schAll().map(x=>({id:x.id,name:x.name,addr:x.addr,phone:x.phone,email:x.email,est:x.est}))))}catch(e){}}
+function schSel(){
+  let idx=[];try{idx=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]")}catch(e){}
+  if(idx.length<2)return "";
+  return `<select onchange="switchDataset(this.value)" style="margin:6px 0 10px">${idx.map(x=>`<option value="${x.id}" ${String(x.id)===ACT_SID?"selected":""}>🏛 ${esc(x.name)}</option>`).join("")}</select>`;
+}
+function switchDataset(sid){localStorage.setItem("smartEduActiveSid",sid);location.reload()}
+function applyPending(){
+  try{
+    const p=JSON.parse(localStorage.getItem("smartEduPending")||"null");
+    if(!p)return;
+    localStorage.removeItem("smartEduPending");
+    if(p.sid!==ACT_SID)return;
+    let u=S.users.find(x=>String(x.identifier).toLowerCase()===p.identifier);
+    if(!u){u={id:uid(),identifier:p.identifier,pin:uid()+uid(),role:p.role,active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
+    u.role=p.role;u.active=true;u.permissions=p.permissions||[];
+    save();
+    activeUser={id:u.id,identifier:u.identifier,role:u.role};
+    sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));
+    localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:ACT_SID}));
+    unlocked=true;
+  }catch(e){}
+}
+applyPending();
+if(ACT_SID==="main")writeSchIdx();
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
