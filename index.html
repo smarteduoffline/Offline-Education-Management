@@ -867,6 +867,62 @@ function fixBackBtns(){
 }
 new MutationObserver(()=>{if(!_bkQ){_bkQ=true;requestAnimationFrame(fixBackBtns)}}).observe(document.body,{childList:true,subtree:true});
 fixBackBtns();
+window._pendCnt=0;
+function notifItems(){
+  const L=[],T=today();
+  const add=(sev,ic,t,sub,act)=>L.push({sev,ic,t,sub,act});
+  const se=S.set&&S.set.subEnd;
+  if(se){
+    const dl=Math.ceil((new Date(se)-new Date(T))/864e5);
+    if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে","nav('more','sat')");
+    else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")","nav('more','sat')");
+  }
+  if(isSuper()&&window._pendCnt>0)add(2,"👤",bn(window._pendCnt)+" জন নতুন ইউজার অনুমোদনের অপেক্ষায়","অনুমোদন দিন এবং ভূমিকা/পারমিশন নির্ধারণ করুন","loadApprovalPanel()");
+  const dues=S.fees.filter(f=>due(f)>0);
+  if(dues.length){
+    const tot=dues.reduce((a,f)=>a+due(f),0),n=new Set(dues.map(f=>f.sid)).size;
+    add(2,"💰","বকেয়া ফি: "+bn(n)+" জন শিক্ষার্থী","মোট বকেয়া "+money(tot),"nav('fee')");
+  }
+  let od=0;
+  S.books.forEach(b=>(b.issues||[]).forEach(i=>{if(!i.ret&&i.due&&i.due<T)od++}));
+  if(od)add(1,"📚",bn(od)+"টি বই ফেরতের সময় পার হয়েছে","লাইব্রেরি দেখুন","nav('more','lib')");
+  const d3=new Date();d3.setDate(d3.getDate()+3);
+  const lim=d3.getFullYear()+"-"+p2(d3.getMonth()+1)+"-"+p2(d3.getDate());
+  const ex=S.exams.filter(e=>e.date==T),ux=S.exams.filter(e=>e.date>T&&e.date<=lim);
+  if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')");
+  if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')");
+  const lb=S.set&&S.set.lastBk;
+  if(S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","nav('more','set')");
+  const cut=new Date();cut.setDate(cut.getDate()-14);
+  const cs=cut.getFullYear()+"-"+p2(cut.getMonth()+1)+"-"+p2(cut.getDate());
+  S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')"));
+  return L.sort((a,b)=>b.sev-a.sev);
+}
+function notifCount(){
+  if(isSuper()&&(!window._pendT||Date.now()-window._pendT>60000)){window._pendT=Date.now();setTimeout(refreshPending,0)}
+  return notifItems().length;
+}
+async function refreshPending(){
+  try{
+    if(!isSuper()||!sb||!navigator.onLine)return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const {data,error}=await sb.rpc("smartedu_list_user_access");
+    if(error)return;
+    const n=(data||[]).filter(u=>u.status==="pending").length;
+    if(n!==window._pendCnt){window._pendCnt=n;render()}
+  }catch(e){}
+}
+function notifCenter(){
+  const L=notifItems(),col=["#3b82f6","#f59e0b","#ef4444"];
+  modal(`<div class="ch"><h2>🔔 নোটিফিকেশন</h2><button class="ob s" onclick="closeM()">বন্ধ</button></div>${L.length?L.map(x=>`<div class="row" style="border-left:4px solid ${col[x.sev]};padding-left:10px" onclick="closeM();${x.act}"><span style="font-size:22px">${x.ic}</span><div class="f"><b>${esc(x.t)}</b><small style="display:block;color:var(--mu)">${esc(x.sub||"")}</small></div><span style="color:var(--mu)">›</span></div>`).join(""):'<div class="em">কোনো নোটিফিকেশন নেই 🎉</div>'}`);
+}
+async function notifOpen(){
+  if(isSuper())await Promise.race([refreshPending(),new Promise(r=>setTimeout(r,1500))]);
+  notifCenter();
+}
+setInterval(refreshPending,300000);
+
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
@@ -922,7 +978,7 @@ function home(){
  const done=S.exams.filter(e=>Object.keys(e.marks).length).length,bars=[["মোট",S.exams.length,"#10b981"],["আজ",tex.length,"#f59e0b"],["আসন্ন",upc.length,"#3b82f6"],["ফলাফল",done,"#8b5cf6"]],mx=Math.max(1,...bars.map(b=>b[1]));
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
- return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="nav('more','notice')">🔔${nt.length?`<b class="bd">${bn(nt.length)}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
+ return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="notifOpen()">🔔${notifCount()?`<b class="bd">${bn(notifCount())}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
  <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
  <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD")}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
@@ -2713,7 +2769,7 @@ function upSave(id){const u=S.invUsers.find(x=>x.id==id),sid=$("up_s").value;u.s
 function usDel(id){if(!confirm("এই ইউজার মুছে ফেলবেন?"))return;S.invUsers=S.invUsers.filter(x=>x.id!=id);save();closeM();render()}
 function stAcc(){return userPanel()}
 function stSync(){return `<div class="card"><h2>অনলাইন সিঙ্ক</h2><p class="hint">API URL না দিলে অ্যাপ সম্পূর্ণ offline থাকবে। API URL দিলে অনলাইন হলে queue সিঙ্ক হবে।</p><input id="syncUrl" type="url" placeholder="https://example.com/api/sync" value="${esc(S.sync?.apiUrl||"")}"><input id="syncKey" type="password" placeholder="ঐচ্ছিক legacy API key" value="${esc(getSyncApiKey())}"><button class="btn o s" onclick="saveSyncSettings()">সেটিংস সংরক্ষণ</button> <button class="btn g s" onclick="syncNow(true)">এখন সিঙ্ক করুন</button><hr><label class="lb">Backend JWT login</label><input id="serverUser" autocomplete="username" placeholder="admin@example.com" value="${esc(sessionStorage.getItem("smartEduServerUser")||"")}"><input id="serverTenant" placeholder="Institution slug (যেমন alpha-school)"><input id="serverPass" type="password" autocomplete="current-password" placeholder="Server password (সংরক্ষণ হবে না)"><button class="btn o s" onclick="serverLogin()">JWT login</button> ${getSyncToken()?'<button class="ob s" onclick="serverLogout()">JWT logout</button>':'<small style="color:var(--mu)">JWT token শুধু এই session-এ থাকবে</small>'}<small style="display:block;color:var(--mu);margin-top:6px">Queue: ${bn((S.syncQueue||[]).length)} · Retry: ${S.sync.nextRetryAt?new Date(S.sync.nextRetryAt).toLocaleTimeString("bn-BD"):"প্রস্তুত"}</small></div>`}
-function stSub(){return `<div class="card"><h2>💳 সাবস্ক্রিপশন</h2><div style="display:flex;align-items:center;gap:10px;margin:10px 0"><span style="font-size:28px">👑</span><div><b>অফলাইন সংস্করণ</b><div style="font-size:12px;color:var(--mu)">কোনো মাসিক ফি বা মেয়াদ নেই</div></div><span class="pl" style="background:#dcfce7;color:#15803d;margin-left:auto">✓ সক্রিয়</span></div><div style="font-size:13px;line-height:1.9">✔ সব মডিউল ব্যবহারযোগ্য<br>✔ ইন্টারনেট ছাড়াই কাজ করে<br>✔ সব তথ্য আপনার ফোনেই থাকে</div></div>`}
+function stSub(){return `<div class="card"><h2>💳 সাবস্ক্রিপশন</h2><div style="display:flex;align-items:center;gap:10px;margin:10px 0"><span style="font-size:28px">👑</span><div><b>অফলাইন সংস্করণ</b><div style="font-size:12px;color:var(--mu)">কোনো মাসিক ফি বা মেয়াদ নেই</div></div><span class="pl" style="background:#dcfce7;color:#15803d;margin-left:auto">✓ সক্রিয়</span></div><div style="font-size:13px;line-height:1.9">✔ সব মডিউল ব্যবহারযোগ্য<br>✔ ইন্টারনেট ছাড়াই কাজ করে<br>✔ সব তথ্য আপনার ফোনেই থাকে</div>${isSuper()?`<div style="margin-top:12px"><label class="lb">সাবস্ক্রিপশনের মেয়াদ শেষের তারিখ (ঐচ্ছিক — শেষ হলে বেল আইকনে জানানো হবে)</label><input type="date" value="${esc(S.set.subEnd||"")}" onchange="S.set.subEnd=this.value;save();render()"></div>`:""}</div>`}
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
  return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর বা অ্যাপ মোছার আগে ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div></div>
