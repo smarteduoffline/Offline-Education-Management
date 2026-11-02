@@ -1,30 +1,136 @@
 name: Build APK
+
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - uses: actions/setup-java@v4
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
-      - name: Prepare app
+          java-version: "17"
+
+      - name: Prepare web assets
+        shell: bash
         run: |
-          mkdir -p www && cp index.html www/
+          set -e
+
+          mkdir -p www
+
+          cp index.html www/
+          cp manifest.webmanifest www/
+          cp sw.js www/
+
+          cp icon-192.png www/
+          cp icon-512.png www/
+          cp icon-maskable-192.png www/
+          cp icon-maskable-512.png www/
+
+          echo "Web assets copied:"
+          find www -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Validate required files
+        shell: bash
+        run: |
+          set -e
+
+          required_files=(
+            "www/index.html"
+            "www/manifest.webmanifest"
+            "www/sw.js"
+            "www/icon-192.png"
+            "www/icon-512.png"
+            "www/icon-maskable-192.png"
+            "www/icon-maskable-512.png"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [ ! -s "$file" ]; then
+              echo "Required file is missing or empty: $file"
+              exit 1
+            fi
+          done
+
+          node --check www/sw.js
+
+          node -e "
+            const fs = require('fs');
+            JSON.parse(fs.readFileSync('www/manifest.webmanifest', 'utf8'));
+            console.log('manifest.webmanifest is valid JSON');
+          "
+
+          echo "All required files are valid."
+
+      - name: Initialize npm project
+        shell: bash
+        run: |
+          set -e
+
           npm init -y
-          npm i @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capacitor/camera@6 @capawesome/capacitor-file-picker@6
-          npx cap init "Smart Education" com.madrasa.smartedu --web-dir=www
+
+          npm install --no-save \
+            @capacitor/core@6 \
+            @capacitor/cli@6 \
+            @capacitor/android@6 \
+            @capacitor/filesystem@6 \
+            @capacitor/share@6 \
+            @capacitor/camera@6 \
+            @capawesome/capacitor-file-picker@6
+
+      - name: Initialize Capacitor
+        shell: bash
+        run: |
+          set -e
+
+          npx cap init \
+            "Smart Education" \
+            "com.madrasa.smartedu" \
+            --web-dir=www
+
+      - name: Add Android platform
+        shell: bash
+        run: |
+          set -e
+
           npx cap add android
-          npx cap sync
-      - name: Build APK
-        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
+
+      - name: Sync Capacitor project
+        shell: bash
+        run: |
+          set -e
+
+          npx cap sync android
+
+      - name: Build debug APK
+        shell: bash
+        run: |
+          set -e
+
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: smart-education-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+          
