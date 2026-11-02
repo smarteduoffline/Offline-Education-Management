@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#d9f3e4">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -397,8 +397,12 @@ window.addEventListener("online",()=>{updateNet();scheduleSync()});
 window.addEventListener("offline",updateNet);
 window.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")scheduleSync()});
 async function vaultDecryptText(box,password){const enc=new TextEncoder(),u=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),base=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]),key=await crypto.subtle.deriveKey({name:"PBKDF2",salt:u(box.salt),iterations:box.iterations||210000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]),buf=await crypto.subtle.decrypt({name:"AES-GCM",iv:u(box.iv)},key,u(box.data));return new TextDecoder().decode(buf)}
-async function vaultOpen(box){const pw=prompt("Encrypted backup password:");if(!pw)throw 0;return JSON.parse(await vaultDecryptText(box,pw))}
-async function pasteGo(){try{let d=JSON.parse($("bk").value);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;S={...D(),...d};LANG=(S.set&&S.set.lang)||"bn";migrateExams();save();closeM();render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("টেক্সটটি সঠিক ব্যাকআপ নয়")}}
+async function vaultOpen(box){
+ if(!box||box.alg!=="AES-GCM"||box.kdf!=="PBKDF2-SHA-256"||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.salt||"")||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.iv||"")||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.data||"")||String(box.iv).length<12||String(box.iv).length>32||String(box.salt).length<20||String(box.salt).length>64||String(box.data).length>35000000)throw Error("invalid encrypted backup");
+ const iterations=Number(box.iterations||210000);if(!Number.isInteger(iterations)||iterations<100000||iterations>1000000)throw Error("invalid KDF settings");
+ const pw=prompt("Encrypted backup password:");if(!pw)throw 0;return JSON.parse(await vaultDecryptText({...box,iterations},pw))
+}
+async function pasteGo(){try{let d=JSON.parse($("bk").value);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;if(!restoreBackupData(d))return;closeM();render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("টেক্সটটি সঠিক ব্যাকআপ নয়")}}
 const RBAC={
  admin:{label:"অ্যাডমিন",all:true},
  teacher:{label:"শিক্ষক",permissions:["dashboard","attendance","students","classes","exams","reports","messages","notices"]}
@@ -2682,7 +2686,23 @@ const b64u=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
 const hex=u=>[...new Uint8Array(u)].map(x=>x.toString(16).padStart(2,"0")).join("");
 async function hashPin(pin,salt){const sa=salt||b64u(crypto.getRandomValues(new Uint8Array(16)));const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(String(pin)),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:Uint8Array.from(atob(sa),c=>c.charCodeAt(0)),iterations:120000,hash:"SHA-256"},key,256);return {salt:sa,hash:hex(bits),v:1};}
 async function verifyPin(pin,stored){if(!stored)return false;if(typeof stored==="string")return(/^\d{4,6}$/.test(stored)&&stored===String(pin))||pinH(pin)===stored;try{const x=typeof stored==="string"?JSON.parse(stored):stored;const h=await hashPin(pin,x.salt);return h.hash===x.hash}catch(_){return false}}
-function validBackup(d){return !!(d&&typeof d==="object"&&Array.isArray(d.students)&&(!d.school||typeof d.school==="object")&&(!d.set||typeof d.set==="object")&&(!d.users||Array.isArray(d.users)));}
+function validBackup(d){
+ if(!d||typeof d!=="object"||Array.isArray(d)||!Array.isArray(d.students))return false;
+ if(d.school!==undefined&&(!d.school||typeof d.school!=="object"||Array.isArray(d.school)))return false;
+ for(const k of ["set","sync","att","exg","attT"])if(d[k]!==undefined&&(!d[k]||typeof d[k]!=="object"||Array.isArray(d[k])))return false;
+ const arrays=["students","teachers","fees","notices","exams","txns","books","hw","staff","log","smslog","sal","routine","events","tbooks","certs","libSales","libGoods","schools","invUsers","users","syncQueue","audit","guides","feedback"];
+ for(const k of arrays)if(d[k]!==undefined&&(!Array.isArray(d[k])||d[k].length>100000))return false;
+ try{return JSON.stringify(d).length<=25*1024*1024}catch(_){return false}
+}
+function restoreBackupData(d){
+ if(!validBackup(d)){alert("ব্যাকআপের গঠন সঠিক নয় বা ফাইলটি অতিরিক্ত বড়");return false}
+ if(!confirm("বর্তমান প্রতিষ্ঠানের সব তথ্য ব্যাকআপের তথ্য দিয়ে প্রতিস্থাপন হবে। আগে বর্তমান ডেটার একটি ব্যাকআপ আছে কি? চালিয়ে যাবেন?"))return false;
+ const restored=migrateState(d);
+ restored.sync={...restored.sync,apiKey:"",backoffMs:0,nextRetryAt:0};
+ restored.syncQueue=[];
+ S=restored;LANG=(S.set&&S.set.lang)||"bn";migrateExams();save();
+ return true;
+}
 function stSet(k,v){S.set[k]=v;save();applyTheme();render()}
 const stTg=(l,d,k)=>`<div class="st-tg" onclick="stSet('${k}',${S.set[k]?0:1})"><div style="flex:1"><b style="font-weight:600;font-size:14px">${l}</b><small>${d}</small></div><div class="st-sw ${S.set[k]?"on":""}"><i></i></div></div>`;
 const stF=(l,id,v,t)=>`<label class="lb">${l}</label><input id="${id}" type="${t||"text"}" value="${esc(v)}">`;
@@ -2934,7 +2954,7 @@ async function renDecide(id,ok){
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
  return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর বা অ্যাপ মোছার আগে ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div></div>
-<div class="card"><button class="btn g" style="width:100%;margin-bottom:8px" onclick="exp();setTimeout(render,800)">⬇ ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="secureBackup()">🔒 Encrypted backup</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="pickRestore()">📂 ফাইল থেকে রিস্টোর</button><button class="btn o" style="width:100%" onclick="pasteImp()">📋 টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept="*/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"><div class="hint" style="margin-top:8px">রিস্টোর করলে বর্তমান সব তথ্য ব্যাকআপের তথ্য দিয়ে বদলে যাবে। ব্যাকআপে PIN সেটিংসও থাকে।</div></div>`}
+<div class="card"><button class="btn g" style="width:100%;margin-bottom:8px" onclick="exp();setTimeout(render,800)">⬇ ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="secureBackup()">🔒 Encrypted backup</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="pickRestore()">📂 ফাইল থেকে রিস্টোর</button><button class="btn o" style="width:100%" onclick="pasteImp()">📋 টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept=".json,application/json,text/plain" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"><div class="hint" style="margin-top:8px">রিস্টোর করলে বর্তমান সব তথ্য ব্যাকআপের তথ্য দিয়ে বদলে যাবে। ব্যাকআপে PIN সেটিংসও থাকে।</div></div>`}
 function stDng(){return `<div class="card st-rd"><h2 style="color:#dc2626">⚠️ বিপজ্জনক এলাকা</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 12px">এই কাজগুলো ফেরানো যায় না। আগে ব্যাকআপ নিয়ে নিন।</p><button class="btn o" style="width:100%;margin-bottom:8px" onclick="exp()">⬇ আগে ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px;color:#dc2626;border-color:#fca5a5" onclick="if(confirm('কার্যকলাপের লগ ও SMS ইতিহাস মুছবেন?')){S.log=[];S.smslog=[];save();alert('মুছে ফেলা হয়েছে')}">লগ ও SMS ইতিহাস মুছুন</button><button class="btn r" style="width:100%" onclick="resetAll()">🗑 সব তথ্য মুছে ফেলুন</button></div>`}
 function resetAll(){if(!confirm("সব তথ্য (শিক্ষার্থী, ফি, ফলাফল সব) চিরতরে মুছে যাবে। নিশ্চিত?"))return;if(prompt("নিশ্চিত করতে ইংরেজিতে DELETE লিখুন")!=="DELETE"){alert("বাতিল করা হয়েছে");return}S=D();save();applyTheme();stT=0;render();alert("সব তথ্য মুছে ফেলা হয়েছে")}
 let lt=0,lq="",lflt=0,lrb=0,lrm=new Date().getMonth(),lry=new Date().getFullYear();
@@ -3073,14 +3093,13 @@ async function pickRestore(){
    const r=await P.FilePicker.pickFiles({limit:1,readData:true});
    const f=r.files&&r.files[0];if(!f)return;
    const txt=decodeURIComponent(escape(atob(f.data)));
-   let d=JSON.parse(txt);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!d.students)throw 0;
-   S={...D(),...d};LANG=(S.set&&S.set.lang)||"bn";migrateExams();save();render();alert("রিস্টোর সম্পন্ন");return;
+   let d=JSON.parse(txt);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;if(!restoreBackupData(d))return;render();alert("রিস্টোর সম্পন্ন");return;
   }catch(e){if(e&&/cancel/i.test(e.message||""))return;alert("ফাইলটি পড়া যায়নি বা সঠিক ব্যাকআপ নয়। টেক্সট পেস্ট করে রিস্টোর করুন।");return}
  }
  $("rf").click();
 }
 function pasteImp(){modal(`<h2 style="margin-bottom:10px">রিস্টোর</h2><textarea id="bk" rows="8" placeholder="ব্যাকআপ টেক্সট পেস্ট করুন"></textarea><button class="btn" style="width:100%" onclick="pasteGo()">রিস্টোর করুন</button>`)}
-function imp(f){if(!f)return;const r=new FileReader();r.onload=async()=>{try{let d=JSON.parse(r.result);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;S={...D(),...d};LANG=(S.set&&S.set.lang)||"bn";migrateExams();save();render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("ফাইলটি সঠিক ব্যাকআপ নয়")}};r.readAsText(f)}
+function imp(f){if(!f)return;if(f.size>25*1024*1024){alert("ব্যাকআপ ফাইল ২৫ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=async()=>{try{let d=JSON.parse(r.result);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;if(!restoreBackupData(d))return;render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("ফাইলটি সঠিক ব্যাকআপ নয়")}};r.readAsText(f)}
 
 function modal(h){closeM();const m=document.createElement("div");m.className="mt";m.id="mt";m.onclick=e=>{if(e.target==m)closeM()};m.innerHTML="<div>"+h+"</div>";document.body.appendChild(m)}
 function closeM(){const m=$("mt");if(m)m.remove()}
