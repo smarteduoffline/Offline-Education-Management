@@ -405,7 +405,7 @@ function hasPerm(p){return activeUser?.role==="admin"||userPerms().includes(p)}
 function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন্য আপনার permission নেই");return false}
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
-function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
+function canMenu(k){if(k==="sat")return isSuper();if(k==="set")return true;return hasPerm(MENU_PERM[k]||"dashboard")}
 function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const ph=await hashPin(pin);const u={id:uid(),identifier:id,pinHash:ph,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];try{localStorage.setItem(AUTH_KEY,JSON.stringify(u))}catch(_){}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 async function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.active!==false);if(u&&await verifyPin(pin,u.pinHash||u.pin)){if(u.pin&&!u.pinHash){u.pinHash=await hashPin(pin);delete u.pin;save()}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
@@ -874,8 +874,8 @@ function notifItems(){
   const se=subEffEnd();
   if(se){
     const dl=Math.ceil((new Date(se)-new Date(T))/864e5);
-    if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে","nav('more','sat')");
-    else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")","nav('more','sat')");
+    if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে","stT=5;nav('more','set')");
+    else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")","stT=5;nav('more','set')");
   }
   if(isSuper()&&window._pendCnt>0)add(2,"👤",bn(window._pendCnt)+" জন নতুন ইউজার অনুমোদনের অপেক্ষায়","অনুমোদন দিন এবং ভূমিকা/পারমিশন নির্ধারণ করুন","loadApprovalPanel()");
   const dues=S.fees.filter(f=>due(f)>0);
@@ -892,7 +892,7 @@ function notifItems(){
   if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')");
   if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')");
   const lb=S.set&&S.set.lastBk;
-  if(S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","nav('more','set')");
+  if(S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","stT=4;nav('more','set')");
   const cut=new Date();cut.setDate(cut.getDate()-14);
   const cs=cut.getFullYear()+"-"+p2(cut.getMonth()+1)+"-"+p2(cut.getDate());
   S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')"));
@@ -2270,12 +2270,12 @@ function abSave(){const d=abk.d;let n=0;
 
 /* ---- Super Admin Tool (only the Super Admin can open it) ---- */
 let satT=0;
-const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["সাবস্ক্রিপশন","💳"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["লগআউট","🚪"]];
+const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["লগআউট","🚪"]];
 function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p class="hint" style="margin:8px 0 12px">বর্তমান লগইন: ${esc(activeUser?.identifier||"")} · ${esc(activeUser?.role||"")}</p><button class="btn r" style="width:100%" onclick="logout()">লগআউট করুন</button></div>`}
 function superTool(){
  if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই পেইজ শুধু Super Admin-এর জন্য।</p></div>`;
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">👑</div><div><div style="font-size:20px;font-weight:700">Super Admin Tool</div><div style="color:var(--mu);font-size:13px">শুধু Super Admin-এর জন্য — প্রতিষ্ঠান, ব্যবহারকারী, সাবস্ক্রিপশন, সিঙ্ক ও SaaS নিয়ন্ত্রণ</div></div></div>
-<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stSub,stAcc,stSync,saasDashboard,satLogout][satT]()}
+<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,satLogout][satT]()}
 /* ---- attendance-based salary (teachers & staff) ---- */
 const offDay=()=>S.set.offDay==null?5:+S.set.offDay;
 function wDays(y,m){const ym=mk(y,m),o=S.set.wd&&+S.set.wd[ym];if(o>0)return o;const dim=new Date(y,m+1,0).getDate();let n=0;for(let d=1;d<=dim;d++){if(new Date(y,m,d).getDay()==offDay())continue;if(evOn(ym+"-"+p2(d)).some(e=>e.type=="ছুটি"))continue;n++}return n}
@@ -2438,7 +2438,7 @@ async function saasLoad(){if(!getSyncToken()){saasErr="";return}
  try{const [a,b,c]=await Promise.all([saasFetch("/api/super/tenants"),saasFetch("/api/super/users"),saasFetch("/api/super/billing")]);saasTenants=a.tenants||[];saasUsers=b.users||[];saasBilling=c;saasErr=""}catch(e){saasErr=e.message}
  if(tab==="more"&&sub==="sat")render()}
 function saasStat(n,l,c){return `<div class="st" style="background:${c}"><small>${l}</small><div>${n}</div></div>`}
-function saasDashboard(){if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই dashboard শুধু Super Admin-এর জন্য।</p></div>`;if(!getSyncToken())return `<div class="card"><h2>🛡️ SaaS</h2><p style="font-size:14px;line-height:1.8;color:var(--mu);margin:8px 0 12px">SaaS-এর তথ্য সার্ভার থেকে আসে। এটি দেখতে আগে <b>সিঙ্ক</b> ট্যাবে সার্ভারের API URL দিয়ে JWT login করুন। লগইন ছাড়া এই অংশ ব্যবহার করা যায় না।</p><button class="btn" style="width:100%" onclick="satT=4;render()">🔄 সিঙ্ক ট্যাবে যান</button></div>`;if(saasFor!==getSyncToken()){saasFor=getSyncToken();saasLoad()}const saasNote=saasErr?`<div class="card" style="border-color:#fca5a5"><b style="color:#dc2626">SaaS data লোড হয়নি</b><div style="font-size:13px;color:var(--mu);margin:6px 0 10px">${esc(saasErr)}</div><button class="btn o s" onclick="saasFor='';render()">আবার চেষ্টা করুন</button></div>`:"";const active=saasTenants.filter(t=>t.status==="active").length,trial=saasTenants.filter(t=>t.status==="trial").length,susp=saasTenants.filter(t=>["suspended","blocked"].includes(t.status)).length,revenue=saasBilling?.summary?.revenue||0;
+function saasDashboard(){if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই dashboard শুধু Super Admin-এর জন্য।</p></div>`;if(!getSyncToken())return `<div class="card"><h2>🛡️ SaaS</h2><p style="font-size:14px;line-height:1.8;color:var(--mu);margin:8px 0 12px">SaaS-এর তথ্য সার্ভার থেকে আসে। এটি দেখতে আগে <b>সিঙ্ক</b> ট্যাবে সার্ভারের API URL দিয়ে JWT login করুন। লগইন ছাড়া এই অংশ ব্যবহার করা যায় না।</p><button class="btn" style="width:100%" onclick="satT=3;render()">🔄 সিঙ্ক ট্যাবে যান</button></div>`;if(saasFor!==getSyncToken()){saasFor=getSyncToken();saasLoad()}const saasNote=saasErr?`<div class="card" style="border-color:#fca5a5"><b style="color:#dc2626">SaaS data লোড হয়নি</b><div style="font-size:13px;color:var(--mu);margin:6px 0 10px">${esc(saasErr)}</div><button class="btn o s" onclick="saasFor='';render()">আবার চেষ্টা করুন</button></div>`:"";const active=saasTenants.filter(t=>t.status==="active").length,trial=saasTenants.filter(t=>t.status==="trial").length,susp=saasTenants.filter(t=>["suspended","blocked"].includes(t.status)).length,revenue=saasBilling?.summary?.revenue||0;
  const body=saasTab==="tenants"?saasTenantPanel():saasTab==="users"?saasUserPanel():saasTab==="billing"?saasBillingPanel():`<div class="g2">${saasStat(bn(saasTenants.length),"মোট প্রতিষ্ঠান","linear-gradient(135deg,#2563eb,#3b82f6)")}${saasStat(bn(active),"Active","linear-gradient(135deg,#059669,#10b981)")}${saasStat(bn(trial),"Trial","linear-gradient(135deg,#d97706,#f59e0b)")}${saasStat(bn(susp),"Suspended","linear-gradient(135deg,#dc2626,#f43f5e)")}</div><div class="card"><div class="ch"><h2>Platform overview</h2><span class="tag g">Revenue: ${money(revenue)}</span></div><p class="hint">প্রতিষ্ঠান, user, subscription এবং tenant isolation এখান থেকে পরিচালনা করুন।</p><button class="btn" onclick="saasTab='tenants';render()">প্রতিষ্ঠান পরিচালনা করুন</button></div>`;
  return saasNote+`<div class="card" style="background:linear-gradient(135deg,#172554,#3730a3);color:#fff"><div class="ch"><div><small>SUPER ADMIN CONSOLE</small><h2 style="margin-top:4px">SaaS Control Center</h2><small>সব প্রতিষ্ঠানের platform-level control</small></div><span style="font-size:32px">🛡️</span></div></div><div class="seg">${[["overview","Overview"],["tenants","Institutions"],["users","Users & Roles"],["billing","Billing"]].map(x=>`<button class="${saasTab==x[0]?"on":""}" onclick="saasTab='${x[0]}';render()">${x[1]}</button>`).join("")}</div>${body}`}
 function saasTenantPanel(){return `<div class="card"><div class="ch"><h2>প্রতিষ্ঠানসমূহ</h2><button class="btn g s" onclick="saasTenantForm()">＋ প্রতিষ্ঠান</button></div><div class="ov"><table class="tb"><tr><th>নাম</th><th>Slug</th><th>Plan</th><th>Status</th><th>Expiry</th><th></th></tr>${saasTenants.map(t=>`<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.slug)}</td><td>${esc(t.plan)}</td><td><span class="pl ${t.status==="active"?"g":t.status==="suspended"?"r":"b"}">${esc(t.status)}</span></td><td>${esc((t.currentPeriodEnd||t.trialEndsAt||"—").slice(0,10))}</td><td><button class="ob s" onclick="saasTenantEdit('${t.id}')">Edit</button> <button class="ob s" onclick="saasPaymentForm('${t.id}')">Stripe</button> <button class="ob s" onclick="saasBkashForm('${t.id}')">bKash</button> <button class="ob g s" onclick="saasManualPaymentForm('${t.id}')">Manual</button></td></tr>`).join("")||'<tr><td colspan="6" class="em">কোনো প্রতিষ্ঠান নেই</td></tr>'}</table></div></div>`}
@@ -2640,7 +2640,7 @@ function fbSend(id,ch){const f=S.feedback.find(x=>x.id==id);if(!f)return;const m
 function fbDel(id){if(confirm("ফিডব্যাক মুছবেন?")){S.feedback=S.feedback.filter(x=>x.id!=id);save();render()}}
 
 let stT=0,stEd=false,usQ="",usR="";
-const ST_T=[["সাধারণ","⚙️"],["স্কুল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["ব্যাকআপ","🗄"],["বিপজ্জনক","⚠️"]];
+const ST_T=[["সাধারণ","⚙️"],["স্কুল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["ব্যাকআপ","🗄"],["সাবস্ক্রিপশন","💳"],["বিপজ্জনক","⚠️"]];
 const isDark=()=>document.documentElement.dataset.theme=="dark";
 function applyTheme(){const t=S.set.theme,h=new Date().getHours();document.documentElement.dataset.theme=(t=="dark"||(t=="auto"&&(h<6||h>=18)))?"dark":"light";const mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.content=document.documentElement.dataset.theme=="dark"?"#10131c":"#d9f3e4"}
 function themeTog(){S.set.theme=isDark()?"light":"dark";save();applyTheme();render()}
@@ -2656,7 +2656,7 @@ const stTg=(l,d,k)=>`<div class="st-tg" onclick="stSet('${k}',${S.set[k]?0:1})">
 const stF=(l,id,v,t)=>`<label class="lb">${l}</label><input id="${id}" type="${t||"text"}" value="${esc(v)}">`;
 function setng(){
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">⚙️</div><div><div style="font-size:20px;font-weight:700">সেটিংস</div><div style="color:var(--mu);font-size:13px">অ্যাপের পছন্দ ও নিরাপত্তা নিয়ন্ত্রণ করুন</div></div></div>
-<div class="st-tabs">${ST_T.map((t,i)=>`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stDng][stT]||stGen)()}
+<div class="st-tabs">${ST_T.map((t,i)=>(hasPerm("settings")||i===5)?`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`:"").join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng][hasPerm("settings")?stT:5]||stGen)()}
 function stGen(){
  const th=S.set.theme,M=[["auto","🔄","অটো মোড"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
  return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো মোডে সময় অনুযায়ী (সকাল ৬টা–বিকাল ৬টা ডে, রাত নাইট) স্বয়ংক্রিয় পরিবর্তন হবে</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
@@ -2732,7 +2732,7 @@ function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প�
  sc.sub={plan:$("sf_pl").value,status:$("sf_s").value,exp:m?addMo(sc.sub.exp&&sc.sub.exp>today()?sc.sub.exp:today(),m):(sc.sub.exp||"")};
  save();closeM();render()}
 function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
-function schSub(id){if(id=="main"){satT=2;render();return}schForm(id)}
+function schSub(id){if(id=="main"){tab="more";sub="set";stT=5;render();return}schForm(id)}
 function usAll(){const tq=usQ.trim().toLowerCase(),me={me:1,name:S.school.director||"আপনি (অ্যাডমিন)",email:S.school.email||"",roles:["Super Admin"],sid:"main"};return[me].concat(S.invUsers).filter(u=>(!usR||u.roles.includes(usR))&&(!tq||((u.name||"")+(u.email||"")).toLowerCase().includes(tq)))}
 function stUsr(){
  const cnt=r=>S.invUsers.filter(u=>u.roles.includes(r)).length,st=[["Super Admin",1],["অ্যাডমিন",cnt("অ্যাডমিন")],["সহ-অ্যাডমিন",cnt("সহ-অ্যাডমিন")],["শিক্ষক",cnt("শিক্ষক")]];
@@ -2791,7 +2791,7 @@ function stSub(){
   const stTxt=st.k==="paid"?"সক্রিয় — মেয়াদ: "+st.end:st.k==="trial"?"ফ্রি ট্রায়াল চলছে — শেষ: "+st.end:"কোনো সক্রিয় সাবস্ক্রিপশন নেই";
   const hist=(S.sub.payments||[]).length?`<div class="card"><h2 style="font-size:16px;margin-bottom:6px">পেমেন্টের ইতিহাস</h2>${S.sub.payments.map(p=>`<div class="row"><div class="f"><b>${bn(p.months)} মাস — ${money(p.paid)}</b><small style="display:block;color:var(--mu)">${esc(p.date)} · ${esc(p.method)} · TXN ${esc(p.txn)}${p.note?" · "+esc(p.note):""}</small></div></div>`).join("")}</div>`:"";
   return `<div style="margin-bottom:12px"><h2 style="font-size:24px">সাবস্ক্রিপশন</h2><p style="font-size:13px;color:var(--mu)">আপনার প্ল্যান ও পেমেন্টের তথ্য দেখুন</p></div>
-<button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>
+${isSuper()?`<button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>`:`<p class="hint" style="margin-bottom:14px">নবায়নের জন্য প্রতিষ্ঠানের Super Admin-এর সঙ্গে যোগাযোগ করুন।</p>`}
 <div class="card" style="border:1px solid ${bad?"#ef444455":"#16a34a55"};background:${bad?"#ef444410":"#16a34a10"}">
  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:10px;background:${bad?"#ef444422":"#16a34a22"};display:flex;align-items:center;justify-content:center;font-size:22px">${bad?"⚠️":"✅"}</div><div style="flex:1"><div style="font-size:11px;color:var(--mu)">বর্তমান প্ল্যান</div><div style="font-size:20px;font-weight:700">${P.name}</div></div><div style="font-size:12px;text-align:right;max-width:45%">${stTxt}</div></div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px">${P.features.map(chk).join("")}</div>
