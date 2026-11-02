@@ -405,7 +405,7 @@ function hasPerm(p){return activeUser?.role==="admin"||userPerms().includes(p)}
 function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন্য আপনার permission নেই");return false}
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
-function canMenu(k){if(k==="sat")return isSuper();if(k==="set")return true;return hasPerm(MENU_PERM[k]||"dashboard")}
+function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
 function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const ph=await hashPin(pin);const u={id:uid(),identifier:id,pinHash:ph,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];try{localStorage.setItem(AUTH_KEY,JSON.stringify(u))}catch(_){}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 async function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.active!==false);if(u&&await verifyPin(pin,u.pinHash||u.pin)){if(u.pin&&!u.pinHash){u.pinHash=await hashPin(pin);delete u.pin;save()}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
@@ -867,55 +867,74 @@ function fixBackBtns(){
 }
 new MutationObserver(()=>{if(!_bkQ){_bkQ=true;requestAnimationFrame(fixBackBtns)}}).observe(document.body,{childList:true,subtree:true});
 fixBackBtns();
-window._pendCnt=0;
+window._pendCnt=0;window._renPend=[];window._renAll=[];
+const dayOff=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())};
 function notifItems(){
-  const L=[],T=today();
-  const add=(sev,ic,t,sub,act)=>L.push({sev,ic,t,sub,act});
+  const L=[],T=today(),set=hasPerm("settings");
+  const add=(sev,ic,t,sub,act,k)=>L.push({sev,ic,t,sub,act,k});
+  const SUBGO="stT=5;nav('more','set')";
   const se=subEffEnd();
-  if(se){
+  if(set&&se){
     const dl=Math.ceil((new Date(se)-new Date(T))/864e5);
-    if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে","stT=5;nav('more','set')");
-    else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")","stT=5;nav('more','set')");
+    if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে",SUBGO,"sub|exp|"+se);
+    else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")",SUBGO,"sub|soon|"+se);
   }
-  if(isSuper()&&window._pendCnt>0)add(2,"👤",bn(window._pendCnt)+" জন নতুন ইউজার অনুমোদনের অপেক্ষায়","অনুমোদন দিন এবং ভূমিকা/পারমিশন নির্ধারণ করুন","loadApprovalPanel()");
+  if(set)((S.sub&&S.sub.reqs)||[]).forEach(r=>{
+    if(r.status==="pending")add(1,"⏳","নবায়ন অনুরোধ পেন্ডিং",bn(r.months)+" মাস · TXN "+r.txn+" — Super Admin-এর অনুমোদনের অপেক্ষায়",SUBGO,"rq|p|"+r.id);
+    else if(r.status==="approved"&&r.approvedOn&&r.approvedOn>=dayOff(-7))add(0,"✅","সাবস্ক্রিপশন নবায়ন অনুমোদিত হয়েছে","মেয়াদ বেড়েছে "+bn(r.months)+" মাস",SUBGO,"rq|a|"+r.id);
+    else if(r.status==="rejected"&&r.decidedOn&&r.decidedOn>=dayOff(-14))add(1,"❌","নবায়ন অনুরোধ বাতিল হয়েছে","TXN "+r.txn+" — Super Admin-এর সঙ্গে যোগাযোগ করুন",SUBGO,"rq|r|"+r.id);
+  });
+  const rp=window._renPend||[];
+  if(isSuper()&&rp.length)add(2,"📩",bn(rp.length)+"টি নবায়নের অনুরোধ এসেছে",[...new Set(rp.map(x=>x.inst_name||"প্রতিষ্ঠান"))].join(", "),"satT=5;nav('more','sat')","rn|"+rp.map(x=>x.id).join(","));
+  if(isSuper()&&window._pendCnt>0)add(2,"👤",bn(window._pendCnt)+" জন নতুন ইউজার অনুমোদনের অপেক্ষায়","অনুমোদন দিন এবং ভূমিকা/পারমিশন নির্ধারণ করুন","loadApprovalPanel()","pu|"+window._pendCnt);
   const dues=S.fees.filter(f=>due(f)>0);
   if(dues.length){
     const tot=dues.reduce((a,f)=>a+due(f),0),n=new Set(dues.map(f=>f.sid)).size;
-    add(2,"💰","বকেয়া ফি: "+bn(n)+" জন শিক্ষার্থী","মোট বকেয়া "+money(tot),"nav('fee')");
+    add(2,"💰","বকেয়া ফি: "+bn(n)+" জন শিক্ষার্থী","মোট বকেয়া "+money(tot),"nav('fee')","du|"+n+"|"+tot);
   }
   let od=0;
   S.books.forEach(b=>(b.issues||[]).forEach(i=>{if(!i.ret&&i.due&&i.due<T)od++}));
-  if(od)add(1,"📚",bn(od)+"টি বই ফেরতের সময় পার হয়েছে","লাইব্রেরি দেখুন","nav('more','lib')");
-  const d3=new Date();d3.setDate(d3.getDate()+3);
-  const lim=d3.getFullYear()+"-"+p2(d3.getMonth()+1)+"-"+p2(d3.getDate());
-  const ex=S.exams.filter(e=>e.date==T),ux=S.exams.filter(e=>e.date>T&&e.date<=lim);
-  if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')");
-  if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')");
+  if(od)add(1,"📚",bn(od)+"টি বই ফেরতের সময় পার হয়েছে","লাইব্রেরি দেখুন","nav('more','lib')","lb|"+od);
+  const lim=dayOff(3),ex=S.exams.filter(e=>e.date==T),ux=S.exams.filter(e=>e.date>T&&e.date<=lim);
+  if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')","ex|"+T+"|"+ex.map(e=>e.id).join(","));
+  if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')","ux|"+ux.map(e=>e.id+e.date).join(","));
   const lb=S.set&&S.set.lastBk;
-  if(S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","stT=4;nav('more','set')");
-  const cut=new Date();cut.setDate(cut.getDate()-14);
-  const cs=cut.getFullYear()+"-"+p2(cut.getMonth()+1)+"-"+p2(cut.getDate());
-  S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')"));
+  if(set&&S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","stT=4;nav('more','set')","bk|"+(lb||"none"));
+  const cs=dayOff(-14);
+  S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')","nt|"+n.id));
   return L.sort((a,b)=>b.sev-a.sev);
 }
-function notifCount(){
+const readStore=()=>"smartEduRead:"+ACT_SID+":"+((activeUser&&activeUser.identifier)||"");
+function readMap(){try{return JSON.parse(localStorage.getItem(readStore())||"{}")}catch(e){return{}}}
+function markNotifRead(L){const m={};L.forEach(x=>m[x.k]=1);try{localStorage.setItem(readStore(),JSON.stringify(m))}catch(e){}}
+function notifUnread(){
   if(isSuper()&&(!window._pendT||Date.now()-window._pendT>60000)){window._pendT=Date.now();setTimeout(refreshPending,0)}
-  return notifItems().length;
+  const rm=readMap();
+  return notifItems().filter(x=>!rm[x.k]).length;
 }
 async function refreshPending(){
   try{
     if(!isSuper()||!sb||!navigator.onLine)return;
     const {data:{session}}=await sb.auth.getSession();
     if(!session)return;
-    const {data,error}=await sb.rpc("smartedu_list_user_access");
-    if(error)return;
-    const n=(data||[]).filter(u=>u.status==="pending").length;
-    if(n!==window._pendCnt){window._pendCnt=n;render()}
+    let ch=false;
+    const a=await sb.rpc("smartedu_list_user_access");
+    if(!a.error){const n=(a.data||[]).filter(u=>u.status==="pending").length;if(n!==window._pendCnt){window._pendCnt=n;ch=true}}
+    const b=await sb.rpc("smartedu_list_renewals");
+    if(!b.error){
+      window._renAll=b.data||[];
+      const p=window._renAll.filter(x=>x.status==="pending");
+      if(p.map(x=>x.id).join()!==(window._renPend||[]).map(x=>x.id).join())ch=true;
+      window._renPend=p;
+    }
+    if(ch)render();
   }catch(e){}
 }
 function notifCenter(){
-  const L=notifItems(),col=["#3b82f6","#f59e0b","#ef4444"];
-  modal(`<div class="ch"><h2>🔔 নোটিফিকেশন</h2><button class="ob s" onclick="closeM()">বন্ধ</button></div>${L.length?L.map(x=>`<div class="row" style="border-left:4px solid ${col[x.sev]};padding-left:10px" onclick="closeM();${x.act}"><span style="font-size:22px">${x.ic}</span><div class="f"><b>${esc(x.t)}</b><small style="display:block;color:var(--mu)">${esc(x.sub||"")}</small></div><span style="color:var(--mu)">›</span></div>`).join(""):'<div class="em">কোনো নোটিফিকেশন নেই 🎉</div>'}`);
+  const L=notifItems(),col=["#3b82f6","#f59e0b","#ef4444"],rm=readMap();
+  modal(`<div class="ch"><h2>🔔 নোটিফিকেশন</h2><button class="ob s" onclick="closeM();render()">বন্ধ</button></div>${L.length?L.map(x=>{const nw=!rm[x.k];return `<div class="row" style="border-left:4px solid ${col[x.sev]};padding-left:10px;${nw?"background:#3b82f610":"opacity:.75"}" onclick="closeM();${x.act}"><span style="font-size:22px">${x.ic}</span><div class="f"><b>${esc(x.t)}</b>${nw?' <span class="pl" style="background:#ef4444;color:#fff;font-size:10px">নতুন</span>':""}<small style="display:block;color:var(--mu)">${esc(x.sub||"")}</small></div><span style="color:var(--mu)">›</span></div>`}).join(""):'<div class="em">কোনো নোটিফিকেশন নেই 🎉</div>'}`);
+  markNotifRead(L);
+  const b=$("bellBd");if(b)b.remove();
 }
 async function notifOpen(){
   if(isSuper())await Promise.race([refreshPending(),new Promise(r=>setTimeout(r,1500))]);
@@ -978,7 +997,7 @@ function home(){
  const done=S.exams.filter(e=>Object.keys(e.marks).length).length,bars=[["মোট",S.exams.length,"#10b981"],["আজ",tex.length,"#f59e0b"],["আসন্ন",upc.length,"#3b82f6"],["ফলাফল",done,"#8b5cf6"]],mx=Math.max(1,...bars.map(b=>b[1]));
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
- return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="notifOpen()">🔔${notifCount()?`<b class="bd">${bn(notifCount())}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
+ return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="notifOpen()">🔔${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
  <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
  <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD")}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
@@ -2270,12 +2289,12 @@ function abSave(){const d=abk.d;let n=0;
 
 /* ---- Super Admin Tool (only the Super Admin can open it) ---- */
 let satT=0;
-const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["লগআউট","🚪"]];
+const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["লগআউট","🚪"]];
 function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p class="hint" style="margin:8px 0 12px">বর্তমান লগইন: ${esc(activeUser?.identifier||"")} · ${esc(activeUser?.role||"")}</p><button class="btn r" style="width:100%" onclick="logout()">লগআউট করুন</button></div>`}
 function superTool(){
  if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই পেইজ শুধু Super Admin-এর জন্য।</p></div>`;
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">👑</div><div><div style="font-size:20px;font-weight:700">Super Admin Tool</div><div style="color:var(--mu);font-size:13px">শুধু Super Admin-এর জন্য — প্রতিষ্ঠান, ব্যবহারকারী, সাবস্ক্রিপশন, সিঙ্ক ও SaaS নিয়ন্ত্রণ</div></div></div>
-<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,satLogout][satT]()}
+${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,satLogout][satT]()}
 /* ---- attendance-based salary (teachers & staff) ---- */
 const offDay=()=>S.set.offDay==null?5:+S.set.offDay;
 function wDays(y,m){const ym=mk(y,m),o=S.set.wd&&+S.set.wd[ym];if(o>0)return o;const dim=new Date(y,m+1,0).getDate();let n=0;for(let d=1;d<=dim;d++){if(new Date(y,m,d).getDay()==offDay())continue;if(evOn(ym+"-"+p2(d)).some(e=>e.type=="ছুটি"))continue;n++}return n}
@@ -2656,7 +2675,7 @@ const stTg=(l,d,k)=>`<div class="st-tg" onclick="stSet('${k}',${S.set[k]?0:1})">
 const stF=(l,id,v,t)=>`<label class="lb">${l}</label><input id="${id}" type="${t||"text"}" value="${esc(v)}">`;
 function setng(){
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">⚙️</div><div><div style="font-size:20px;font-weight:700">সেটিংস</div><div style="color:var(--mu);font-size:13px">অ্যাপের পছন্দ ও নিরাপত্তা নিয়ন্ত্রণ করুন</div></div></div>
-<div class="st-tabs">${ST_T.map((t,i)=>(hasPerm("settings")||i===5)?`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`:"").join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng][hasPerm("settings")?stT:5]||stGen)()}
+<div class="st-tabs">${ST_T.map((t,i)=>`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng][stT]||stGen)()}
 function stGen(){
  const th=S.set.theme,M=[["auto","🔄","অটো মোড"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
  return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো মোডে সময় অনুযায়ী (সকাল ৬টা–বিকাল ৬টা ডে, রাত নাইট) স্বয়ংক্রিয় পরিবর্তন হবে</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
@@ -2775,7 +2794,8 @@ function addMonths(ds,n){const d=new Date(ds+"T00:00:00");d.setMonth(d.getMonth(
 function subInit(){
   S.sub=S.sub||{};
   S.sub.payments=S.sub.payments||[];
-  if(!S.sub.trialStart){S.sub.trialStart=today();save()}
+  S.sub.reqs=S.sub.reqs||[];
+  if(!S.sub.trialStart||!S.sub.iid){S.sub.trialStart=S.sub.trialStart||today();S.sub.iid=S.sub.iid||(uid()+uid());save()}
 }
 function subState(){
   subInit();
@@ -2786,12 +2806,14 @@ function subState(){
 }
 function subEffEnd(){return subState().end}
 function stSub(){
+  if(!window._subT||Date.now()-window._subT>15000){window._subT=Date.now();setTimeout(subSync,0)}
   const st=subState(),P=SUB_PLAN,bad=st.k==="none";
   const chk=f=>`<div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--gr);font-weight:700">✔</span><span>${f}</span></div>`;
   const stTxt=st.k==="paid"?"সক্রিয় — মেয়াদ: "+st.end:st.k==="trial"?"ফ্রি ট্রায়াল চলছে — শেষ: "+st.end:"কোনো সক্রিয় সাবস্ক্রিপশন নেই";
   const hist=(S.sub.payments||[]).length?`<div class="card"><h2 style="font-size:16px;margin-bottom:6px">পেমেন্টের ইতিহাস</h2>${S.sub.payments.map(p=>`<div class="row"><div class="f"><b>${bn(p.months)} মাস — ${money(p.paid)}</b><small style="display:block;color:var(--mu)">${esc(p.date)} · ${esc(p.method)} · TXN ${esc(p.txn)}${p.note?" · "+esc(p.note):""}</small></div></div>`).join("")}</div>`:"";
   return `<div style="margin-bottom:12px"><h2 style="font-size:24px">সাবস্ক্রিপশন</h2><p style="font-size:13px;color:var(--mu)">আপনার প্ল্যান ও পেমেন্টের তথ্য দেখুন</p></div>
-${isSuper()?`<button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>`:`<p class="hint" style="margin-bottom:14px">নবায়নের জন্য প্রতিষ্ঠানের Super Admin-এর সঙ্গে যোগাযোগ করুন।</p>`}
+<button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>
+${subReqCards()}
 <div class="card" style="border:1px solid ${bad?"#ef444455":"#16a34a55"};background:${bad?"#ef444410":"#16a34a10"}">
  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:10px;background:${bad?"#ef444422":"#16a34a22"};display:flex;align-items:center;justify-content:center;font-size:22px">${bad?"⚠️":"✅"}</div><div style="flex:1"><div style="font-size:11px;color:var(--mu)">বর্তমান প্ল্যান</div><div style="font-size:20px;font-weight:700">${P.name}</div></div><div style="font-size:12px;text-align:right;max-width:45%">${stTxt}</div></div>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px">${P.features.map(chk).join("")}</div>
@@ -2803,7 +2825,6 @@ ${hist}
 <div class="card" style="background:#16a34a10"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px">💳</span><div><b>পেমেন্ট করতে যোগাযোগ করুন</b><div style="font-size:13px;margin-top:4px">bKash / Nagad: <b>${SUB_PAY_NO}</b></div><div style="font-size:12px;color:var(--mu)">পেমেন্টের পর TXN ID দিয়ে নবায়ন বাটনে ক্লিক করুন।</div></div></div></div>`;
 }
 function subRenew(){
-  if(!isSuper()){alert("শুধু Super Admin এই কাজ করতে পারবেন।");return}
   const P=SUB_PLAN;
   modal(`<div class="ch"><h2>👑 সাবস্ক্রিপশন নবায়ন</h2><span onclick="closeM()" style="font-size:24px">×</span></div>
 <div style="display:flex;justify-content:space-between;background:#16a34a14;border:1px solid #16a34a40;border-radius:10px;padding:10px 12px;margin:10px 0"><span>${P.name} প্ল্যান</span><b style="color:var(--pri)">${money(P.price)}/মাস</b></div>
@@ -2813,21 +2834,89 @@ function subRenew(){
 <label class="lb">ট্রানজেকশন আইডি (TXN) *</label><input id="sb_x" placeholder="যেমন: 8N4A7KXXXXX">
 <label class="lb">পরিশোধিত পরিমাণ (ঐচ্ছিক)</label><input id="sb_p" type="number" placeholder="${money(P.price)}">
 <label class="lb">নোট (ঐচ্ছিক)</label><input id="sb_n" placeholder="বিশেষ কোনো তথ্য...">
-<button class="btn" style="width:100%;margin-top:12px" onclick="subConfirm()">✔ নবায়ন নিশ্চিত করুন</button>
+<div class="hint" style="margin-top:8px">অনুরোধ জমা দিলে তা পেন্ডিং থাকবে; Super Admin অনুমোদন করলে মেয়াদ বাড়বে।</div><button class="btn" style="width:100%;margin-top:8px" onclick="subConfirm()">✔ নবায়ন নিশ্চিত করুন</button>
 <button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বাতিল</button>`);
 }
 function subCalc(){const n=+$("sb_m").value;$("sb_t").textContent=money(SUB_PLAN.price*n);$("sb_p").placeholder=money(SUB_PLAN.price*n)}
-function subConfirm(){
-  if(!isSuper())return;
+function applyRenewal(r){
+  if(r.applied)return;
+  const T=today(),base=[T,S.sub.end||"",addMonths(S.sub.trialStart,1)].sort().pop();
+  S.sub.end=addMonths(base,r.months);
+  r.status="approved";r.applied=true;r.approvedOn=T;
+  S.sub.payments.unshift({id:r.id,date:T,months:r.months,amount:r.amount,paid:r.paid,method:r.method,txn:r.txn,note:r.note||""});
+}
+async function subSync(){
+  try{
+    subInit();
+    const pend=S.sub.reqs.filter(r=>r.status==="pending");
+    if(!pend.length||!sb||!navigator.onLine)return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const {data,error}=await sb.rpc("smartedu_renewal_status",{ids:pend.map(r=>r.id)});
+    if(error||!data)return;
+    let ch=false;
+    data.forEach(d=>{
+      const r=S.sub.reqs.find(x=>x.id===d.id);
+      if(!r||r.status!=="pending")return;
+      if(d.status==="approved"){applyRenewal(r);ch=true}
+      else if(d.status==="rejected"){r.status="rejected";r.decidedOn=today();ch=true}
+    });
+    if(ch){save();render()}
+  }catch(e){}
+}
+setTimeout(subSync,3000);
+setInterval(subSync,300000);
+function subReqCards(){
+  subInit();
+  return S.sub.reqs.filter(r=>r.status==="pending"||(r.status==="rejected"&&r.decidedOn&&r.decidedOn>=dayOff(-14))).map(r=>{
+    const pd=r.status==="pending";
+    return `<div class="card" style="border:1px solid ${pd?"#f59e0b66":"#ef444455"};background:${pd?"#f59e0b14":"#ef444410"}"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:22px">${pd?"⏳":"❌"}</span><div><b>${pd?"নবায়ন অনুরোধ পেন্ডিং":"নবায়ন অনুরোধ বাতিল হয়েছে"}</b><div style="font-size:12px;color:var(--mu);margin-top:4px">${bn(r.months)} মাস · ${money(r.paid)} · ${esc(r.method)} · TXN ${esc(r.txn)}</div><div style="font-size:12px;margin-top:4px">${pd?"Super Admin অনুমোদন করলে মেয়াদ বাড়বে।":"বিস্তারিত জানতে Super Admin-এর সঙ্গে যোগাযোগ করুন।"}</div></div></div></div>`;
+  }).join("");
+}
+async function subConfirm(){
   subInit();
   const n=+$("sb_m").value,x=$("sb_x").value.trim();
   if(x.length<6){alert("সঠিক ট্রানজেকশন আইডি (TXN) দিন");return}
-  if(S.sub.payments.some(p=>String(p.txn).toLowerCase()===x.toLowerCase())){alert("এই TXN আইডি আগেই ব্যবহার করা হয়েছে");return}
-  const T=today(),base=[T,S.sub.end||"",addMonths(S.sub.trialStart,1)].sort().pop();
-  S.sub.end=addMonths(base,n);
-  S.sub.payments.unshift({id:uid(),date:T,months:n,amount:SUB_PLAN.price*n,paid:+$("sb_p").value||SUB_PLAN.price*n,method:$("sb_pm").value,txn:x,note:$("sb_n").value.trim()});
-  save();closeM();render();
-  alert("সাবস্ক্রিপশন নবায়ন হয়েছে। নতুন মেয়াদ: "+S.sub.end);
+  if(S.sub.reqs.some(r=>String(r.txn).toLowerCase()===x.toLowerCase()&&r.status!=="rejected")||S.sub.payments.some(p=>String(p.txn).toLowerCase()===x.toLowerCase())){alert("এই TXN আইডি আগেই ব্যবহার করা হয়েছে");return}
+  if(!sb||!navigator.onLine){alert("নবায়নের অনুরোধ পাঠাতে ইন্টারনেট সংযোগ লাগবে।");return}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){alert("নবায়নের অনুরোধ পাঠাতে ইমেইল লগইন করা থাকতে হবে। লগআউট করে ইমেইল লগইন ট্যাব দিয়ে ঢুকুন।");return}
+  const amt=SUB_PLAN.price*n,paid=+$("sb_p").value||amt,m=$("sb_pm").value,note=$("sb_n").value.trim();
+  try{
+    const {data,error}=await sb.rpc("smartedu_submit_renewal",{p_inst_id:S.sub.iid,p_inst_name:S.school.name||"",p_months:n,p_amount:amt,p_paid:paid,p_method:m,p_txn:x,p_note:note});
+    if(error){if(error.code==="23505"){alert("এই TXN আইডি দিয়ে আগেই অনুরোধ পাঠানো হয়েছে");return}throw error}
+    S.sub.reqs.unshift({id:data,months:n,amount:amt,paid,method:m,txn:x,note,date:today(),status:"pending",applied:false});
+    save();closeM();render();
+    alert("নবায়নের অনুরোধ পাঠানো হয়েছে। Super Admin অনুমোদন করলে মেয়াদ বাড়বে।");
+  }catch(e){alert("অনুরোধ পাঠানো যায়নি: "+e.message)}
+}
+function renewBanner(){
+  const p=window._renPend||[];
+  if(!isSuper()||!p.length)return "";
+  const names=[...new Set(p.map(x=>x.inst_name||"প্রতিষ্ঠান"))].join(", ");
+  return `<div class="card" style="border:1px solid #f59e0b66;background:#f59e0b14;cursor:pointer" onclick="satT=5;render()"><b>📩 নবায়নের অনুরোধ এসেছে</b><div style="font-size:13px;margin-top:4px">${esc(names)} থেকে ${bn(p.length)}টি নবায়নের রিকোয়েস্ট এসেছে। দেখতে চাপুন।</div></div>`;
+}
+function stRen(){
+  if(!isSuper())return `<div class="card"><p class="hint">শুধু Super Admin এই পেজ দেখতে পারবেন।</p></div>`;
+  if(!window._renLoaded&&!window._renLoading){
+    window._renLoading=true;
+    refreshPending().then(()=>{window._renLoaded=true;window._renLoading=false;render()});
+  }
+  const L=window._renAll||[];
+  const row=x=>`<div class="row" style="align-items:flex-start;flex-wrap:wrap"><div class="f"><b>${esc(x.inst_name||"প্রতিষ্ঠান")}</b><small style="display:block;color:var(--mu)">${esc(x.user_email||"")} · ${bn(x.months)} মাস · ${money(+x.paid||+x.amount)} (${money(+x.amount)}) · ${esc(x.method||"")}</small><small style="display:block;color:var(--mu)">TXN ${esc(x.txn)}${x.note?" · "+esc(x.note):""} · ${esc(String(x.created_at||"").slice(0,10))}</small></div>${x.status==="pending"?`<div style="display:flex;gap:6px"><button class="btn g s" onclick="renDecide('${x.id}',true)">অনুমোদন</button><button class="btn r s" onclick="renDecide('${x.id}',false)">বাতিল</button></div>`:`<span class="pl">${x.status==="approved"?"✓ অনুমোদিত":"✗ বাতিল"}</span>`}</div>`;
+  return `<div class="card"><div class="ch"><h2>📩 নবায়ন অনুরোধ</h2><button class="ob s" onclick="window._renLoaded=false;render()">🔄 রিফ্রেশ</button></div><p class="hint" style="margin:6px 0">অনুমোদন দিলে শুধু ওই প্রতিষ্ঠানের মেয়াদ বাড়বে। প্রতিষ্ঠান ইন্টারনেটে অ্যাপ খুললে মেয়াদ হালনাগাদ হবে।</p>${L.length?L.map(row).join(""):'<div class="em">কোনো অনুরোধ নেই</div>'}</div>`;
+}
+async function renDecide(id,ok){
+  if(!isSuper())return;
+  if(!confirm(ok?"এই নবায়ন অনুমোদন করবেন? ওই প্রতিষ্ঠানের মেয়াদ বাড়বে।":"এই অনুরোধ বাতিল করবেন?"))return;
+  try{
+    const {data,error}=await sb.rpc("smartedu_decide_renewal",{rid:id,approve:ok});
+    if(error)throw error;
+    if(data!==true)alert("অবস্থা পরিবর্তন করা যায়নি (আগেই সিদ্ধান্ত হয়ে থাকতে পারে)।");
+    window._renLoaded=false;
+    await refreshPending();
+    render();
+  }catch(e){alert("ব্যর্থ: "+e.message)}
 }
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
