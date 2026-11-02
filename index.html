@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#d9f3e4">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -172,7 +174,7 @@ nav{box-shadow:0 -2px 10px #0f3d2a12}
 <div id="net" class="net"></div><div id="app"><main id="v"></main>
 <nav id="nv"></nav></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1"></script>
  <script>
   const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
@@ -280,10 +282,19 @@ const ACT_SID=localStorage.getItem("smartEduActiveSid")||"main";
 const KEY=ACT_SID==="main"?MAIN_KEY:MAIN_KEY+":sch:"+ACT_SID;
 let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
-const D=()=>({school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
-let S;try{S=JSON.parse(localStorage.getItem(KEY))||D()}catch(e){S=D()}S={...D(),...S};LANG=(S.set&&S.set.lang)||"bn";
+const SCHEMA_VERSION=2;
+const D=()=>({schemaVersion:SCHEMA_VERSION,school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
+function migrateState(raw){
+  const base=D(), x=raw&&typeof raw==="object"?raw:{};
+  const out={...base,...x,school:{...base.school,...(x.school||{})},set:{...base.set,...(x.set||{})},sync:{...base.sync,...(x.sync||{})}};
+  for(const k of ["students","teachers","fees","notices","exams","txns","books","hw","staff","log","smslog","sal","routine","events","tbooks","certs","libSales","libGoods","schools","invUsers","users","syncQueue","audit","guides","feedback"]) if(!Array.isArray(out[k])) out[k]=[];
+  if(!out.sync.deviceId) out.sync.deviceId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  out.schemaVersion=SCHEMA_VERSION;
+  return out;
+}
+let S;try{S=migrateState(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=D()}LANG=(S.set&&S.set.lang)||"bn";
 if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
-const save=()=>{S.updatedAt=Date.now();if(ACT_SID==="main")writeSchIdx();try{localStorage.setItem(KEY,JSON.stringify(S));if(typeof queueSync==="function")queueSync();}catch(e){console.error("Save failed",e);toast("ডেটা সংরক্ষণ করা যায়নি—স্টোরেজ পূর্ণ বা অনুমোদিত নয়");}};
+const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
@@ -295,7 +306,9 @@ const bn=n=>LANG=="en"?String(n):String(n).replace(/\d/g,d=>"০১২৩৪৫�
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const safeUrl=(v,types=["http:","https:","mailto:","tel:","sms:","data:"])=>{try{const u=new URL(String(v||""),location.href);return types.includes(u.protocol)?u.href:""}catch(_){return ""}};
-const safeDataImage=v=>/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(String(v||""))?String(v):"";
+const safeDataImage=v=>{const x=String(v||"");return /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(x)&&x.length<=8*1024*1024?x:""};
+const safeImageSrc=v=>safeDataImage(v);
+const safeText=s=>String(s??"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"");
 const safeDataPdf=v=>/^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/i.test(String(v||""))?String(v):"";
 const money=n=>"৳"+bn(Number(n||0).toLocaleString("en-US"));
 const $=id=>document.getElementById(id);
@@ -978,7 +991,7 @@ function donut(segs,z,sw,t1,t2,c1){const r=(z-sw)/2,C=2*Math.PI*r,tot=segs.reduc
  return `<svg viewBox="0 0 ${z} ${z}" width="${z}" height="${z}" style="display:block;margin:4px auto">${cs}<text x="50%" y="${t2?"50%":"56%"}" text-anchor="middle" font-size="${t2?17:22}" font-weight="700" fill="${c1||"currentColor"}">${t1}</text>${t2?`<text x="50%" y="63%" text-anchor="middle" font-size="9" fill="#6b7385">${t2}</text>`:""}</svg>`}
 function nav(t,sb){if(!canTab(t)){alert("এই অংশটি আপনার role-এর জন্য অনুমোদিত নয়");return}closeM();tab=t;sub=sb||"";curExam="";q="";profId="";render();$("v").scrollTop=0}
 function drawer(){modal(`<h2 style="margin-bottom:6px">${esc(S.school.name)}</h2>`+[["home","","🏠","ড্যাশবোর্ড"],["stu","","👥","শিক্ষার্থী"],["att","","✅","উপস্থিতি"],["fee","","👛","ফি"]].concat(MENU.filter(m=>canMenu(m[0])).map(m=>["more",m[0],m[1],m[2]])).map(x=>`<div class="row" onclick="nav('${x[0]}','${x[1]}')"><span style="font-size:20px">${x[2]}</span><div class="f">${x[3]}</div></div>`).join("")+`<div class="row" onclick="const e=$('dhl');e.style.display=e.style.display=='none'?'block':'none'"><span style="font-size:20px">❓</span><div class="f">সাহায্য</div><span style="color:var(--mu)">⌄</span></div><div id="dhl" style="display:none;padding-left:14px">${[["ha","ℹ️","এপ সম্পর্কে"],["hg","🎥","ইউজার গাইডলাইন"],["hf","💬","ফিডব্যাক"]].map(x=>`<div class="row" onclick="nav('more','${x[0]}')"><span style="font-size:18px">${x[1]}</span><div class="f" style="font-size:14px">${x[2]}</div></div>`).join("")}</div><div class="row" onclick="doLogout()" style="color:#dc2626"><span style="font-size:20px">🚪</span><div class="f">লগআউট</div></div>`)}
-function pickLogo(){photoCb=u=>{S.school.logo=u;save();render()};pickPhoto()}
+function pickLogo(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");S.school.logo=x;save();render()};pickPhoto()}
 function saveSchool(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("sn"),addr:g("sa"),est:g("se"),year:g("sy"),director:g("sd"),phone:g("sp")};save();alert("সংরক্ষিত হয়েছে")}
 
 function home(){
@@ -1320,9 +1333,9 @@ function schFields(list){return list.map(f=>`<label class="lb">${f[1]}</label><i
 function schUp(){["name","nameEn","addr","phone","est","year","director","founder"].forEach(k=>{const e=$("sc_"+k);if(e)S.school[k]=e.value});save();pvUp()}
 function pvUp(){const p=$("pv");if(!p)return;const k=cardCtx.kind;p.innerHTML=k=="id"?idHtml(sOf(cardCtx.id)):k=="rc"?rcHtml(sOf(cardCtx.id),rcPapers()):k=="sh"?shHtml(shData()):admitHtml(sOf(cardCtx.id),exGroup(cardCtx.eid))}
 function exUp(){S.exg=S.exg||{};S.exg[cardCtx.eid]={center:$("ex_c").value,start:$("ex_s").value,end:$("ex_e").value};save();pvUp()}
-function cardLogo(){photoCb=u=>{S.school.logo=u;save();cardRedraw()};pickPhoto()}
+function cardLogo(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");S.school.logo=x;save();cardRedraw()};pickPhoto()}
 function cardRedraw(){const k=cardCtx.kind;if(k=="id")drawId();else if(k=="rc")drawRc();else if(k=="sh")drawSh();else drawAdmit()}
-function logoRow(){return `<label class="lb">প্রতিষ্ঠানের লোগো</label><div class="row" style="border:0;padding:4px 0"><div class="av" style="width:46px;height:46px;font-size:11px">${S.school.logo?`<img class="av" style="width:46px;height:46px" src="${S.school.logo}">`:"লোগো"}</div><button class="btn o s" onclick="cardLogo()">⬆ লোগো আপলোড</button><span onclick="S.school.logo='';save();cardRedraw()" style="color:var(--rd);font-size:13px">✕ সরান</span></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">`}
+function logoRow(){return `<label class="lb">প্রতিষ্ঠানের লোগো</label><div class="row" style="border:0;padding:4px 0"><div class="av" style="width:46px;height:46px;font-size:11px">${S.school.logo?`<img class="av" style="width:46px;height:46px" src="${safeImageSrc(S.school.logo)}">`:"লোগো"}</div><button class="btn o s" onclick="cardLogo()">⬆ লোগো আপলোড</button><span onclick="S.school.logo='';save();cardRedraw()" style="color:var(--rd);font-size:13px">✕ সরান</span></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">`}
 function admit(id){
  const x=sOf(id),gs=exGroups(e=>e.cls==x.cls);
  if(!gs.length){alert("এই শ্রেণির কোনো পরীক্ষা নেই। আগে আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।");return}
@@ -1401,7 +1414,7 @@ function profilePage(){
  else if(profTab=="log")c=`<div class="card"><h2>যোগাযোগ লগ</h2>${logs.map(l=>{const t=new Date(l.t);return `<div class="row" style="align-items:flex-start"><span class="pl ${l.ch=="wa"?"g":"b"}">${l.ch=="wa"?"WhatsApp":"SMS"}</span><div class="f" style="font-size:13px;white-space:pre-wrap">${esc(l.tx)}<small>${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div></div>`}).join("")||'<div class="em">কোনো বার্তা পাঠানো হয়নি</div>'}</div>`;
  else{txM=false;c=txnBody(x.id,"render()")}
  return `<div class="lk" style="margin-bottom:10px" onclick="profId='';render()">← শিক্ষার্থী তালিকায় ফিরুন</div>
- <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${S.school.logo?`<img class="av" style="width:30px;height:30px" src="${S.school.logo}">`:"🕌"}</span>${esc(S.school.name)}</div>
+ <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${S.school.logo?`<img class="av" style="width:30px;height:30px" src="${safeImageSrc(S.school.logo)}">`:"🕌"}</span>${esc(S.school.name)}</div>
  <div style="padding:0 14px 14px"><div style="margin-top:-30px;display:inline-block;border:3px solid var(--card);border-radius:50%;line-height:0">${avt(x,64)}</div><div style="margin-top:6px"><b style="font-size:20px">${esc(x.name)}</b> ${pill(esc(x.status||"সক্রিয়"),(x.status||"সক্রিয়")=="সক্রিয়"?"g":"r")}</div><small style="color:var(--mu)">${esc(x.cls)} শ্রেণি${x.branch?" · "+esc(x.branch)+" শাখা":""} · রোল: ${esc(x.roll)}</small>
  <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},S.school.name)">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
  <div class="g2">${stat(bn(pr)+"%","উপস্থিতির হার",bn(pcn)+"/"+bn(ad.length)+" দিন","#16a34a")}${stat(bn(ab),"অনুপস্থিত দিন","মোট দিন থেকে","#e11d48")}${stat(bn(subj),"মোট বিষয়","ফলাফল প্রবেশিত","#16a34a")}${stat(bn(logs.length),"SMS লগ","পাঠানো বার্তা","#7c3aed")}</div>
@@ -2736,14 +2749,14 @@ function schForm(id){
  if(id=="main"){tab="more";sub="set";stT=2;stEd=true;render();return}
  const sc=id?S.schools.find(x=>x.id==id):null,a=sc&&sc.admin||{},sb=sc&&sc.sub||{};schLg=sc?sc.logo||"":"";
  modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2>🏢 ${sc?"প্রতিষ্ঠান সম্পাদনা":"নতুন প্রতিষ্ঠান তৈরি ও অ্যাডমিন নিয়োগ"}</h2>
-<div class="card" style="margin:0 0 10px"><b style="font-size:13px;color:var(--pri)">🏢 প্রতিষ্ঠানের তথ্য</b><div style="display:flex;gap:10px;align-items:center;margin:8px 0"><div class="av" id="slgp" style="width:56px;height:56px;border-radius:12px;border:2px dashed var(--ln);background:none">${schLg?`<img style="width:56px;height:56px;object-fit:contain" src="${schLg}">`:"🖼"}</div><div><small>প্রতিষ্ঠানের লোগো (ঐচ্ছিক)</small><br><button class="btn s" onclick="schPick()">⬆ লোগো আপলোড</button></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">
+<div class="card" style="margin:0 0 10px"><b style="font-size:13px;color:var(--pri)">🏢 প্রতিষ্ঠানের তথ্য</b><div style="display:flex;gap:10px;align-items:center;margin:8px 0"><div class="av" id="slgp" style="width:56px;height:56px;border-radius:12px;border:2px dashed var(--ln);background:none">${schLg?`<img style="width:56px;height:56px;object-fit:contain" src="${safeImageSrc(schLg)}">`:"🖼"}</div><div><small>প্রতিষ্ঠানের লোগো (ঐচ্ছিক)</small><br><button class="btn s" onclick="schPick()">⬆ লোগো আপলোড</button></div></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">
 ${stF("প্রতিষ্ঠানের নাম *","sf_n",sc?sc.name:"")}${stF("ঠিকানা","sf_a",sc?sc.addr:"")}${stF("যোগাযোগ নম্বর","sf_p",sc?sc.phone:"","tel")}${stF("স্থাপিত সাল","sf_e",sc?sc.est:"")}</div>
 <div class="card" style="margin:0 0 10px;background:#fef9e7;color:#78350f;border-color:#fde68a"><b style="font-size:13px">👑 অ্যাডমিন নিয়োগ</b>${stF("অ্যাডমিনের পূর্ণ নাম","sf_an",a.name)}${stF("ইমেইল (ঐচ্ছিক)","sf_ae",a.email,"email")}${stF("WhatsApp / মোবাইল (ঐচ্ছিক)","sf_ap",a.phone,"tel")}<div style="font-size:12px">${sc?"অ্যাডমিনের তথ্য শুধু এই রেকর্ডে হালনাগাদ হবে।":"📌 নাম দিলে একটি অ্যাডমিন ইউজার রেকর্ড তৈরি হবে। খালি রাখলে পরে ব্যবহারকারী ট্যাব থেকে নিয়োগ দিতে পারবেন।"}</div></div>
 <label class="lb">প্ল্যান</label><select id="sf_pl">${["standard","premium"].map(x=>`<option ${sb.plan==x?"selected":""}>${x}</option>`).join("")}</select>
 <label class="lb">${sc?"মেয়াদ বাড়ান":"মাস"}</label><select id="sf_m">${sc?'<option value="0">বাড়াবেন না</option>':""}${[1,3,6,12].map(x=>`<option value="${x}">${bn(x)} মাস</option>`).join("")}</select>
 <label class="lb">স্ট্যাটাস</label><select id="sf_s"><option value="active" ${sb.status!="inactive"?"selected":""}>active</option><option value="inactive" ${sb.status=="inactive"?"selected":""}>inactive</option></select>
 <button class="btn" style="width:100%;margin-top:6px" onclick="schSave('${id||""}')">🏢 ${sc?"সংরক্ষণ করুন":"প্রতিষ্ঠান তৈরি করুন"}</button><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বাতিল</button>${sc?`<button class="btn o" style="width:100%;margin-top:8px;color:#dc2626;border-color:#fca5a5" onclick="schDel('${id}')">🗑 প্রতিষ্ঠান মুছুন</button>`:""}`)}
-function schPick(){photoCb=u=>{schLg=u;const e=$("slgp");if(e)e.innerHTML=`<img style="width:56px;height:56px;object-fit:contain" src="${u}">`};pickPhoto()}
+function schPick(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");schLg=x;const e=$("slgp");if(e)e.innerHTML=`<img style="width:56px;height:56px;object-fit:contain" src="${x}">`};pickPhoto()}
 function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প্রতিষ্ঠানের নাম দিন");return}
  const ad={name:g("sf_an"),email:g("sf_ae"),phone:g("sf_ap")},m=+$("sf_m").value||0;let sc=id?S.schools.find(x=>x.id==id):null;
  if(!sc){sc={id:uid(),sub:{}};S.schools.push(sc);if(ad.name||ad.email)S.invUsers.push({id:uid(),name:ad.name,email:ad.email,phone:ad.phone,roles:["অ্যাডমিন"],sid:sc.id,blocked:0,perms:defPerm("অ্যাডমিন"),inv:today()})}
