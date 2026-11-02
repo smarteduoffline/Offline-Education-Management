@@ -871,7 +871,7 @@ window._pendCnt=0;
 function notifItems(){
   const L=[],T=today();
   const add=(sev,ic,t,sub,act)=>L.push({sev,ic,t,sub,act});
-  const se=S.set&&S.set.subEnd;
+  const se=subEffEnd();
   if(se){
     const dl=Math.ceil((new Date(se)-new Date(T))/864e5);
     if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে","nav('more','sat')");
@@ -2769,7 +2769,66 @@ function upSave(id){const u=S.invUsers.find(x=>x.id==id),sid=$("up_s").value;u.s
 function usDel(id){if(!confirm("এই ইউজার মুছে ফেলবেন?"))return;S.invUsers=S.invUsers.filter(x=>x.id!=id);save();closeM();render()}
 function stAcc(){return userPanel()}
 function stSync(){return `<div class="card"><h2>অনলাইন সিঙ্ক</h2><p class="hint">API URL না দিলে অ্যাপ সম্পূর্ণ offline থাকবে। API URL দিলে অনলাইন হলে queue সিঙ্ক হবে।</p><input id="syncUrl" type="url" placeholder="https://example.com/api/sync" value="${esc(S.sync?.apiUrl||"")}"><input id="syncKey" type="password" placeholder="ঐচ্ছিক legacy API key" value="${esc(getSyncApiKey())}"><button class="btn o s" onclick="saveSyncSettings()">সেটিংস সংরক্ষণ</button> <button class="btn g s" onclick="syncNow(true)">এখন সিঙ্ক করুন</button><hr><label class="lb">Backend JWT login</label><input id="serverUser" autocomplete="username" placeholder="admin@example.com" value="${esc(sessionStorage.getItem("smartEduServerUser")||"")}"><input id="serverTenant" placeholder="Institution slug (যেমন alpha-school)"><input id="serverPass" type="password" autocomplete="current-password" placeholder="Server password (সংরক্ষণ হবে না)"><button class="btn o s" onclick="serverLogin()">JWT login</button> ${getSyncToken()?'<button class="ob s" onclick="serverLogout()">JWT logout</button>':'<small style="color:var(--mu)">JWT token শুধু এই session-এ থাকবে</small>'}<small style="display:block;color:var(--mu);margin-top:6px">Queue: ${bn((S.syncQueue||[]).length)} · Retry: ${S.sync.nextRetryAt?new Date(S.sync.nextRetryAt).toLocaleTimeString("bn-BD"):"প্রস্তুত"}</small></div>`}
-function stSub(){return `<div class="card"><h2>💳 সাবস্ক্রিপশন</h2><div style="display:flex;align-items:center;gap:10px;margin:10px 0"><span style="font-size:28px">👑</span><div><b>অফলাইন সংস্করণ</b><div style="font-size:12px;color:var(--mu)">কোনো মাসিক ফি বা মেয়াদ নেই</div></div><span class="pl" style="background:#dcfce7;color:#15803d;margin-left:auto">✓ সক্রিয়</span></div><div style="font-size:13px;line-height:1.9">✔ সব মডিউল ব্যবহারযোগ্য<br>✔ ইন্টারনেট ছাড়াই কাজ করে<br>✔ সব তথ্য আপনার ফোনেই থাকে</div>${isSuper()?`<div style="margin-top:12px"><label class="lb">সাবস্ক্রিপশনের মেয়াদ শেষের তারিখ (ঐচ্ছিক — শেষ হলে বেল আইকনে জানানো হবে)</label><input type="date" value="${esc(S.set.subEnd||"")}" onchange="S.set.subEnd=this.value;save();render()"></div>`:""}</div>`}
+const SUB_PLAN={name:"Standard",price:200,features:["শিক্ষার্থী ব্যবস্থাপনা","শিক্ষক ব্যবস্থাপনা","কর্মচারী ব্যবস্থাপনা","উপস্থিতি (শিক্ষার্থী ও শিক্ষক)","ফি ব্যবস্থাপনা ও রশিদ","পরীক্ষা ও ফলাফল","রিপোর্ট কার্ড","SMS/WhatsApp নোটিফিকেশন","লাইব্রেরি ব্যবস্থাপনা","প্রশ্নব্যাংক ও AI প্রশ্ন তৈরি","অভিভাবক পোর্টাল","আয়-ব্যয় ও হিসাব","নোটিশ বোর্ড","ব্যাকআপ ও নিরাপত্তা","একাধিক ব্যবহারকারী ও ভূমিকা","সকল প্রিমিয়াম ফিচার"]};
+const SUB_PAY_NO="01918427848";
+function addMonths(ds,n){const d=new Date(ds+"T00:00:00");d.setMonth(d.getMonth()+n);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())}
+function subInit(){
+  S.sub=S.sub||{};
+  S.sub.payments=S.sub.payments||[];
+  if(!S.sub.trialStart){S.sub.trialStart=today();save()}
+}
+function subState(){
+  subInit();
+  const T=today(),tEnd=addMonths(S.sub.trialStart,1),pEnd=S.sub.end||"";
+  if(pEnd&&pEnd>=T)return{k:"paid",end:pEnd};
+  if(tEnd>=T)return{k:"trial",end:tEnd};
+  return{k:"none",end:pEnd>tEnd?pEnd:tEnd};
+}
+function subEffEnd(){return subState().end}
+function stSub(){
+  const st=subState(),P=SUB_PLAN,bad=st.k==="none";
+  const chk=f=>`<div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--gr);font-weight:700">✔</span><span>${f}</span></div>`;
+  const stTxt=st.k==="paid"?"সক্রিয় — মেয়াদ: "+st.end:st.k==="trial"?"ফ্রি ট্রায়াল চলছে — শেষ: "+st.end:"কোনো সক্রিয় সাবস্ক্রিপশন নেই";
+  const hist=(S.sub.payments||[]).length?`<div class="card"><h2 style="font-size:16px;margin-bottom:6px">পেমেন্টের ইতিহাস</h2>${S.sub.payments.map(p=>`<div class="row"><div class="f"><b>${bn(p.months)} মাস — ${money(p.paid)}</b><small style="display:block;color:var(--mu)">${esc(p.date)} · ${esc(p.method)} · TXN ${esc(p.txn)}${p.note?" · "+esc(p.note):""}</small></div></div>`).join("")}</div>`:"";
+  return `<div style="margin-bottom:12px"><h2 style="font-size:24px">সাবস্ক্রিপশন</h2><p style="font-size:13px;color:var(--mu)">আপনার প্ল্যান ও পেমেন্টের তথ্য দেখুন</p></div>
+<button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>
+<div class="card" style="border:1px solid ${bad?"#ef444455":"#16a34a55"};background:${bad?"#ef444410":"#16a34a10"}">
+ <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:10px;background:${bad?"#ef444422":"#16a34a22"};display:flex;align-items:center;justify-content:center;font-size:22px">${bad?"⚠️":"✅"}</div><div style="flex:1"><div style="font-size:11px;color:var(--mu)">বর্তমান প্ল্যান</div><div style="font-size:20px;font-weight:700">${P.name}</div></div><div style="font-size:12px;text-align:right;max-width:45%">${stTxt}</div></div>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:12px">${P.features.map(chk).join("")}</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;background:#16a34a14;border:1px solid #16a34a40;border-radius:12px;padding:12px;margin:14px 0"><div style="width:40px;height:40px;border-radius:10px;background:#16a34a22;display:flex;align-items:center;justify-content:center;font-size:20px">⏱</div><div><b style="color:var(--gr)">১ মাস ফ্রি ট্রায়াল!</b><div style="font-size:12px;color:var(--mu)">নতুন একাউন্টে প্রথম ১ মাস সম্পূর্ণ বিনামূল্যে সব ফিচার ব্যবহার করুন।</div></div></div>
+<div style="font-size:14px;color:var(--mu);margin:16px 0 8px">প্ল্যান সমূহ</div>
+<div class="card"><span class="pl" style="background:var(--pri);color:#fff">${P.name}</span><div style="font-size:30px;font-weight:800;color:var(--pri);margin:8px 0">${money(P.price)}<span style="font-size:13px;font-weight:400;color:var(--mu)">/মাস</span></div><div style="display:grid;gap:7px;font-size:13px">${P.features.map(chk).join("")}</div></div>
+${hist}
+<div class="card" style="background:#16a34a10"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px">💳</span><div><b>পেমেন্ট করতে যোগাযোগ করুন</b><div style="font-size:13px;margin-top:4px">bKash / Nagad: <b>${SUB_PAY_NO}</b></div><div style="font-size:12px;color:var(--mu)">পেমেন্টের পর TXN ID দিয়ে নবায়ন বাটনে ক্লিক করুন।</div></div></div></div>`;
+}
+function subRenew(){
+  if(!isSuper()){alert("শুধু Super Admin এই কাজ করতে পারবেন।");return}
+  const P=SUB_PLAN;
+  modal(`<div class="ch"><h2>👑 সাবস্ক্রিপশন নবায়ন</h2><span onclick="closeM()" style="font-size:24px">×</span></div>
+<div style="display:flex;justify-content:space-between;background:#16a34a14;border:1px solid #16a34a40;border-radius:10px;padding:10px 12px;margin:10px 0"><span>${P.name} প্ল্যান</span><b style="color:var(--pri)">${money(P.price)}/মাস</b></div>
+<label class="lb">মাসের সংখ্যা</label><select id="sb_m" onchange="subCalc()">${[1,2,3,6,12].map(n=>`<option value="${n}">${bn(n)} মাস — ${money(P.price*n)}</option>`).join("")}</select>
+<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:10px;padding:10px 12px;margin:10px 0"><span>মোট পরিমাণ</span><b id="sb_t" style="color:var(--pri);font-size:18px">${money(P.price)}</b></div>
+<label class="lb">পেমেন্ট পদ্ধতি</label><select id="sb_pm"><option>bKash</option><option>Nagad</option><option>Rocket</option><option>ব্যাংক</option><option>নগদ টাকা</option></select>
+<label class="lb">ট্রানজেকশন আইডি (TXN) *</label><input id="sb_x" placeholder="যেমন: 8N4A7KXXXXX">
+<label class="lb">পরিশোধিত পরিমাণ (ঐচ্ছিক)</label><input id="sb_p" type="number" placeholder="${money(P.price)}">
+<label class="lb">নোট (ঐচ্ছিক)</label><input id="sb_n" placeholder="বিশেষ কোনো তথ্য...">
+<button class="btn" style="width:100%;margin-top:12px" onclick="subConfirm()">✔ নবায়ন নিশ্চিত করুন</button>
+<button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বাতিল</button>`);
+}
+function subCalc(){const n=+$("sb_m").value;$("sb_t").textContent=money(SUB_PLAN.price*n);$("sb_p").placeholder=money(SUB_PLAN.price*n)}
+function subConfirm(){
+  if(!isSuper())return;
+  subInit();
+  const n=+$("sb_m").value,x=$("sb_x").value.trim();
+  if(x.length<6){alert("সঠিক ট্রানজেকশন আইডি (TXN) দিন");return}
+  if(S.sub.payments.some(p=>String(p.txn).toLowerCase()===x.toLowerCase())){alert("এই TXN আইডি আগেই ব্যবহার করা হয়েছে");return}
+  const T=today(),base=[T,S.sub.end||"",addMonths(S.sub.trialStart,1)].sort().pop();
+  S.sub.end=addMonths(base,n);
+  S.sub.payments.unshift({id:uid(),date:T,months:n,amount:SUB_PLAN.price*n,paid:+$("sb_p").value||SUB_PLAN.price*n,method:$("sb_pm").value,txn:x,note:$("sb_n").value.trim()});
+  save();closeM();render();
+  alert("সাবস্ক্রিপশন নবায়ন হয়েছে। নতুন মেয়াদ: "+S.sub.end);
+}
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
  return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর বা অ্যাপ মোছার আগে ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div></div>
