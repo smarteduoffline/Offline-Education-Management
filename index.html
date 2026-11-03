@@ -168,6 +168,26 @@ nav button.bk b{display:inline;font-size:16px}
 html,body{max-width:100%;overflow-x:hidden}
 .card{box-shadow:0 1px 3px #0f3d2a14}
 nav{box-shadow:0 -2px 10px #0f3d2a12}
+.hdr1{display:flex;align-items:center;gap:10px;font-size:22px;margin-bottom:6px}
+.annbar{flex:1;min-width:0;overflow:hidden;background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:3px 10px;font-size:12px;white-space:nowrap;height:26px;line-height:20px}
+.netIn{font-size:11px;padding:3px 8px;border-radius:12px;background:#dcfce7;color:#166534;white-space:nowrap}
+.netIn.off{background:#fee2e2;color:#991b1b}
+.hdr2{display:flex;align-items:center;gap:8px;margin:0 0 10px;min-height:30px}
+.hdr2 .grt{font-size:14px;color:var(--mu);white-space:nowrap}
+.bism{flex:1;text-align:center;font-size:20px;color:var(--pri);font-family:"Amiri","Noto Naskh Arabic","Scheherazade New","Traditional Arabic",serif;line-height:1.3}
+#hdrBack{white-space:nowrap}
+body:has(.netIn) #net{display:none}
+.lg-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--ln);border-radius:26px;padding:22px 20px;box-shadow:0 10px 40px #0f172a14}
+.lg-soc{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;margin:0 0 12px;background:#fff;color:#1f2937;border:1px solid #e5e7eb;border-radius:16px;font-size:15px;font-weight:600}
+.lg-or{display:flex;align-items:center;gap:12px;margin:14px 0;color:#6b7280;font-size:12px;letter-spacing:1px}
+.lg-or:before,.lg-or:after{content:"";flex:1;height:1px;background:#e5e7eb}
+.lg-lb{display:block;text-align:center;font-size:14px;font-weight:600;color:var(--tx);margin:12px 0 6px}
+.lg-in{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--ln);border-radius:16px;padding:0 14px}
+.lg-in input{border:0;background:transparent;margin:0;padding:14px 0;flex:1;font-size:15px;outline:0;box-shadow:none}
+.lg-go{width:100%;margin-top:18px;padding:15px;background:#0f172a;color:#fff;border:0;border-radius:16px;font-size:16px;font-weight:700}
+.lg-sub{text-align:center;font-size:14px;color:var(--mu);margin-top:14px}
+.lg-sub a,.lg-sub b{color:var(--tx);font-weight:600;cursor:pointer}
+.lg-ins{display:inline-block;background:#d1fae5;color:#065f46;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -283,7 +303,7 @@ const KEY=ACT_SID==="main"?MAIN_KEY:MAIN_KEY+":sch:"+ACT_SID;
 let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
 const SCHEMA_VERSION=2;
-const D=()=>({schemaVersion:SCHEMA_VERSION,school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
+const D=()=>({schemaVersion:SCHEMA_VERSION,school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bism:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
 function migrateState(raw){
   const base=D(), x=raw&&typeof raw==="object"?raw:{};
   const out={...base,...x,school:{...base.school,...(x.school||{})},set:{...base.set,...(x.set||{})},sync:{...base.sync,...(x.sync||{})}};
@@ -319,10 +339,9 @@ const due=f=>f.amt-f.paid;
 function loginId(){return String($("loginIdentifier")?.value||"").trim().toLowerCase()}
 function validId(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)||/^[A-Za-z0-9_.-]{3,30}$/.test(v)}
 function updateNet(){
- const e=$("net");if(!e)return;
- const n=(S.syncQueue||[]).length;
- e.className="net"+(navigator.onLine?"":" off");
- e.textContent=(navigator.onLine?"● অনলাইন":"● অফলাইন")+(n?" · queue "+bn(n):"");
+  const e=$("net");
+  if(e){e.className="net"+(navigator.onLine?"":" off");e.textContent=netTxt()}
+  document.querySelectorAll(".netIn").forEach(x=>{x.className="netIn"+(navigator.onLine?"":" off");x.textContent=netTxt()});
 }
 function syncSnapshot(){
  const snap=JSON.parse(JSON.stringify({...S,syncQueue:[],audit:[]}));
@@ -460,14 +479,13 @@ ${isSuper()?`<div class="card">
 }
 
 let hist=[],curKey="",goingBack=false;
-var loginTab=(ACT_SID!=="main"&&!S.users.length)?"email":"pin";
+var loginTab=(ACT_SID!=="main"||S.users.length)?"email":"pin";
 const ADMIN_AUTH_EMAIL = "aworker247@gmail.com";
 const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
 const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 function setLoginTab(t){loginTab=t;render()}
 function lerr(m){const e=$("loginError");if(e)e.textContent=m}
 function loginTabs(){return `<div style="display:flex;gap:6px;margin:6px 0 12px"><button class="${loginTab==="pin"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('pin')">PIN লগইন</button><button class="${loginTab==="email"?"btn":"ob"}" style="flex:1" onclick="setLoginTab('email')">ইমেইল লগইন</button></div>`}
-function emailLoginView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>ইমেইল লগইন</h1><p>নিবন্ধিত ইমেইল ও পাসওয়ার্ড দিন (ইন্টারনেট লাগবে)</p>${schSel()}${loginTabs()}<input id="emEmail" type="email" autocomplete="email" placeholder="ইমেইল"><input id="emPass" type="password" autocomplete="current-password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')emailLogin()"><button class="btn" style="width:100%" onclick="emailLogin()">ইমেইল দিয়ে লগইন</button><button class="ob" style="width:100%;margin-top:10px" onclick="emailReset()">পাসওয়ার্ড ভুলে গেছেন? (Forgot Password)</button><input id="emPass2" type="password" autocomplete="new-password" placeholder="নিবন্ধনের জন্য পাসওয়ার্ড আবার লিখুন" style="margin-top:14px"><button class="ob" style="width:100%;margin-top:10px" onclick="emailSignup()">নতুন ইমেইল নিবন্ধন</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function emailLogin(){
   if(!sb) return lerr("Supabase সংযোগ তৈরি হয়নি।");
 
@@ -484,7 +502,13 @@ async function emailLogin(){
     });
     if(error) throw error;
 
-    const authUser=authData.user;
+    await completeLogin(authData.user,email);
+  }catch(e){
+    lerr("লগইন ব্যর্থ: "+e.message);
+  }
+}
+async function completeLogin(authUser,email){
+  try{
     if(!authUser){
       await sb.auth.signOut();
       return lerr("ব্যবহারকারীর তথ্য পাওয়া যায়নি।");
@@ -602,9 +626,7 @@ async function emailLogin(){
     unlocked=true;
     render();
 
-  }catch(e){
-    lerr("লগইন ব্যর্থ: "+e.message);
-  }
+  }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
 }
 
 async function loadApprovalPanel(){
@@ -876,11 +898,19 @@ addEventListener("resize",fitMobileZoom);
 let _bkQ=false;
 function fixBackBtns(){
   _bkQ=false;
-  const v=$("v");if(!v)return;
+  const v=$("v"),slot=$("hdrBack");if(!v)return;
   v.querySelectorAll("button").forEach(b=>{
-    if(b.dataset.bk)return;
-    if(b.textContent.trim().startsWith("\u2190")){b.dataset.bk="1";b.style.display="block";b.style.marginLeft="auto"}
+    if(b.dataset.bk||(slot&&slot.contains(b)))return;
+    if(b.textContent.trim().startsWith("\u2190")){
+      b.dataset.bk="1";
+      if(slot&&!slot.querySelector("button")){b.style.margin="0";b.style.display="inline-block";slot.appendChild(b)}
+      else{b.style.display="block";b.style.marginLeft="auto"}
+    }
   });
+  if(slot&&!slot.querySelector("button")&&!slot.dataset.def&&typeof hist!=="undefined"&&hist.length){
+    slot.dataset.def="1";
+    slot.innerHTML='<button class="btn o s" style="margin:0" onclick="goBack()">← ফিরে যান</button>';
+  }
 }
 new MutationObserver(()=>{if(!_bkQ){_bkQ=true;requestAnimationFrame(fixBackBtns)}}).observe(document.body,{childList:true,subtree:true});
 fixBackBtns();
@@ -959,13 +989,103 @@ async function notifOpen(){
 }
 setInterval(refreshPending,300000);
 
+const BISM="بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+function netTxt(){const n=(S.syncQueue||[]).length;return (navigator.onLine?"● অনলাইন":"● অফলাইন")+(n?" · queue "+bn(n):"")}
+function annText(){try{return (JSON.parse(localStorage.getItem("smartEduAnn")||"{}").t)||""}catch(e){return ""}}
+function annBarHtml(){
+  const t=annText();
+  return t?`<div class="annbar"><span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span></div>`:`<div style="flex:1"></div>`;
+}
+function annApply(){const e=$("annSlot");if(e)e.innerHTML=annBarHtml()}
+async function annFetch(){
+  try{
+    if(!sb||!navigator.onLine)return;
+    const {data,error}=await sb.rpc("smartedu_get_broadcast");
+    if(error)return;
+    const t=String(data||"").trim();
+    if(t!==annText()){localStorage.setItem("smartEduAnn",JSON.stringify({t}));annApply()}
+  }catch(e){}
+}
+setTimeout(annFetch,2000);setInterval(annFetch,300000);addEventListener("online",annFetch);
+function appHeader(){
+  const bell=S.set.bell?`<span style="position:relative" onclick="notifOpen()">🔔${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:"";
+  const tb=S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:"";
+  return `<div id="hdr"><div class="hdr1"><span onclick="drawer()">☰</span><span class="netIn${navigator.onLine?"":" off"}">${netTxt()}</span><div id="annSlot" style="flex:1;min-width:0;display:flex">${annBarHtml()}</div>${bell}${tb}</div><div class="hdr2"><span class="grt">${tab==="home"&&S.set.greet?"👋 "+greet():""}</span>${S.set.bism?`<span class="bism" lang="ar" dir="rtl">${BISM}</span>`:`<span style="flex:1"></span>`}<span id="hdrBack"></span></div></div>`;
+}
+function clockStr(d){
+  let t=d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD");
+  if(LANG!=="en")t=t.replace(/\s*AM$/i," এএম").replace(/\s*PM$/i," পিএম");
+  return t;
+}
+function stAnn(){
+  if(!isSuper())return "";
+  return `<div class="card"><h2>📢 সকল অ্যাপে ঘোষণা</h2><p class="hint" style="margin:6px 0">এখানে যা লিখবেন তা সব প্রতিষ্ঠানের অ্যাপের ওপরের স্ক্রল বারে দেখাবে (ইন্টারনেট থাকলে, কিছুক্ষণের মধ্যে)। ইমেইল লগইন ও ইন্টারনেট লাগবে।</p><textarea id="annT" rows="3" maxlength="300" placeholder="যেমন: আগামীকাল সব মাদ্রাসা বন্ধ থাকবে...">${esc(annText())}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1" onclick="annSave(true)">📢 প্রকাশ করুন</button><button class="btn o" onclick="annSave(false)">বন্ধ করুন</button></div></div>`;
+}
+async function annSave(on){
+  if(!isSuper())return;
+  const t=($("annT").value||"").trim();
+  if(on&&!t){alert("ঘোষণার লেখা দিন");return}
+  try{
+    if(!sb){alert("Supabase সংযোগ নেই");return}
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){alert("ইমেইল লগইন করা থাকতে হবে। লগআউট করে ইমেইল দিয়ে ঢুকুন।");return}
+    const {error}=await sb.rpc("smartedu_set_broadcast",{p_text:t,p_active:!!on});
+    if(error)throw error;
+    localStorage.setItem("smartEduAnn",JSON.stringify({t:on?t:""}));annApply();
+    alert(on?"ঘোষণা প্রকাশিত হয়েছে। সব অ্যাপে কিছুক্ষণের মধ্যে দেখাবে।":"ঘোষণা বন্ধ করা হয়েছে।");
+  }catch(e){alert("ব্যর্থ: "+e.message)}
+}
+let _ip=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();_ip=e});
+async function installApp(){
+  if(_ip){_ip.prompt();try{await _ip.userChoice}catch(e){}_ip=null;return}
+  const l=S.school&&S.school.appLink;
+  if(l&&/^https?:\/\//i.test(l)){window.open(l,"_blank");return}
+  alert("ফোনে ইন্সটল করতে Chrome-এর ⋮ মেনু থেকে \"Install app\" বা \"Add to Home screen\" বাছুন।");
+}
+function authMode(m){window._authMode=m;render()}
+async function oauthLogin(p){
+  if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি।");
+  try{
+    const {error}=await sb.auth.signInWithOAuth({provider:p,options:{redirectTo:SITE_URL}});
+    if(error)throw error;
+  }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
+}
+function emailLoginView(){
+  const su=window._authMode==="signup",go=su?"emailSignup()":"emailLogin()";
+  const logo=(S.school&&S.school.logo)?`<img src="${safeDataImage(S.school.logo)}" style="width:64px;height:64px;object-fit:contain;border-radius:50%">`:`<div style="font-size:40px">🔐</div>`;
+  const G='<svg width="22" height="22" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+  const F='<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H7.08v3.47h3.05v8.39a12.1 12.1 0 003.74 0v-8.39h2.8z"/></svg>';
+  return `<div class="login-box"><div class="lg-card">
+<div style="text-align:center;margin-bottom:14px">${logo}<div style="font-size:20px;font-weight:700;margin-top:6px">${esc((S.school&&S.school.name)||"")}</div><div style="font-size:13px;color:var(--mu)">${su?"Create your account":"Sign in to continue"}</div></div>
+${schSel()}
+<button class="lg-soc" onclick="oauthLogin('google')">${G}Continue with Google</button>
+<button class="lg-soc" onclick="oauthLogin('facebook')">${F}Continue with Facebook</button>
+<div class="lg-or"><span>OR</span></div>
+<label class="lg-lb">Email</label><div class="lg-in"><span>✉️</span><input id="emEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+<label class="lg-lb">Password</label><div class="lg-in"><span>🔒</span><input id="emPass" type="password" autocomplete="${su?"new-password":"current-password"}" placeholder="••••••••" onkeydown="if(event.key==='Enter')${go}"></div>
+${su?`<label class="lg-lb">Confirm password</label><div class="lg-in"><span>🔒</span><input id="emPass2" type="password" autocomplete="new-password" placeholder="••••••••"></div>`:""}
+<button class="lg-go" onclick="${go}">${su?"Create account":"Sign in"}</button>
+${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div>`}
+<div class="lg-sub">${su?`Already have an account? <b onclick="authMode('signin')">Sign in</b>`:`Need an account? <b onclick="authMode('signup')">Sign up</b>`}</div>
+<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px;text-align:center"></div>
+<div class="lg-sub"><a onclick="setLoginTab('pin')">🔢 PIN দিয়ে লগইন (অফলাইন)</a></div>
+<div style="text-align:center;margin-top:12px"><span class="lg-ins" onclick="installApp()">ফোনে অ্যাপ ইন্সটল করুন</span></div>
+</div></div>`;
+}
+(async()=>{try{
+  if(!sb||activeUser)return;
+  const {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user&&session.user.email)await completeLogin(session.user,String(session.user.email).toLowerCase());
+}catch(e){}})();
+if(S.set.bism===undefined)S.set.bism=1;
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
  if(!canTab(tab))tab="home";
  const k=JSON.stringify([tab,sub,curExam,profId]);if(curKey&&k!==curKey&&!goingBack){hist.push(curKey);if(hist.length>60)hist.shift()}curKey=k;goingBack=false;
  $("nv").innerHTML=TABS.filter(t=>canTab(t[0])).map(t=>t[0]=="back"?`<button class="bk" onclick="goBack()"><b>${t[1]}</b> ${t[2]}</button>`:`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
- $("v").innerHTML=({home,att,stu,fee,more})[tab]();
+ $("v").innerHTML=appHeader()+({home,att,stu,fee,more})[tab]();
 }
 function goBack(){
  if($("mt")){closeM();return}
@@ -981,7 +1101,7 @@ function logA(ty,cat,tx){const row={t:Date.now(),ty,cat,tx,user:activeUser?.iden
 function autoFees(){const d=new Date(),ym=mk(d.getFullYear(),d.getMonth()),mo=MN[d.getMonth()]+" "+bn(d.getFullYear());S.students.forEach(s=>{if(s.status=="নিষ্ক্রিয়")return;
  if(+s.monthlyFee>0&&!S.fees.some(f=>f.sid==s.id&&f.auto==ym&&(f.type||"মাসিক বেতন")=="মাসিক বেতন"))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+mo,amt:+s.monthlyFee,paid:0,date:today(),auto:ym,ym,type:"মাসিক বেতন"});
  if(s.type=="আবাসিক"&&+s.boardFee>0&&!S.fees.some(f=>f.sid==s.id&&f.auto==ym&&f.type=="বোর্ডিং খরচ"))S.fees.push({id:uid(),sid:s.id,title:"বোর্ডিং খরচ — "+mo,amt:+s.boardFee,paid:0,date:today(),auto:ym,ym,type:"বোর্ডিং খরচ"})})}
-function bnDate(d){const Y=d.getFullYear(),st=new Date(d<new Date(Y,3,14)?Y-1:Y,3,14),sy=st.getFullYear(),n=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-st)/864e5),lp=(y=>y%4==0&&(y%100!=0||y%400==0))(sy+1),L=[31,31,31,31,31,30,30,30,30,30,lp?30:29,30],M=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];let m=0,r=n;while(m<11&&r>=L[m]){r-=L[m];m++}return bn(r+1)+" "+M[m]+", "+bn(sy-593)+" বাংলা"}
+function bnDate(d){d=new Date(d.getTime()+((+(S.set&&S.set.bd)||0))*864e5);const Y=d.getFullYear(),st=new Date(d<new Date(Y,3,14)?Y-1:Y,3,14),sy=st.getFullYear(),n=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-st)/864e5),lp=(y=>y%4==0&&(y%100!=0||y%400==0))(sy+1),L=[31,31,31,31,31,30,30,30,30,30,lp?30:29,30],M=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];let m=0,r=n;while(m<11&&r>=L[m]){r-=L[m];m++}return bn(r+1)+" "+M[m]+", "+bn(sy-593)+" বাংলা"}
 const HJM=["মুহাররম","সফর","রবিউল আউয়াল","রবিউস সানি","জমাদিউল আউয়াল","জমাদিউস সানি","রজব","শাবান","রমজান","শাওয়াল","জিলকদ","জিলহজ"];
 function hjTab(d){const jdn=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)+2440588;let l=jdn-1948440+10632;const n=Math.floor((l-1)/10631);l=l-10631*n+354;const j=Math.floor((10985-l)/5316)*Math.floor(50*l/17719)+Math.floor(l/5670)*Math.floor(43*l/15238);l=l-Math.floor((30-j)/15)*Math.floor(17719*j/50)-Math.floor(j/16)*Math.floor(15238*j/43)+29;const m=Math.floor(24*l/709);return[l-Math.floor(709*m/24),m,30*n+j-30]}
 function hijri(d){
@@ -1014,9 +1134,9 @@ function home(){
  const done=S.exams.filter(e=>Object.keys(e.marks).length).length,bars=[["মোট",S.exams.length,"#10b981"],["আজ",tex.length,"#f59e0b"],["আসন্ন",upc.length,"#3b82f6"],["ফলাফল",done,"#8b5cf6"]],mx=Math.max(1,...bars.map(b=>b[1]));
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
- return `<div class="top" style="justify-content:space-between;font-size:22px"><div style="display:flex;gap:18px"><span onclick="drawer()">☰</span>${S.set.bell?`<span style="position:relative" onclick="notifOpen()">🔔${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:""}</div>${S.set.tbtn?`<span onclick="themeTog()">${isDark()?"☀️":"🌙"}</span>`:""}</div>${S.set.greet?`<div style="font-size:14px;color:var(--mu);margin:-4px 0 10px">👋 ${greet()}</div>`:""}
+ return `
  <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
- <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD")}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
+ <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${clockStr(d)}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d)}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
  <div class="g2"><div class="st" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><span class="ic">👥</span><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#a855f7,#7c3aed)"><span class="ic">🎓</span><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#10b981,#059669)"><span class="ic">📅</span><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48)"><span class="ic">⚠️</span><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
  <div class="g2" style="margin-bottom:6px"><div class="card" style="margin:0;background:#e0f2fe;border-left:3px solid #0ea5e9;padding:10px"><small style="color:#0369a1">📖 আজকের পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center;color:#0369a1">${tex.length?tex.map(e=>esc(e.name)+" — "+esc(e.subject||"")+" ("+esc(e.cls)+")").join(", "):"আজ কোনো পরীক্ষা নেই"}</div></div><div class="card" style="margin:0;background:#e0e7ff;border-left:3px solid #4f46e5;padding:10px"><small style="color:#3730a3">আসন্ন পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center">${upc.length?esc(upc[0].name)+" — "+esc(upc[0].subject||"")+" · "+bn(upc[0].date):"কোনো আসন্ন পরীক্ষা নেই"}</div></div></div>
@@ -1033,7 +1153,7 @@ function home(){
  <div class="card"><div class="ch"><h2>〰 সাম্প্রতিক কার্যক্রম</h2><span class="lk" onclick="logAll=!logAll;render()">${logAll?"কম দেখুন":"সব দেখুন →"}</span></div>${lg.map(x=>{const t=new Date(x.t);return `<div class="row" style="align-items:flex-start"><span class="av" style="width:30px;height:30px;font-size:14px;background:${x.ty=="add"?"#dcfce7":"#d7f2e3"}">${x.ty=="add"?"+":"✎"}</span><div class="f"><b style="font-size:13px">${esc(x.cat)}</b><small>${esc(x.tx)}</small></div><small style="font-size:10px;white-space:nowrap">${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div>`}).join("")||'<div class="em">এখনো কোনো কার্যক্রম নেই</div>'}</div>
  <div class="card"><div class="ch"><h2>📅 পরীক্ষা পরিস্থিতি</h2><span class="tag">${bn(S.exams.length)}টি পরীক্ষা</span></div>${S.exams.length?`<div class="bars">${bars.map(b=>`<div style="background:${b[2]};height:${30+b[1]/mx*100}px">${bn(b[1])}<br><small style="font-size:11px">${b[0]}</small></div>`).join("")}</div><div style="text-align:center"><span class="lk" onclick="nav('more','xr')">সব পরীক্ষা দেখুন</span></div>`:'<div class="em">কোনো পরীক্ষা নেই</div>'}</div>`;
 }
-setInterval(()=>{const c=$("clk");if(c)c.textContent=new Date().toLocaleTimeString(LANG=="en"?"en-US":"bn-BD")},1000);
+setInterval(()=>{const c=$("clk");if(c)c.textContent=clockStr(new Date())},1000);
 
 function classes(){return [...new Set(S.students.map(s=>s.cls).filter(Boolean))].sort()}
 function list(){return S.students.filter(s=>(!cls||s.cls==cls)&&(!q||(s.name+s.roll+s.guardian).toLowerCase().includes(q.toLowerCase())))}
@@ -2306,12 +2426,12 @@ function abSave(){const d=abk.d;let n=0;
 
 /* ---- Super Admin Tool (only the Super Admin can open it) ---- */
 let satT=0;
-const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["লগআউট","🚪"]];
+const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["ঘোষণা","📢"],["লগআউট","🚪"]];
 function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p class="hint" style="margin:8px 0 12px">বর্তমান লগইন: ${esc(activeUser?.identifier||"")} · ${esc(activeUser?.role||"")}</p><button class="btn r" style="width:100%" onclick="logout()">লগআউট করুন</button></div>`}
 function superTool(){
  if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই পেইজ শুধু Super Admin-এর জন্য।</p></div>`;
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">👑</div><div><div style="font-size:20px;font-weight:700">Super Admin Tool</div><div style="color:var(--mu);font-size:13px">শুধু Super Admin-এর জন্য — প্রতিষ্ঠান, ব্যবহারকারী, সাবস্ক্রিপশন, সিঙ্ক ও SaaS নিয়ন্ত্রণ</div></div></div>
-${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,satLogout][satT]()}
+${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,stAnn,satLogout][satT]()}
 /* ---- attendance-based salary (teachers & staff) ---- */
 const offDay=()=>S.set.offDay==null?5:+S.set.offDay;
 function wDays(y,m){const ym=mk(y,m),o=S.set.wd&&+S.set.wd[ym];if(o>0)return o;const dim=new Date(y,m+1,0).getDate();let n=0;for(let d=1;d<=dim;d++){if(new Date(y,m,d).getDay()==offDay())continue;if(evOn(ym+"-"+p2(d)).some(e=>e.type=="ছুটি"))continue;n++}return n}
@@ -2713,8 +2833,8 @@ function stGen(){
  const th=S.set.theme,M=[["auto","🔄","অটো মোড"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
  return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো মোডে সময় অনুযায়ী (সকাল ৬টা–বিকাল ৬টা ডে, রাত নাইট) স্বয়ংক্রিয় পরিবর্তন হবে</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
 <div class="card"><h2>🌐 ভাষা / Language</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপের ভাষা নির্বাচন করুন</div><div class="st-lg">${[["bn","🇧🇩","বাংলা"],["en","🇬🇧","English"]].map(x=>`<div class="${LANG==x[0]?"on":""}" onclick="setLang('${x[0]}')"><span style="font-size:24px">${x[1]}</span><br>${x[2]}${LANG==x[0]?'<br><u style="text-decoration:none;background:var(--pri);color:#fff;border-radius:6px;font-size:10px;padding:1px 8px">সক্রিয়</u>':""}</div>`).join("")}</div></div></div>
-<div class="card"><h2>📅 তারিখ প্রদর্শন</h2>${stTg("হোমে আরবি ও বাংলা তারিখ দেখান","বন্ধ থাকলে হোমে শুধু সময় ও ইংরেজি তারিখ দেখাবে","dates")}<label class="lb">হিজরী তারিখ সমন্বয় (চাঁদ দেখা অনুযায়ী)</label><select onchange="stSet('hj',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.hj||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select></div>
-<div class="card"><h2>🧩 ইন্টারফেস এলিমেন্ট</h2>${stTg("গ্রিটিং মেসেজ","হোমের ওপরে শুভ সকাল/দুপুর/বিকাল/রাত্রি দেখান","greet")}${stTg("নোটিফিকেশন বেল","হোমের ওপরে নোটিশ বেল আইকন দেখান","bell")}${stTg("থিম টগল","হোমের ওপরে ডার্ক/লাইট মোড টগল বাটন দেখান","tbtn")}</div>`}
+<div class="card"><h2>📅 তারিখ প্রদর্শন</h2>${stTg("হোমে আরবি ও বাংলা তারিখ দেখান","বন্ধ থাকলে হোমে শুধু সময় ও ইংরেজি তারিখ দেখাবে","dates")}<label class="lb">হিজরী তারিখ সমন্বয় (চাঁদ দেখা অনুযায়ী)</label><select onchange="stSet('hj',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.hj||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select><label class="lb">বাংলা তারিখ সমন্বয়</label><select onchange="stSet('bd',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.bd||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select></div>
+<div class="card"><h2>🧩 ইন্টারফেস এলিমেন্ট</h2>${stTg("গ্রিটিং মেসেজ","হোমের ওপরে শুভ সকাল/দুপুর/বিকাল/রাত্রি দেখান","greet")}${stTg("নোটিফিকেশন বেল","হোমের ওপরে নোটিশ বেল আইকন দেখান","bell")}${stTg("বিসমিল্লাহ","হেডারে আরবিতে বিসমিল্লাহির রাহমানির রাহিম দেখান","bism")}${stTg("থিম টগল","হোমের ওপরে ডার্ক/লাইট মোড টগল বাটন দেখান","tbtn")}</div>`}
 function stBar(){return `<div class="card"><h2>📢 লাইভ স্কুল বার</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">এখানে কিছু লিখলে তা হোমের "লাইভ" বারে নোটিশের জায়গায় ডান থেকে বামে স্ক্রল করে দেখাবে। খালি রাখলে সর্বশেষ নোটিশ দেখাবে।</div><label class="lb">স্কুল টেক্সট</label><textarea id="sbt" rows="3" placeholder="যেমন: আগামীকাল স্কুল বন্ধ থাকবে...">${esc(S.set.bar)}</textarea><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="S.set.bar=$('sbt').value.trim();save();alert('সেট করা হয়েছে')">📢 সেট করুন</button><button class="btn o" onclick="S.set.bar='';save();render()">মুছুন</button></div></div>`}
 function stCfg(){
  const sc=S.school,tc=S.teachers.length+S.staff.length;
