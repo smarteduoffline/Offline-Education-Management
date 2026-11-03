@@ -27,7 +27,7 @@ nav button b{display:block;font-size:20px;font-weight:400}
 nav button.on{color:var(--pri);font-weight:700}
 .hero{background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;border-radius:18px;padding:16px;margin-bottom:12px}
 .hero h1{font-size:19px}.hero p{font-size:13px;opacity:.85;margin-top:4px}
-.hero .clk{font-size:20px;font-weight:700;margin-top:12px}
+.hero .clk{font-size:18px;font-weight:700;margin-top:12px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .st{border-radius:14px;padding:14px;color:#fff}.st small{opacity:.9;font-size:13px}.st div{font-size:28px;font-weight:700;margin-top:4px}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--ln)}
@@ -190,6 +190,7 @@ body:has(.netIn) #net{display:none}
 .lg-sub{text-align:center;font-size:14px;color:var(--mu);margin-top:14px}
 .lg-sub a,.lg-sub b{color:var(--tx);font-weight:600;cursor:pointer}
 .lg-ins{display:inline-block;background:#d1fae5;color:#065f46;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.clk .ap{font-size:12px;font-weight:600;margin-left:3px}
 </style>
 </head>
 <body>
@@ -1081,6 +1082,27 @@ ${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div
   if(session&&session.user&&session.user.email)await completeLogin(session.user,String(session.user.email).toLowerCase());
 }catch(e){}})();
 if(S.set.bism===undefined)S.set.bism=1;
+function clockHtml(d){
+  let t=d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD");
+  const m=t.match(/\s*(AM|PM)$/i);let ap="";
+  if(m){t=t.slice(0,m.index);ap=LANG!=="en"?(m[1].toUpperCase()==="AM"?"এএম":"পিএম"):m[1].toUpperCase()}
+  return t+(ap?` <span class="ap">${ap}</span>`:"");
+}
+function photoCircle(src,px){
+  return new Promise(res=>{
+    if(!src){res("");return}
+    const img=new Image();
+    img.onload=()=>{try{
+      const c=document.createElement("canvas");c.width=c.height=px;
+      const g=c.getContext("2d"),w=img.naturalWidth,h=img.naturalHeight,m=Math.min(w,h);
+      g.beginPath();g.arc(px/2,px/2,px/2,0,Math.PI*2);g.closePath();g.clip();
+      g.drawImage(img,(w-m)/2,(h-m)/2,m,m,0,0,px,px);
+      res(c.toDataURL("image/png"));
+    }catch(e){res("")}};
+    img.onerror=()=>res("");
+    img.src=src;
+  });
+}
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
@@ -1137,8 +1159,8 @@ function home(){
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
  return `
- <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
- <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${clockStr(d)}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d).split(", ")[0]}</small><small>${hijri(d).split(", ").slice(1).join(", ")}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
+ <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">☰</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0;flex:1;text-align:center"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
+ <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${clockHtml(d)}</div><small>📅 ${d.toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d).split(", ")[0]}</small><small>${hijri(d).split(", ").slice(1).join(", ")}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
  <div class="g2"><div class="st" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><span class="ic">👥</span><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#a855f7,#7c3aed)"><span class="ic">🎓</span><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#10b981,#059669)"><span class="ic">📅</span><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48)"><span class="ic">⚠️</span><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
  <div class="g2" style="margin-bottom:6px"><div class="card" style="margin:0;background:#e0f2fe;border-left:3px solid #0ea5e9;padding:10px"><small style="color:#0369a1">📖 আজকের পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center;color:#0369a1">${tex.length?tex.map(e=>esc(e.name)+" — "+esc(e.subject||"")+" ("+esc(e.cls)+")").join(", "):"আজ কোনো পরীক্ষা নেই"}</div></div><div class="card" style="margin:0;background:#e0e7ff;border-left:3px solid #4f46e5;padding:10px"><small style="color:#3730a3">আসন্ন পরীক্ষা</small><div style="font-size:13px;margin-top:6px;text-align:center">${upc.length?esc(upc[0].name)+" — "+esc(upc[0].subject||"")+" · "+bn(upc[0].date):"কোনো আসন্ন পরীক্ষা নেই"}</div></div></div>
@@ -1155,7 +1177,7 @@ function home(){
  <div class="card"><div class="ch"><h2>〰 সাম্প্রতিক কার্যক্রম</h2><span class="lk" onclick="logAll=!logAll;render()">${logAll?"কম দেখুন":"সব দেখুন →"}</span></div>${lg.map(x=>{const t=new Date(x.t);return `<div class="row" style="align-items:flex-start"><span class="av" style="width:30px;height:30px;font-size:14px;background:${x.ty=="add"?"#dcfce7":"#d7f2e3"}">${x.ty=="add"?"+":"✎"}</span><div class="f"><b style="font-size:13px">${esc(x.cat)}</b><small>${esc(x.tx)}</small></div><small style="font-size:10px;white-space:nowrap">${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div>`}).join("")||'<div class="em">এখনো কোনো কার্যক্রম নেই</div>'}</div>
  <div class="card"><div class="ch"><h2>📅 পরীক্ষা পরিস্থিতি</h2><span class="tag">${bn(S.exams.length)}টি পরীক্ষা</span></div>${S.exams.length?`<div class="bars">${bars.map(b=>`<div style="background:${b[2]};height:${30+b[1]/mx*100}px">${bn(b[1])}<br><small style="font-size:11px">${b[0]}</small></div>`).join("")}</div><div style="text-align:center"><span class="lk" onclick="nav('more','xr')">সব পরীক্ষা দেখুন</span></div>`:'<div class="em">কোনো পরীক্ষা নেই</div>'}</div>`;
 }
-setInterval(()=>{const c=$("clk");if(c)c.textContent=clockStr(new Date())},1000);
+setInterval(()=>{const c=$("clk");if(c)c.innerHTML=clockHtml(new Date())},1000);
 
 function classes(){return [...new Set(S.students.map(s=>s.cls).filter(Boolean))].sort()}
 function list(){return S.students.filter(s=>(!cls||s.cls==cls)&&(!q||(s.name+s.roll+s.guardian).toLowerCase().includes(q.toLowerCase())))}
@@ -1510,20 +1532,20 @@ function drawId(){
  <div class="g2" style="margin:0"><button class="ob" onclick="printCard()">🖨 প্রিন্ট</button><button class="btn g" onclick="printCard()">⬇ ডাউনলোড</button></div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
  $("mt").onclick=null;
 }
-function idHtml(x){
+function idHtml(x,ph){
  const sc=S.school,lg=z=>sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:${z}px;height:${z}px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:${z}px;height:${z}px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:${Math.round(z/2)}px">🕌</div>`,
  cl=x.cls+(x.branch?" ("+x.branch+")":""),
  r=(l,v)=>`<div style="display:flex;font-size:11px;padding:2px 0"><span style="width:56px;color:#444">${l}</span><span style="flex:1">: ${esc(v||"—")}</span></div>`,
  qr=qrSvg([sc.name,x.name,"শ্রেণি: "+cl,"রোল: "+(x.roll||""),"মোবাইল: "+(x.phone||"")].join("\n"),96),
  w="width:260px;margin:10px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px #0003;font-family:sans-serif;color:#222;background:#fff";
  return `<div style="${w}"><div style="background:#146c3a;color:#fff;text-align:center;padding:10px 8px 30px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px">${lg(30)}<div><b style="font-size:14px">${esc(sc.name)}</b><div style="font-size:9px;color:#ffd54a">${esc(sc.nameEn||"")}</div></div>${lg(30)}</div><div style="font-size:9px;margin-top:3px">${esc(sc.addr)}</div><div style="font-size:9px;color:#ffd54a">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="color:#ffd54a;font-weight:700;font-size:13px;margin-top:4px">পরিচয়পত্র</div></div>
- <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0">${x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
+ <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0">${ph?`<img src="${ph}" style="width:64px;height:64px;display:block">`:x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
  <div style="text-align:center;color:#d32f2f;font-weight:700;font-size:16px;margin:4px 0">${esc(x.name)}</div><div style="padding:0 16px 8px">${r("পিতা",x.guardian)}${r("রোল",x.roll)}${r("শ্রেণি",cl)}${r("শিক্ষাবর্ষ",sc.year)}${r("মোবা",x.phone)}${r("ঠিকানা",x.addr)}</div>
  <div style="background:#d98a2b;color:#fff;text-align:right;padding:8px 12px;font-size:10px"><div style="border-top:1px solid #fff;display:inline-block;padding-top:2px">পরিচালকের স্বাক্ষর<br><b>${esc(sc.director||"")}</b></div></div></div>
  <div style="${w}"><div style="background:#d98a2b;height:12px"></div><div style="text-align:center;padding:10px">${qr}<div style="font-size:9px;color:#555">শিক্ষার্থীর তথ্য স্ক্যান করুন</div><b style="font-size:13px;display:block;margin-top:6px">${esc(sc.name)}</b><div style="font-size:10px">${esc(sc.nameEn||"")}</div><div style="font-size:10px;color:#146c3a">${esc(sc.addr)}</div><div style="font-size:10px;color:#146c3a">স্থাপিত: ${esc(sc.est||"—")}</div><div style="font-size:10px;margin-top:4px">প্রতিষ্ঠাতা: ${esc(sc.founder||"—")}</div><div style="font-size:10px">পরিচালক: ${esc(sc.director||"—")}</div><b style="font-size:11px">যোগাযোগ: ${esc(sc.phone||"—")}</b><div style="margin-top:6px">${lg(34)}</div></div>
  <div style="background:#146c3a;color:#fff;font-size:9px;text-align:center;padding:10px 12px;border-top:4px solid #f5c518;line-height:1.5">এই কার্ডটি শুধু প্রতিষ্ঠানের একটি সম্পত্তি। যদি এই কার্ডটি কোথাও পাওয়া যায় তবে দয়া করে উপরের ঠিকানায় ফেরত দেওয়ার অনুরোধ রইলো।</div></div>`;
 }
-function printCard(){const x=cardCtx.id?sOf(cardCtx.id):null,k=cardCtx.kind;if(k=="id")printDoc("id-card",idHtml(x));else if(k=="rc")printDoc("report-card",rcHtml(x,rcPapers()));else if(k=="sh")printDoc("result-sheet",shHtml(shData()));else printDoc("admit-card",admitHtml(x,exGroup(cardCtx.eid)))}
+function printCard(){const x=cardCtx.id?sOf(cardCtx.id):null,k=cardCtx.kind;if(k=="id"){photoCircle(x&&x.photo?safeDataImage(x.photo):"",240).then(ph=>printDoc("id-card",idHtml(x,ph)))}else if(k=="rc")printDoc("report-card",rcHtml(x,rcPapers()));else if(k=="sh")printDoc("result-sheet",shHtml(shData()));else printDoc("admit-card",admitHtml(x,exGroup(cardCtx.eid)))}
 
 /* ---- full profile page ---- */
 function resDoc(id){const x=sOf(id);return `<h2>${esc(S.school.name)}</h2><p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)} | রোল: ${esc(x.roll)} — ফলাফল</p>`+(exGroups(e=>e.cls==x.cls).map(g=>{const r=stuRes(x,g.papers);return r.n?`<h3>${esc(g.name)}</h3><table><tr><th>বিষয়</th><th>পূর্ণমান</th><th>প্রাপ্ত</th><th>%</th><th>গ্রেড</th><th>GPA</th></tr>${r.rows.map(q=>`<tr><td>${esc(q.p.subject)}</td><td>${bn(q.f)}</td><td>${bn(q.g)}</td><td>${bn(q.pc.toFixed(0))}%</td><td>${q.gr}</td><td>${bn(q.gp.toFixed(2))}</td></tr>`).join("")}</table>`:""}).join("")||"<p>কোনো ফলাফল নেই</p>")}
@@ -2039,6 +2061,7 @@ function shData(){
 function shHtml(d){
  const sc=S.school,G="#1b6b34",th=`style="background:${G};color:#fff;padding:5px 3px;font-size:10px"`,td="padding:4px 3px;border-bottom:1px solid #e5e7eb;text-align:center;font-size:11px";
  const lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:52px;height:52px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:24px">🕌</div>`;
+ const dt=new Date().toLocaleDateString(LC(),{day:"numeric",month:"long",year:"numeric"})+" ইং";
  const tot=d.rows.length,fl=d.rows.filter(b=>b.r.fail).length,ps=tot-fl,rate=tot?(ps/tot*100).toFixed(1):"0.0";
  const stat=(l,v,c)=>`<div style="flex:1;text-align:center;border:1px solid #e5e7eb;border-radius:10px;padding:6px 4px;background:#fff"><div style="font-size:11px;color:#555">${l}</div><div style="font-size:16px;font-weight:700;color:${c||G}">${v}</div></div>`;
  const sig=l=>`<div style="flex:1;text-align:center"><div style="border-top:1px solid #333;margin:0 14px;padding-top:3px;font-size:11px">${l}</div></div>`;
@@ -2047,7 +2070,7 @@ function shHtml(d){
 <div style="height:4px;background:#f5c518"></div>
 <div style="padding:8px;background:#f3faf4"><table style="width:100%;border-collapse:collapse;background:#fff"><tr><th ${th}>মেধা</th><th ${th}>নাম</th><th ${th}>রোল</th>${d.subs.map(n=>`<th ${th}>${esc(n)}</th>`).join("")}<th ${th}>মোট</th><th ${th}>%</th><th ${th}>গ্রেড</th></tr>${d.rows.map(b=>`<tr><td style="${td};color:${G};font-weight:700">#${bn(b.rank)}</td><td style="${td};text-align:left">${esc(b.x.name)}</td><td style="${td}">${esc(b.x.roll)}</td>${b.cells.map(c=>`<td style="${td};${c&&c.fail?"color:#c62828":""}">${c?bn(c.v):"-"}</td>`).join("")}<td style="${td}"><b>${bn(b.r.T)}/${bn(b.r.F)}</b></td><td style="${td}">${bn(b.r.pc.toFixed(1))}%</td><td style="${td};${b.r.fail?"color:#c62828":""}"><b>${b.r.gr}</b></td></tr>`).join("")||`<tr><td colspan="${d.subs.length+6}" style="${td};padding:16px">কোনো ফলাফল নেই</td></tr>`}</table></div>
 <div style="display:flex;gap:8px;padding:4px 8px 8px;background:#f3faf4">${stat("মোট শিক্ষার্থী",bn(tot))}${stat("উত্তীর্ণ শিক্ষার্থী",bn(ps))}${stat("অনুত্তীর্ণ শিক্ষার্থী",bn(fl),fl?"#c62828":G)}${stat("পাশের হার",bn(rate)+"%")}</div>
-<div style="display:flex;gap:16px;padding:30px 12px 14px;background:#f3faf4">${sig("শ্রেণি শিক্ষকের স্বাক্ষর")}${sig("অভিভাবকের স্বাক্ষর")}</div></div>`;
+<div style="display:flex;align-items:flex-end;gap:10px;padding:30px 12px 6px;background:#f3faf4">${sig("শ্রেণি শিক্ষকের স্বাক্ষর")}<div style="flex:none;width:74px;height:74px;border:1.5px dashed #888;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#777;text-align:center;line-height:1.2">প্রতিষ্ঠানের<br>সিল</div>${sig("প্রধান শিক্ষকের স্বাক্ষর")}</div><div style="padding:4px 14px 12px;background:#f3faf4;font-size:11px;color:#333">তারিখ: ${dt}</div></div>`;
 }
 function drawSh(){
  const d=shData(),pass=d.rows.filter(b=>!b.r.fail).length,avg=d.rows.length?d.rows.reduce((a,b)=>a+b.r.gpa,0)/d.rows.length:0,tl=(n,l,c)=>`<div style="flex:1;background:var(--bg);border-radius:10px;text-align:center;padding:8px 2px"><b style="font-size:18px;color:${c}">${n}</b><div style="font-size:10px;color:var(--mu)">${l}</div></div>`;
