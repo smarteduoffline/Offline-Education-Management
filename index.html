@@ -638,6 +638,7 @@ async function loadApprovalPanel(){
     return;
   }
   try{
+    if(!(await needSession()))return;
     const {data:users,error}=await sb.rpc("smartedu_list_user_access");
     if(error) throw error;
 
@@ -695,6 +696,7 @@ async function changeApprovalStatus(userId,status){
   )) return;
 
   try{
+    if(!(await needSession()))return;
     const {data,error}=await sb.rpc(
       "smartedu_set_user_status",
       {
@@ -755,6 +757,7 @@ async function saveUserRoles(id){
   PMK.forEach(k=>{pm[k]=!!document.querySelector('#ur_pm .st-sw[data-k="'+k+'"].on')});
   if(rs.includes(UROLES[0])&&!confirm("অ্যাডমিন ভূমিকা দিলে এই ইউজার অ্যাপের সব তথ্যে পূর্ণ অ্যাক্সেস পাবেন। নিশ্চিত?")) return;
   try{
+    if(!(await needSession()))return;
     const {data,error}=await sb.rpc("smartedu_set_user_roles",{
       target_user_id:id,
       new_roles:rs,
@@ -915,8 +918,8 @@ function fixBackBtns(){
     slot.innerHTML='<button class="btn o s" style="margin:0" onclick="goBack()">← ফিরে যান</button>';
   }
 }
-new MutationObserver(()=>{if(!_bkQ){_bkQ=true;requestAnimationFrame(fixBackBtns)}}).observe(document.body,{childList:true,subtree:true});
-fixBackBtns();
+new MutationObserver(()=>{if(!_bkQ){_bkQ=true;requestAnimationFrame(()=>{fixBackBtns();fixContrast()})}}).observe(document.body,{childList:true,subtree:true});
+fixBackBtns();fixContrast();
 window._pendCnt=0;window._renPend=[];window._renAll=[];
 const dayOff=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())};
 function notifItems(){
@@ -1101,6 +1104,49 @@ function photoCircle(src,px){
     }catch(e){res("")}};
     img.onerror=()=>res("");
     img.src=src;
+  });
+}
+async function needSession(){
+  if(!sb){alert("Supabase সংযোগ নেই। ইন্টারনেট পরীক্ষা করুন।");return false}
+  try{const {data:{session}}=await sb.auth.getSession();if(session)return true}catch(e){}
+  alert("এই কাজের জন্য ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করা থাকতে হবে। PIN দিয়ে লগইন করলে এটি কাজ করে না। লগআউট করে ইমেইল দিয়ে ঢুকুন।");
+  return false;
+}
+function _lum(c){
+  const m=c.match(/[\d.]+/g);if(!m||m.length<3)return null;
+  const a=m.slice(0,3).map(x=>{x=+x/255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)});
+  return .2126*a[0]+.7152*a[1]+.0722*a[2];
+}
+function _bgLum(el){
+  for(;el&&el.nodeType===1;el=el.parentElement){
+    const bg=getComputedStyle(el).backgroundColor,m=bg.match(/[\d.]+/g);
+    if(m&&m.length>=3&&(m.length<4||+m[3]>.6))return _lum(bg);
+  }
+  return _lum(getComputedStyle(document.body).backgroundColor)||.01;
+}
+function fixContrast(){
+  if(document.documentElement.dataset.theme!=="dark"){
+    if(window._cxOn){
+      window._cxOn=false;
+      document.querySelectorAll("[data-cx]").forEach(e=>{
+        if(e.dataset.cx==="2"){if(e.dataset.ocx)e.style.setProperty("color",e.dataset.ocx);else e.style.removeProperty("color")}
+        delete e.dataset.cx;delete e.dataset.ocx;
+      });
+    }
+    return;
+  }
+  window._cxOn=true;
+  document.querySelectorAll("#v *,#mt *,#nv *").forEach(el=>{
+    if(el.dataset.cx||/^(SVG|PATH|IMG|CANVAS|SCRIPT|STYLE|BR)$/i.test(el.tagName))return;
+    const own=[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())||/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(el.tagName);
+    if(!own)return;
+    el.dataset.cx="1";
+    const l1=_lum(getComputedStyle(el).color),l2=_bgLum(el);
+    if(l1==null||l2==null)return;
+    if((Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)<3){
+      el.dataset.cx="2";el.dataset.ocx=el.style.getPropertyValue("color")||"";
+      el.style.setProperty("color",l2<.4?"#e8ecf5":"#13281d","important");
+    }
   });
 }
 function render(){
@@ -1297,7 +1343,6 @@ async function printDoc(name,body){if(LANG=="en")body=trS(body);
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,400));
   await Promise.all([...wrap.querySelectorAll("img")].map(i=>(i.decode?i.decode():Promise.resolve()).catch(()=>{})));
-  for(const im of wrap.querySelectorAll("img")){try{if(!im.naturalWidth)continue;const r=im.getBoundingClientRect(),cn=document.createElement("canvas");cn.width=im.naturalWidth;cn.height=im.naturalHeight;cn.getContext("2d").drawImage(im,0,0);cn.style.cssText=im.style.cssText;cn.style.width=r.width+"px";cn.style.height=r.height+"px";cn.style.display="block";im.replaceWith(cn)}catch(e){}}
   const sc=Math.min(2,14000/Math.max(1,wrap.scrollHeight));
   const cv=await html2canvas(wrap,{scale:sc,backgroundColor:"#fff",useCORS:true});
   const wr=wrap.getBoundingClientRect(),cuts=[...wrap.querySelectorAll("tr,.pgb")].map(e=>(e.getBoundingClientRect().bottom-wr.top)*sc);
@@ -1540,7 +1585,7 @@ function idHtml(x,ph){
  qr=qrSvg([sc.name,x.name,"শ্রেণি: "+cl,"রোল: "+(x.roll||""),"মোবাইল: "+(x.phone||"")].join("\n"),96),
  w="width:260px;margin:10px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px #0003;font-family:sans-serif;color:#222;background:#fff";
  return `<div style="${w}"><div style="background:#146c3a;color:#fff;text-align:center;padding:10px 8px 30px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px">${lg(30)}<div><b style="font-size:14px">${esc(sc.name)}</b><div style="font-size:9px;color:#ffd54a">${esc(sc.nameEn||"")}</div></div>${lg(30)}</div><div style="font-size:9px;margin-top:3px">${esc(sc.addr)}</div><div style="font-size:9px;color:#ffd54a">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="color:#ffd54a;font-weight:700;font-size:13px;margin-top:4px">পরিচয়পত্র</div></div>
- <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px;position:relative;z-index:2"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0;position:relative;z-index:2">${ph?`<img src="${ph}" width="64" height="64" style="width:64px;height:64px;display:block">`:x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
+ <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0">${ph?`<img src="${ph}" style="width:64px;height:64px;display:block">`:x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
  <div style="text-align:center;color:#d32f2f;font-weight:700;font-size:16px;margin:4px 0">${esc(x.name)}</div><div style="padding:0 16px 8px">${r("পিতা",x.guardian)}${r("রোল",x.roll)}${r("শ্রেণি",cl)}${r("শিক্ষাবর্ষ",sc.year)}${r("মোবা",x.phone)}${r("ঠিকানা",x.addr)}</div>
  <div style="background:#d98a2b;color:#fff;text-align:right;padding:8px 12px;font-size:10px"><div style="border-top:1px solid #fff;display:inline-block;padding-top:2px">পরিচালকের স্বাক্ষর<br><b>${esc(sc.director||"")}</b></div></div></div>
  <div style="${w}"><div style="background:#d98a2b;height:12px"></div><div style="text-align:center;padding:10px">${qr}<div style="font-size:9px;color:#555">শিক্ষার্থীর তথ্য স্ক্যান করুন</div><b style="font-size:13px;display:block;margin-top:6px">${esc(sc.name)}</b><div style="font-size:10px">${esc(sc.nameEn||"")}</div><div style="font-size:10px;color:#146c3a">${esc(sc.addr)}</div><div style="font-size:10px;color:#146c3a">স্থাপিত: ${esc(sc.est||"—")}</div><div style="font-size:10px;margin-top:4px">প্রতিষ্ঠাতা: ${esc(sc.founder||"—")}</div><div style="font-size:10px">পরিচালক: ${esc(sc.director||"—")}</div><b style="font-size:11px">যোগাযোগ: ${esc(sc.phone||"—")}</b><div style="margin-top:6px">${lg(34)}</div></div>
@@ -2887,10 +2932,10 @@ function stSec(){return stSec0()+(isSuper()?"":`<div class="card"><h2>👤 ব�
 function stSec0(){
  if(S.set.pin)return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="color:#16a34a;font-weight:600;margin:8px 0">✔ PIN লক সক্রিয় আছে</div><div style="font-size:13px;color:var(--mu);margin-bottom:12px">অ্যাপ খোলার সময় PIN চাওয়া হবে। PIN ভুলে গেলে অ্যাপ খোলা যাবে না, তাই নিয়মিত ব্যাকআপ রাখুন।</div><div style="display:flex;gap:8px"><button class="btn o" style="flex:1" onclick="pinOff()">PIN বন্ধ করুন</button></div></div>`;
  return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপে প্রবেশের সময় PIN চাইবে — অতিরিক্ত নিরাপত্তা।</div><label class="lb">PIN সেট করুন</label><input id="pn1" type="password" inputmode="numeric" placeholder="কমপক্ষে ৪ সংখ্যা"><label class="lb">PIN নিশ্চিত করুন</label><input id="pn2" type="password" inputmode="numeric" placeholder="একই PIN আবার লিখুন"><button class="btn" style="width:100%" onclick="pinOn()">🛡 PIN সক্রিয় করুন</button><div class="hint" style="margin-top:8px">PIN ভুলে গেলে অ্যাপ খোলা যাবে না। এই PIN ডিভাইসে সাধারণ সুরক্ষা দেয়, ব্যাংক-মানের এনক্রিপশন নয়।</div></div>`}
-async function pinOn(){const a=$("pn1").value.trim(),b=$("pn2").value.trim();if(!/^\d{4,}$/.test(a)){alert("কমপক্ষে ৪ সংখ্যার PIN দিন (শুধু ইংরেজি সংখ্যা)");return}if(a!==b){alert("দুটি PIN মেলেনি");return}S.set.pin=await hashPin(a);save();render();alert("PIN লক সক্রিয় হয়েছে")}
-async function pinOff(){const v=prompt("বর্তমান PIN দিন");if(v===null)return;if(!await verifyPin(v,S.set.pin)){alert("PIN ভুল");return}S.set.pin="";save();render()}
-function lockCheck(){if(!S.set.pin)return;const o=document.createElement("div");o.id="lk";o.style.cssText="position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px";o.innerHTML=`<div style="font-size:48px">🔒</div><div style="font-weight:700;font-size:18px;text-align:center">${esc(S.school.name)}</div><input id="lkp" type="password" inputmode="numeric" placeholder="PIN দিন" style="max-width:240px;text-align:center" onkeydown="if(event.key=='Enter')lockTry()"><button class="btn" style="width:240px" onclick="lockTry()">খুলুন</button>`;document.body.appendChild(o)}
-async function lockTry(){if(await verifyPin($("lkp").value,S.set.pin))$("lk").remove();else{alert("PIN ভুল");$("lkp").value=""}}
+async function pinOn(){const a=$("pn1").value.trim(),b=$("pn2").value.trim();if(!/^\d{4,}$/.test(a)){alert("কমপক্ষে ৪ সংখ্যার PIN দিন (শুধু ইংরেজি সংখ্যা)");return}if(a!==b){alert("দুটি PIN মেলেনি");return}S.set.pin=await hashPin(a);sessionStorage.setItem("smartEduUnlocked","1");save();render();alert("PIN লক সক্রিয় হয়েছে")}
+async function pinOff(){const v=prompt("বর্তমান PIN দিন");if(v===null)return;if(!await verifyPin(v,S.set.pin)){alert("PIN ভুল");return}S.set.pin="";sessionStorage.removeItem("smartEduUnlocked");save();render()}
+function lockCheck(){if(!S.set.pin||sessionStorage.getItem("smartEduUnlocked")==="1")return;const o=document.createElement("div");o.id="lk";o.style.cssText="position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px";o.innerHTML=`<div style="font-size:48px">🔒</div><div style="font-weight:700;font-size:18px;text-align:center">${esc(S.school.name)}</div><input id="lkp" type="password" inputmode="numeric" placeholder="PIN দিন" style="max-width:240px;text-align:center" onkeydown="if(event.key=='Enter')lockTry()"><button class="btn" style="width:240px" onclick="lockTry()">খুলুন</button>`;document.body.appendChild(o)}
+async function lockTry(){if(await verifyPin($("lkp").value,S.set.pin)){sessionStorage.setItem("smartEduUnlocked","1");$("lk").remove()}else{alert("PIN ভুল");$("lkp").value=""}}
 let scQ="",scSel="",umT=0,schLg="";
 const UROLES=["অ্যাডমিন","সহ-অ্যাডমিন","শিক্ষক","হিসাবরক্ষক","অভিভাবক","সাধারণ ইউজার"];
 const UROLE_C={"Super Admin":"background:#ffe4e9;color:#be123c","অ্যাডমিন":"background:#f3e8ff;color:#7e22ce","সহ-অ্যাডমিন":"background:#e0e7ff;color:#4338ca","শিক্ষক":"background:#dbeafe;color:#1d4ed8","হিসাবরক্ষক":"background:#fef3c7;color:#b45309","অভিভাবক":"background:#dcfce7;color:#15803d","সাধারণ ইউজার":"background:var(--ln);color:var(--mu)"};
@@ -3098,6 +3143,7 @@ async function renDecide(id,ok){
   if(!isSuper())return;
   if(!confirm(ok?"এই নবায়ন অনুমোদন করবেন? ওই প্রতিষ্ঠানের মেয়াদ বাড়বে।":"এই অনুরোধ বাতিল করবেন?"))return;
   try{
+    if(!(await needSession()))return;
     const {data,error}=await sb.rpc("smartedu_decide_renewal",{rid:id,approve:ok});
     if(error)throw error;
     if(data!==true)alert("অবস্থা পরিবর্তন করা যায়নি (আগেই সিদ্ধান্ত হয়ে থাকতে পারে)।");
