@@ -444,6 +444,8 @@ const isSupEmail=e=>SUPER_ADMIN_EMAILS.includes(String(e||"").toLowerCase());
 // Super Admin = শুধু উপরের দুই ইমেইল; সাধারণ অ্যাডমিন নয়
 const isSuper=()=>activeUser?.role==="super_admin"||isSupEmail(activeUser?.identifier);
 const isAdm=()=>activeUser?.role==="admin"||isSuper();
+function roleTxt(rs){rs=Array.isArray(rs)?rs:[];const a=UROLES.filter(r=>rs.includes(r));return a.length?a.join(" · "):"শিক্ষক"}
+function myRoleText(){if(isSuper())return "Super Admin";const u=S.users.find(v=>v.id===activeUser?.id||v.identifier===activeUser?.identifier);if(u&&u.roleLabel)return u.roleLabel;return activeUser?.role==="admin"?"অ্যাডমিন":"শিক্ষক"}
 function hasPerm(p){return activeUser?.role==="admin"||userPerms().includes(p)}
 function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন্য আপনার permission নেই");return false}
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
@@ -569,7 +571,7 @@ async function completeLogin(authUser,email){
 
       const tsid=access.school_id||"main";
       if(tsid!==ACT_SID){
-        localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",permissions:permsFromAccess(access),sid:tsid}));
+        localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",roleLabel:roleTxt(access.roles),permissions:permsFromAccess(access),sid:tsid}));
         localStorage.setItem("smartEduActiveSid",tsid);
         location.reload();
         return;
@@ -595,6 +597,7 @@ async function completeLogin(authUser,email){
             identifier:email,
             pin:uid()+uid(),
             role:((access.roles||[]).includes(UROLES[0])?"admin":"teacher"),
+            roleLabel:roleTxt(access.roles),
             active:true,
             permissions:[],
             createdAt:Date.now()
@@ -605,6 +608,7 @@ async function completeLogin(authUser,email){
 
         const wantRole=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
         if(u.role!==wantRole){u.role=wantRole;save();}
+        u.roleLabel=roleTxt(access.roles);
         const pmx=(access.perms&&Object.keys(access.perms).length)?access.perms:pmDefault(access.roles);
         u.permissions=[...new Set(["dashboard"].concat(PMK.filter(k=>pmx[k]).map(k=>PM_TO_PERM[k]).filter(Boolean)))];
         save();
@@ -849,7 +853,7 @@ async function refreshRemembered(){
     if(access.status!=="approved"){logout();alert("আপনার অ্যাকাউন্ট আর সক্রিয় নেই। আবার লগইন করুন।");return}
     const tsid=access.school_id||"main";
     if(tsid!==ACT_SID){
-      localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",permissions:permsFromAccess(access),sid:tsid}));
+      localStorage.setItem("smartEduPending",JSON.stringify({identifier:email,role:(access.roles||[]).includes(UROLES[0])?"admin":"teacher",roleLabel:roleTxt(access.roles),permissions:permsFromAccess(access),sid:tsid}));
       localStorage.setItem("smartEduActiveSid",tsid);
       sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");
       location.reload();return;
@@ -857,6 +861,7 @@ async function refreshRemembered(){
     const u=S.users.find(x=>x.id===activeUser.id);
     if(!u)return;
     u.role=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
+    u.roleLabel=roleTxt(access.roles);
     u.permissions=permsFromAccess(access);
     save();
     activeUser.role=u.role;
@@ -883,7 +888,7 @@ function applyPending(){
     if(p.sid!==ACT_SID)return;
     let u=S.users.find(x=>String(x.identifier).toLowerCase()===p.identifier);
     if(!u){u={id:uid(),identifier:p.identifier,pin:uid()+uid(),role:p.role,active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
-    u.role=p.role;u.active=true;u.permissions=p.permissions||[];
+    u.role=p.role;if(p.roleLabel)u.roleLabel=p.roleLabel;u.active=true;u.permissions=p.permissions||[];
     save();
     activeUser={id:u.id,identifier:u.identifier,role:u.role};
     sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));
@@ -2509,12 +2514,15 @@ function abSave(){const d=abk.d;let n=0;
 
 /* ---- Super Admin Tool (only the Super Admin can open it) ---- */
 let satT=0;
-const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["ঘোষণা","📢"],["লগআউট","🚪"]];
-function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p class="hint" style="margin:8px 0 12px">বর্তমান লগইন: ${esc(activeUser?.identifier||"")} · ${esc(activeUser?.role||"")}</p><button class="btn r" style="width:100%" onclick="logout()">লগআউট করুন</button></div>`}
+const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["ঘোষণা","📢"],["অ্যাপ তথ্য","📊"],["লগআউট","🚪"]];
+function satApp(){
+ const st=[["শিক্ষার্থী",S.students.length],["শিক্ষক/কর্মচারী",S.teachers.length+S.staff.length],["ফি লেনদেন",S.fees.length],["বই",S.books.length]];
+ return `<div class="card"><h2>📊 অ্যাপ পরিসংখ্যান</h2><div class="g2" style="margin-top:10px">${st.map(x=>`<div class="st-cn" style="background:rgba(59,91,219,.08)"><b style="color:var(--pri)">${bn(x[1])}</b><small>${x[0]}</small></div>`).join("")}</div></div><div class="card"><h2>🔗 GitHub</h2><p class="hint" style="margin:8px 0 12px">অ্যাপের সোর্স কোড ও আপডেট</p><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln)" onclick="openExt('${GH_URL}')">GitHub খুলুন</button></div>`}
+function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p class="hint" style="margin:8px 0 12px">বর্তমান লগইন: ${esc(activeUser?.identifier||"")} · ${esc(myRoleText())}</p><button class="btn r" style="width:100%" onclick="logout()">লগআউট করুন</button></div>`}
 function superTool(){
  if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই পেইজ শুধু Super Admin-এর জন্য।</p></div>`;
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">👑</div><div><div style="font-size:20px;font-weight:700">Super Admin Tool</div><div style="color:var(--mu);font-size:13px">শুধু Super Admin-এর জন্য — প্রতিষ্ঠান, ব্যবহারকারী, সাবস্ক্রিপশন, সিঙ্ক ও SaaS নিয়ন্ত্রণ</div></div></div>
-${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,stAnn,satLogout][satT]()}
+${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,stAnn,satApp,satLogout][satT]()}
 /* ---- attendance-based salary (teachers & staff) ---- */
 const offDay=()=>S.set.offDay==null?5:+S.set.offDay;
 function wDays(y,m){const ym=mk(y,m),o=S.set.wd&&+S.set.wd[ym];if(o>0)return o;const dim=new Date(y,m+1,0).getDate();let n=0;for(let d=1;d<=dim;d++){if(new Date(y,m,d).getDay()==offDay())continue;if(evOn(ym+"-"+p2(d)).some(e=>e.type=="ছুটি"))continue;n++}return n}
@@ -2842,32 +2850,30 @@ const FBT=["মতামত","সমস্যা/বাগ","পরামর্�
 let guQ="",guC="",guPlay="",fbFiles=[];
 const hTabs=()=>`<div class="st-tabs" style="margin-bottom:12px">${HTABS.map(t=>`<button class="${sub==t[0]?"on":""}" onclick="sub='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`;
 function hAbout(){
- const st=[["শিক্ষার্থী",S.students.length],["শিক্ষক/কর্মচারী",S.teachers.length+S.staff.length],["ফি লেনদেন",S.fees.length],["বই",S.books.length]];
- const ft=[["👥","শিক্ষার্থী ব্যবস্থাপনা","সম্পূর্ণ ছাত্র-ছাত্রী রেকর্ড এবং তথ্য সংরক্ষণ"],["📊","ফলাফল ব্যবস্থাপনা","পরীক্ষার নম্বর এবং গ্রেড ট্র্যাকিং"],["⚡","স্বয়ংক্রিয় অ্যালার্ট","বাবা-মায়েদের জন্য স্বয়ংক্রিয় বিজ্ঞপ্তি ও SMS"],["💰","আর্থিক ব্যবস্থাপনা","বেতন, আয়-ব্যয় এবং পেমেন্ট ট্র্যাকিং"],["✅","উপস্থিতি ট্র্যাকিং","শিক্ষার্থী এবং শিক্ষক উপস্থিতি রেকর্ড"],["🤍","ব্যবহারকারী-বান্ধব","সহজ এবং আকর্ষণীয় ইন্টারফেস"]];
+  const ft=[["👥","শিক্ষার্থী ব্যবস্থাপনা","সম্পূর্ণ ছাত্র-ছাত্রী রেকর্ড এবং তথ্য সংরক্ষণ"],["📊","ফলাফল ব্যবস্থাপনা","পরীক্ষার নম্বর এবং গ্রেড ট্র্যাকিং"],["⚡","স্বয়ংক্রিয় অ্যালার্ট","বাবা-মায়েদের জন্য স্বয়ংক্রিয় বিজ্ঞপ্তি ও SMS"],["💰","আর্থিক ব্যবস্থাপনা","বেতন, আয়-ব্যয় এবং পেমেন্ট ট্র্যাকিং"],["✅","উপস্থিতি ট্র্যাকিং","শিক্ষার্থী এবং শিক্ষক উপস্থিতি রেকর্ড"],["🤍","ব্যবহারকারী-বান্ধব","সহজ এবং আকর্ষণীয় ইন্টারফেস"]];
  return hTabs()+`<div style="font-size:20px;font-weight:700">শিক্ষা ব্যবস্থাপনা সমাধান</div><div style="color:var(--mu);font-size:13px;margin-bottom:12px">আধুনিক, নির্ভরযোগ্য এবং সম্পূর্ণ স্কুল ম্যানেজমেন্ট সিস্টেম</div>
-<div class="g2">${st.map(x=>`<div class="st-cn" style="background:rgba(59,91,219,.08)"><b style="color:var(--pri)">${bn(x[1])}</b><small>${x[0]}</small></div>`).join("")}</div>
 <div style="font-weight:700;margin:14px 0 8px">প্রধান বৈশিষ্ট্য</div>${ft.map(x=>`<div class="hp-f"><i>${x[0]}</i><div><b>${x[1]}</b><small>${x[2]}</small></div></div>`).join("")}
 <div class="card" style="margin-top:14px"><h2>এপটি সম্পর্কে</h2><p style="font-size:14px;line-height:1.8;color:var(--mu)">এই এপ্লিকেশনটি <b style="color:var(--tx)">আধুনিক শিক্ষা প্রতিষ্ঠানগুলির জন্য</b> একটি সম্পূর্ণ ডিজিটাল সমাধান প্রদান করে। শিক্ষক, প্রশাসক এবং অভিভাবকদের জন্য এটি একটি কেন্দ্রীভূত প্ল্যাটফর্ম।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)">আমরা বিশ্বাস করি যে প্রযুক্তি শিক্ষাকে আরও সহজ, কার্যকর এবং স্বচ্ছ করতে পারে। এই লক্ষ্যে আমরা ক্রমাগত নতুন ফিচার ও উন্নতি যোগ করছি।</p><p style="font-size:14px;line-height:1.8;color:var(--mu)"><b style="color:var(--tx)">মূল লক্ষ্য:</b> প্রতিটি প্রতিষ্ঠানকে ডিজিটাল যাত্রায় সফল হতে সাহায্য করা এবং শিক্ষার মান উন্নয়নে ভূমিকা রাখা।</p></div>
-<div class="hp-v"><small style="color:var(--mu)">বর্তমান সংস্করণ</small><div style="font-size:26px;font-weight:700;color:var(--pri);margin:2px 0 8px">${APP_VER}</div><div style="margin-bottom:12px">${["বাংলা সমর্থিত","অফলাইন-ভিত্তিক","মোবাইল-বান্ধব","নিরাপদ"].map(t=>`<span class="pl" style="background:var(--card);border:1px solid var(--ln);color:var(--mu)">${t}</span>`).join("")}</div><button class="btn g" style="width:100%;margin-bottom:8px" onclick="installApp()">📲 ফোনে অ্যাপ ইনস্টল করুন</button><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln);margin-bottom:8px" onclick="openExt('${GH_URL}')">GitHub</button><button class="btn" style="width:100%" onclick="fbForm()">💬 Feedback / সমস্যা জানান</button></div>
+<div class="hp-v"><small style="color:var(--mu)">বর্তমান সংস্করণ</small><div style="font-size:26px;font-weight:700;color:var(--pri);margin:2px 0 8px">${APP_VER}</div><div style="margin-bottom:12px">${["বাংলা সমর্থিত","অফলাইন-ভিত্তিক","মোবাইল-বান্ধব","নিরাপদ"].map(t=>`<span class="pl" style="background:var(--card);border:1px solid var(--ln);color:var(--mu)">${t}</span>`).join("")}</div><button class="btn g" style="width:100%;margin-bottom:8px" onclick="installApp()">📲 ফোনে অ্যাপ ইনস্টল করুন</button><button class="btn" style="width:100%" onclick="fbForm()">💬 Feedback / সমস্যা জানান</button></div>
 <div class="card" style="margin-top:14px;background:#fef9e7;border-left:4px solid #f59e0b;color:#78350f;font-size:13px;line-height:1.7"><b>গোপনীয়তা এবং নিরাপত্তা:</b> আপনার সমস্ত তথ্য এই ডিভাইসেই সংরক্ষিত থাকে এবং আপনার অনুমতি ছাড়া কোথাও পাঠানো হয় না। নিয়মিত ব্যাকআপ রাখুন।</div>
 <div class="hp-dev"><div style="font-weight:700">App Builder</div><b>Tofsir Ahamed Parvez</b><div style="font-size:12px">mail: ${DEV_MAIL} &nbsp; Phone: ${DEV_PH}</div></div>`}
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:""}
 function hGuide(){
  const cs=[...new Set(S.guides.map(g=>g.cat))];
- return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div>${isAdm()?`<button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}
+ return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div>${isSuper()?`<button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}
 <input placeholder="🔍 গাইড খুঁজুন..." value="${esc(guQ)}" oninput="guQ=this.value;guLst()"><div class="lx-f" style="margin-top:8px"><button class="${!guC?"on":""}" onclick="guC='';guLst(true)">সব</button>${cs.map(c=>`<button class="${guC==c?"on":""}" onclick="guC=this.dataset.c;guLst(true)" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gul">${guH()}</div>`}
 function guH(){
  const k=guQ.trim().toLowerCase(),L=S.guides.filter(g=>(!guC||g.cat==guC)&&(!k||(g.t+(g.desc||"")).toLowerCase().includes(k)));
- if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br><small>নতুন গাইড যোগ করুন</small><br>${isAdm()?`<button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}</div>`;
- return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div>${isAdm()?`<button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button>`:""}</div>
+ if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br>${isSuper()?`<small>নতুন গাইড যোগ করুন</small><br>`:""}${isSuper()?`<button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}</div>`;
+ return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div>${isSuper()?`<button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button>`:""}</div>
 ${guPlay==g.id&&y?`<iframe src="https://www.youtube-nocookie.com/embed/${y}" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:10px" allowfullscreen></iframe>`:""}<button class="btn o s" style="margin-top:10px" onclick="${y?`guPlay=guPlay=='${g.id}'?'':'${g.id}';guLst()`:`openExt(S.guides.find(x=>x.id=='${g.id}').url)`}">${y?(guPlay==g.id?"⏹ বন্ধ করুন":"▶ ভিডিও দেখুন"):"🔗 লিংক খুলুন"}</button></div>`}).join("")}
 function guLst(full){if(full){render();return}const e=$("gul");if(e)e.innerHTML=guH()}
-function guForm(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=id?S.guides.find(x=>x.id==id):{};
+function guForm(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const g=id?S.guides.find(x=>x.id==id):{};
  modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center">${id?"গাইড সম্পাদনা":"নতুন গাইড যোগ করুন"}</h2>${stF("শিরোনাম *","gu_t",g.t||"")}${stF("ভিডিও লিংক *","gu_u",g.url||"")}<div class="hint" style="margin:-4px 0 8px">YouTube লিংক হলে সরাসরি ভেতরে প্লে হবে</div><label class="lb">বিভাগ</label><select id="gu_c">${GCATS.map(c=>`<option ${g.cat==c?"selected":""}>${c}</option>`).join("")}</select><label class="lb">বিবরণ</label><textarea id="gu_d" rows="3" placeholder="ভিডিও সম্পর্কে সংক্ষিপ্ত বিবরণ">${esc(g.desc||"")}</textarea><button class="btn" style="width:100%" onclick="guSave('${id||""}')">সংরক্ষণ</button><button class="btn o" style="width:100%;margin-top:8px;color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button>`)}
-function guSave(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
+function guSave(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
  const o={t,url:/^https?:\/\//i.test(u)?u:"https://"+u,cat:$("gu_c").value,desc:$("gu_d").value.trim()};
  if(id)Object.assign(S.guides.find(x=>x.id==id),o);else S.guides.unshift({id:uid(),date:today(),...o});save();closeM();render()}
-function guMenu(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
+function guMenu(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
 function hFeed(){
  return hTabs()+`<div style="font-size:20px;font-weight:700">ফিডব্যাক</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">মতামত, সমস্যা বা পরামর্শ ডেভেলপারকে জানান</div><button class="btn" style="margin-bottom:12px" onclick="fbForm()">＋ নতুন ফিডব্যাক</button>`+(S.feedback.map(f=>`<div class="card"><div style="display:flex;justify-content:space-between"><span class="lx-c">${esc(f.ty)}</span><small style="color:var(--mu)">${bn(f.date)}</small></div><div style="font-size:14px;margin:8px 0;white-space:pre-wrap">${esc(f.tx)}</div>${f.files&&f.files.length?`<div style="font-size:12px;color:var(--mu)">📎 ${f.files.map(esc).join("، ")}</div>`:""}<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><button class="btn o s" onclick="fbSend('${f.id}','m')">✉️ ইমেইল</button><button class="btn o s" style="color:#16a34a;border-color:#86efac" onclick="fbSend('${f.id}','w')">💬 WhatsApp</button><button class="btn o s" style="color:#dc2626;border-color:#fca5a5" onclick="fbDel('${f.id}')">মুছুন</button></div></div>`).join("")||'<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">💬</div><b style="color:var(--tx)">কোনো ফিডব্যাক নেই</b><br><small>নতুন ফিডব্যাক লিখুন</small></div>')}
 function fbForm(){fbFiles=[];
@@ -2931,7 +2937,7 @@ ${stF("নাম (বাংলা)","cf_name",sc.name)}${stF("নাম (ইং�
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="st-cn">🎓<b>${bn(S.students.length)}</b><small>মোট শিক্ষার্থী</small></div><div class="st-cn">🧑‍🏫<b>${bn(tc)}</b><small>শিক্ষক/কর্মচারী</small></div><div class="st-cn">👤<b>${bn(1)}</b><small>সিস্টেম ইউজার</small></div></div>
 <div class="card"><h2>প্রতিষ্ঠানের বিস্তারিত তথ্য</h2>${kv("📍","ঠিকানা",sc.addr)}${kv("📞","ফোন",sc.phone)}${kv("✉️","ইমেইল",sc.email)}${kv("👥","প্রধান শিক্ষক",sc.director)}${kv("📅","স্থাপিত",sc.est)}${kv("🏛","প্রতিষ্ঠাতা",sc.founder)}${kv("📘","শিক্ষাবর্ষ",sc.year)}${sc.bkash||sc.nagad?`<div class="st-kv"><span>💳</span><div><small>ফি গ্রহণের পেমেন্ট নম্বর</small>${sc.bkash?`<span class="pl" style="background:#fce7f3;color:#be185d">bKash: ${esc(sc.bkash)}</span>`:""}${sc.nagad?`<span class="pl" style="background:#ffedd5;color:#c2410c">Nagad: ${esc(sc.nagad)}</span>`:""}</div></div>`:""}</div>`}
 function cfSave(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("cf_name")||S.school.name,nameEn:g("cf_nameEn"),desc:g("cf_desc"),addr:g("cf_addr"),phone:g("cf_phone"),email:g("cf_email"),director:g("cf_director"),founder:g("cf_founder"),est:g("cf_est"),year:g("cf_year"),bkash:g("cf_bkash"),nagad:g("cf_nagad")};S.set.stype=g("cf_type");stEd=false;save();render()}
-function stSec(){return stSec0()+(isAdm()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান role: ${esc(activeUser?.role||"admin")} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
+function stSec(){return stSec0()+(isAdm()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান role: ${esc(myRoleText())} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
 function stSec0(){
  if(S.set.pin)return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="color:#16a34a;font-weight:600;margin:8px 0">✔ PIN লক সক্রিয় আছে</div><div style="font-size:13px;color:var(--mu);margin-bottom:12px">অ্যাপ খোলার সময় PIN চাওয়া হবে। PIN ভুলে গেলে অ্যাপ খোলা যাবে না, তাই নিয়মিত ব্যাকআপ রাখুন।</div><div style="display:flex;gap:8px"><button class="btn o" style="flex:1" onclick="pinOff()">PIN বন্ধ করুন</button></div></div>`;
  return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপে প্রবেশের সময় PIN চাইবে — অতিরিক্ত নিরাপত্তা।</div><label class="lb">PIN সেট করুন</label><input id="pn1" type="password" inputmode="numeric" placeholder="কমপক্ষে ৪ সংখ্যা"><label class="lb">PIN নিশ্চিত করুন</label><input id="pn2" type="password" inputmode="numeric" placeholder="একই PIN আবার লিখুন"><button class="btn" style="width:100%" onclick="pinOn()">🛡 PIN সক্রিয় করুন</button><div class="hint" style="margin-top:8px">PIN ভুলে গেলে অ্যাপ খোলা যাবে না। এই PIN ডিভাইসে সাধারণ সুরক্ষা দেয়, ব্যাংক-মানের এনক্রিপশন নয়।</div></div>`}
