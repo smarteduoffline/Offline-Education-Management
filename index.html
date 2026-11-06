@@ -439,7 +439,11 @@ function initRBAC(){
  if(activeUser){const u=S.users.find(x=>x.id===activeUser.id||x.identifier===activeUser.identifier);if(!u||u.active===false){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser")}else activeUser={id:u.id,identifier:u.identifier,role:u.role}}
 }
 function userPerms(u=activeUser){if(!u)return[];if(u.role==="admin")return Object.keys(PERM_LABEL);const x=S.users.find(v=>v.id===u.id||v.identifier===u.identifier)||u;return Array.isArray(x.permissions)?x.permissions:RBAC.teacher.permissions}
-const isSuper=()=>activeUser?.role==="admin"||activeUser?.role==="super_admin";
+const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
+const isSupEmail=e=>SUPER_ADMIN_EMAILS.includes(String(e||"").toLowerCase());
+// Super Admin = শুধু উপরের দুই ইমেইল; সাধারণ অ্যাডমিন নয়
+const isSuper=()=>activeUser?.role==="super_admin"||isSupEmail(activeUser?.identifier);
+const isAdm=()=>activeUser?.role==="admin"||isSuper();
 function hasPerm(p){return activeUser?.role==="admin"||userPerms().includes(p)}
 function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন্য আপনার permission নেই");return false}
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
@@ -458,8 +462,8 @@ function deleteUser(id){if(!isSuper()){alert("শুধু Super Admin এই �
 function userPanel(){
  const rows=S.users.map(u=>{
   const status=u.active===false?"নিষ্ক্রিয়":"সক্রিয়";
-  const actions=u.role!=="admin"?`<button class="ob s" onclick="userForm('${u.id}')">✏️</button><button class="ob s" onclick="toggleUser('${u.id}')">${u.active===false?"চালু":"বন্ধ"}</button><button class="btn r s" onclick="deleteUser('${u.id}')">✕</button>`:`<span class="tag g">মূল অ্যাডমিন</span>`;
-  return `<div class="row"><div class="f"><b>${esc(u.identifier)}</b><small>${u.role==="admin"?"অ্যাডমিন":"শিক্ষক"} · ${status}</small></div>${actions}</div>`;
+  const actions=u.role!=="admin"?`<button class="ob s" onclick="userForm('${u.id}')">✏️</button><button class="ob s" onclick="toggleUser('${u.id}')">${u.active===false?"চালু":"বন্ধ"}</button><button class="btn r s" onclick="deleteUser('${u.id}')">✕</button>`:`<span class="tag g">${isSupEmail(u.identifier)?"Super Admin":"মূল অ্যাডমিন"}</span>`;
+  return `<div class="row"><div class="f"><b>${esc(u.identifier)}</b><small>${isSupEmail(u.identifier)?"Super Admin":u.role==="admin"?"অ্যাডমিন":"শিক্ষক"} · ${status}</small></div>${actions}</div>`;
  }).join("");
  return `<div class="card">
   <div class="ch">
@@ -484,7 +488,6 @@ ${isSuper()?`<div class="card">
 let hist=[],curKey="",goingBack=false;
 var loginTab=(ACT_SID!=="main"||S.users.length)?"email":"pin";
 const ADMIN_AUTH_EMAIL = "aworker247@gmail.com";
-const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
 const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 function setLoginTab(t){loginTab=t;render()}
 function lerr(m){const e=$("loginError");if(e)e.textContent=m}
@@ -643,7 +646,7 @@ async function loadApprovalPanel(){
     if(error) throw error;
 
     const order={pending:0,approved:1,blocked:2};
-    const list=(users||[]).slice().sort(
+    const list=(users||[]).map(u=>isSupEmail(u.email)?{...u,status:"approved"}:u).sort(
       (a,b)=>(order[a.status]??3)-(order[b.status]??3)
     );
     window._apUsers=list;
@@ -972,7 +975,7 @@ async function refreshPending(){
     if(!session)return;
     let ch=false;
     const a=await sb.rpc("smartedu_list_user_access");
-    if(!a.error){const n=(a.data||[]).filter(u=>u.status==="pending").length;if(n!==window._pendCnt){window._pendCnt=n;ch=true}}
+    if(!a.error){const n=(a.data||[]).filter(u=>u.status==="pending"&&!isSupEmail(u.email)).length;if(n!==window._pendCnt){window._pendCnt=n;ch=true}}
     const b=await sb.rpc("smartedu_list_renewals");
     if(!b.error){
       window._renAll=b.data||[];
@@ -2851,20 +2854,20 @@ function hAbout(){
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:""}
 function hGuide(){
  const cs=[...new Set(S.guides.map(g=>g.cat))];
- return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div>${isSuper()?`<button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}
+ return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div>${isAdm()?`<button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}
 <input placeholder="🔍 গাইড খুঁজুন..." value="${esc(guQ)}" oninput="guQ=this.value;guLst()"><div class="lx-f" style="margin-top:8px"><button class="${!guC?"on":""}" onclick="guC='';guLst(true)">সব</button>${cs.map(c=>`<button class="${guC==c?"on":""}" onclick="guC=this.dataset.c;guLst(true)" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gul">${guH()}</div>`}
 function guH(){
  const k=guQ.trim().toLowerCase(),L=S.guides.filter(g=>(!guC||g.cat==guC)&&(!k||(g.t+(g.desc||"")).toLowerCase().includes(k)));
- if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br><small>নতুন গাইড যোগ করুন</small><br>${isSuper()?`<button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}</div>`;
- return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div>${isSuper()?`<button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button>`:""}</div>
+ if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br><small>নতুন গাইড যোগ করুন</small><br>${isAdm()?`<button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}</div>`;
+ return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div>${isAdm()?`<button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button>`:""}</div>
 ${guPlay==g.id&&y?`<iframe src="https://www.youtube-nocookie.com/embed/${y}" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:10px" allowfullscreen></iframe>`:""}<button class="btn o s" style="margin-top:10px" onclick="${y?`guPlay=guPlay=='${g.id}'?'':'${g.id}';guLst()`:`openExt(S.guides.find(x=>x.id=='${g.id}').url)`}">${y?(guPlay==g.id?"⏹ বন্ধ করুন":"▶ ভিডিও দেখুন"):"🔗 লিংক খুলুন"}</button></div>`}).join("")}
 function guLst(full){if(full){render();return}const e=$("gul");if(e)e.innerHTML=guH()}
-function guForm(id){if(!isSuper()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=id?S.guides.find(x=>x.id==id):{};
+function guForm(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=id?S.guides.find(x=>x.id==id):{};
  modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center">${id?"গাইড সম্পাদনা":"নতুন গাইড যোগ করুন"}</h2>${stF("শিরোনাম *","gu_t",g.t||"")}${stF("ভিডিও লিংক *","gu_u",g.url||"")}<div class="hint" style="margin:-4px 0 8px">YouTube লিংক হলে সরাসরি ভেতরে প্লে হবে</div><label class="lb">বিভাগ</label><select id="gu_c">${GCATS.map(c=>`<option ${g.cat==c?"selected":""}>${c}</option>`).join("")}</select><label class="lb">বিবরণ</label><textarea id="gu_d" rows="3" placeholder="ভিডিও সম্পর্কে সংক্ষিপ্ত বিবরণ">${esc(g.desc||"")}</textarea><button class="btn" style="width:100%" onclick="guSave('${id||""}')">সংরক্ষণ</button><button class="btn o" style="width:100%;margin-top:8px;color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button>`)}
-function guSave(id){if(!isSuper()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
+function guSave(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
  const o={t,url:/^https?:\/\//i.test(u)?u:"https://"+u,cat:$("gu_c").value,desc:$("gu_d").value.trim()};
  if(id)Object.assign(S.guides.find(x=>x.id==id),o);else S.guides.unshift({id:uid(),date:today(),...o});save();closeM();render()}
-function guMenu(id){if(!isSuper()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
+function guMenu(id){if(!isAdm()){alert("শুধু অ্যাডমিন গাইড তৈরি, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
 function hFeed(){
  return hTabs()+`<div style="font-size:20px;font-weight:700">ফিডব্যাক</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">মতামত, সমস্যা বা পরামর্শ ডেভেলপারকে জানান</div><button class="btn" style="margin-bottom:12px" onclick="fbForm()">＋ নতুন ফিডব্যাক</button>`+(S.feedback.map(f=>`<div class="card"><div style="display:flex;justify-content:space-between"><span class="lx-c">${esc(f.ty)}</span><small style="color:var(--mu)">${bn(f.date)}</small></div><div style="font-size:14px;margin:8px 0;white-space:pre-wrap">${esc(f.tx)}</div>${f.files&&f.files.length?`<div style="font-size:12px;color:var(--mu)">📎 ${f.files.map(esc).join("، ")}</div>`:""}<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><button class="btn o s" onclick="fbSend('${f.id}','m')">✉️ ইমেইল</button><button class="btn o s" style="color:#16a34a;border-color:#86efac" onclick="fbSend('${f.id}','w')">💬 WhatsApp</button><button class="btn o s" style="color:#dc2626;border-color:#fca5a5" onclick="fbDel('${f.id}')">মুছুন</button></div></div>`).join("")||'<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">💬</div><b style="color:var(--tx)">কোনো ফিডব্যাক নেই</b><br><small>নতুন ফিডব্যাক লিখুন</small></div>')}
 function fbForm(){fbFiles=[];
@@ -2928,7 +2931,7 @@ ${stF("নাম (বাংলা)","cf_name",sc.name)}${stF("নাম (ইং�
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="st-cn">🎓<b>${bn(S.students.length)}</b><small>মোট শিক্ষার্থী</small></div><div class="st-cn">🧑‍🏫<b>${bn(tc)}</b><small>শিক্ষক/কর্মচারী</small></div><div class="st-cn">👤<b>${bn(1)}</b><small>সিস্টেম ইউজার</small></div></div>
 <div class="card"><h2>প্রতিষ্ঠানের বিস্তারিত তথ্য</h2>${kv("📍","ঠিকানা",sc.addr)}${kv("📞","ফোন",sc.phone)}${kv("✉️","ইমেইল",sc.email)}${kv("👥","প্রধান শিক্ষক",sc.director)}${kv("📅","স্থাপিত",sc.est)}${kv("🏛","প্রতিষ্ঠাতা",sc.founder)}${kv("📘","শিক্ষাবর্ষ",sc.year)}${sc.bkash||sc.nagad?`<div class="st-kv"><span>💳</span><div><small>ফি গ্রহণের পেমেন্ট নম্বর</small>${sc.bkash?`<span class="pl" style="background:#fce7f3;color:#be185d">bKash: ${esc(sc.bkash)}</span>`:""}${sc.nagad?`<span class="pl" style="background:#ffedd5;color:#c2410c">Nagad: ${esc(sc.nagad)}</span>`:""}</div></div>`:""}</div>`}
 function cfSave(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("cf_name")||S.school.name,nameEn:g("cf_nameEn"),desc:g("cf_desc"),addr:g("cf_addr"),phone:g("cf_phone"),email:g("cf_email"),director:g("cf_director"),founder:g("cf_founder"),est:g("cf_est"),year:g("cf_year"),bkash:g("cf_bkash"),nagad:g("cf_nagad")};S.set.stype=g("cf_type");stEd=false;save();render()}
-function stSec(){return stSec0()+(isSuper()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান role: ${esc(activeUser?.role||"admin")} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
+function stSec(){return stSec0()+(isAdm()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান role: ${esc(activeUser?.role||"admin")} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
 function stSec0(){
  if(S.set.pin)return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="color:#16a34a;font-weight:600;margin:8px 0">✔ PIN লক সক্রিয় আছে</div><div style="font-size:13px;color:var(--mu);margin-bottom:12px">অ্যাপ খোলার সময় PIN চাওয়া হবে। PIN ভুলে গেলে অ্যাপ খোলা যাবে না, তাই নিয়মিত ব্যাকআপ রাখুন।</div><div style="display:flex;gap:8px"><button class="btn o" style="flex:1" onclick="pinOff()">PIN বন্ধ করুন</button></div></div>`;
  return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপে প্রবেশের সময় PIN চাইবে — অতিরিক্ত নিরাপত্তা।</div><label class="lb">PIN সেট করুন</label><input id="pn1" type="password" inputmode="numeric" placeholder="কমপক্ষে ৪ সংখ্যা"><label class="lb">PIN নিশ্চিত করুন</label><input id="pn2" type="password" inputmode="numeric" placeholder="একই PIN আবার লিখুন"><button class="btn" style="width:100%" onclick="pinOn()">🛡 PIN সক্রিয় করুন</button><div class="hint" style="margin-top:8px">PIN ভুলে গেলে অ্যাপ খোলা যাবে না। এই PIN ডিভাইসে সাধারণ সুরক্ষা দেয়, ব্যাংক-মানের এনক্রিপশন নয়।</div></div>`}
