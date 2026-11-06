@@ -202,11 +202,6 @@ body:has(.netIn) #net{display:none}
   const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
 
-window._recInit=false;window._recErr="";
-try{var _h=(location.hash||"")+"&"+(location.search||"");
-  if(/type=recovery/.test(_h))window._recInit=true;
-  else if(/error_code=otp_expired|error_description=.*(expired|invalid)/i.test(_h))window._recErr="পাসওয়ার্ড রিসেট লিংকের মেয়াদ শেষ হয়েছে বা লিংকটি আগেই ব্যবহার হয়েছে। আবার 'Forgot password' চাপুন, তারপর ইমেইলের নতুন লিংকে একবারই ক্লিক করুন।";
-}catch(_){}
 let sb = null;
 try {
   if (
@@ -329,7 +324,6 @@ if(!S.sync.deviceId)S.sync.deviceId=uid();
 const AUTH_KEY="smart-edu-auth-v2";
 let activeUser=null;try{activeUser=JSON.parse(sessionStorage.getItem("smartEduUser")||localStorage.getItem("smartEduRemember")||"null")}catch(_){activeUser=null}
 let unlocked=!!activeUser;
-if(window._recInit){activeUser=null;unlocked=false;try{sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember")}catch(_){}}
 if(Array.isArray(S.users)&&S.users.some(u=>Array.isArray(u.roles))){S.invUsers=(S.invUsers||[]).concat(S.users.filter(u=>Array.isArray(u.roles)));S.users=S.users.filter(u=>!Array.isArray(u.roles))}
 const bn=n=>LANG=="en"?String(n):String(n).replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
@@ -464,8 +458,8 @@ function deleteUser(id){if(!isSuper()){alert("শুধু Super Admin এই �
 function userPanel(){
  const rows=S.users.map(u=>{
   const status=u.active===false?"নিষ্ক্রিয়":"সক্রিয়";
-  const actions=u.role!=="admin"?`<button class="ob s" onclick="userForm('${u.id}')">✏️</button><button class="ob s" onclick="toggleUser('${u.id}')">${u.active===false?"চালু":"বন্ধ"}</button><button class="btn r s" onclick="deleteUser('${u.id}')">✕</button>`:`<span class="tag g">${SUPER_ADMIN_EMAILS.includes(String(u.identifier||"").toLowerCase())?"মূল অ্যাডমিন":"অ্যাডমিন"}</span>`;
-  return `<div class="row"><div class="f"><b>${esc(u.identifier)}</b><small>${esc(roleTxt(u))} · ${status}</small></div>${actions}</div>`;
+  const actions=u.role!=="admin"?`<button class="ob s" onclick="userForm('${u.id}')">✏️</button><button class="ob s" onclick="toggleUser('${u.id}')">${u.active===false?"চালু":"বন্ধ"}</button><button class="btn r s" onclick="deleteUser('${u.id}')">✕</button>`:`<span class="tag g">মূল অ্যাডমিন</span>`;
+  return `<div class="row"><div class="f"><b>${esc(u.identifier)}</b><small>${u.role==="admin"?"অ্যাডমিন":"শিক্ষক"} · ${status}</small></div>${actions}</div>`;
  }).join("");
  return `<div class="card">
   <div class="ch">
@@ -607,7 +601,6 @@ async function completeLogin(authUser,email){
         }
 
         const wantRole=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
-        u.srvRoles=access.roles||[];
         if(u.role!==wantRole){u.role=wantRole;save();}
         const pmx=(access.perms&&Object.keys(access.perms).length)?access.perms:pmDefault(access.roles);
         u.permissions=[...new Set(["dashboard"].concat(PMK.filter(k=>pmx[k]).map(k=>PM_TO_PERM[k]).filter(Boolean)))];
@@ -731,7 +724,7 @@ async function changeApprovalStatus(userId,status){
     alert("পরিবর্তন ব্যর্থ: "+e.message);
   }
 }
-const PM_TO_PERM={stu:"students",att:"attendance",exam:"exams",res:"exams",card:"reports",cal:"exams",qb:"classes",lib:"library",not:"notices",msg:"messages",slog:"messages",sdash:"messages",fee:"fees",fin:"accounting",pay:"fees",tch:"teachers",set:"settings",bk:"settings"};
+const PM_TO_PERM={stu:"students",att:"attendance",exam:"exams",res:"exams",card:"reports",cal:"exams",qb:"classes",lib:"library",not:"notices",msg:"messages",slog:"messages",sdash:"messages",fee:"fees",fin:"accounting",pay:"fees",tch:"teachers",stf:"staff",set:"settings",bk:"settings"};
 function pmDefault(roles){
   const o={};PMK.forEach(k=>o[k]=false);
   (roles&&roles.length?roles:[UROLES[2]]).forEach(r=>{const d=defPerm(r);PMK.forEach(k=>{if(d[k])o[k]=true})});
@@ -791,8 +784,7 @@ async function emailSignup(){
     lerr("");alert("নিবন্ধনের অনুরোধ সফল। ইমেইলের Inbox ও Spam ফোল্ডারে কনফার্মেশন লিংক দেখুন।");
   }catch(e){lerr("নিবন্ধন ব্যর্থ: "+e.message)}
 }
-var recoveryMode=!!window._recInit;
-if(window._recErr)setTimeout(function(){alert(window._recErr);try{history.replaceState(null,"",location.pathname)}catch(_){}},900);
+var recoveryMode=false;
 function recoveryView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔑</div><h1>নতুন পাসওয়ার্ড দিন</h1><p>কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড লিখুন</p><input id="emNew" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড"><input id="emNew2" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড আবার লিখুন" onkeydown="if(event.key==='Enter')saveNewPassword()"><button class="btn" style="width:100%" onclick="saveNewPassword()">পাসওয়ার্ড সংরক্ষণ করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelRecovery()">বাতিল</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function emailReset(){
   if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
@@ -825,7 +817,7 @@ async function cancelRecovery(){
   try{history.replaceState(null,"",location.pathname)}catch(_){}
   render();
 }
-if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recoveryMode=true;activeUser=null;unlocked=false;try{sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember")}catch(_){}render()}});
+if(sb)sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){recoveryMode=true;unlocked=false;render()}});
 var _mainSchool=null;
 function applySessionSchool(sid){
   try{
@@ -843,11 +835,10 @@ function permsFromAccess(access){
 }
 async function refreshRemembered(){
   try{
-    if(!sb||recoveryMode||!activeUser||!localStorage.getItem("smartEduRemember")||!navigator.onLine)return;
+    if(!sb||!activeUser||!localStorage.getItem("smartEduRemember")||!navigator.onLine)return;
     const {data:{session}}=await sb.auth.getSession();
     if(!session)return;
     const email=String(session.user.email||"").toLowerCase();
-    if(String(activeUser.identifier||"").toLowerCase()!==email)return;
     if(SUPER_ADMIN_EMAILS.includes(email)||email===ADMIN_AUTH_EMAIL.trim().toLowerCase())return;
     const {data:access,error}=await sb.from("smartedu_user_access")
       .select("status,roles,school_id,perms").eq("user_id",session.user.id).maybeSingle();
@@ -863,7 +854,6 @@ async function refreshRemembered(){
     const u=S.users.find(x=>x.id===activeUser.id);
     if(!u)return;
     u.role=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
-    u.srvRoles=access.roles||[];
     u.permissions=permsFromAccess(access);
     save();
     activeUser.role=u.role;
@@ -1090,9 +1080,8 @@ ${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div
 </div></div>`;
 }
 (async()=>{try{
-  if(!sb||activeUser||recoveryMode)return;
+  if(!sb||activeUser)return;
   const {data:{session}}=await sb.auth.getSession();
-  if(recoveryMode)return;
   if(session&&session.user&&session.user.email)await completeLogin(session.user,String(session.user.email).toLowerCase());
 }catch(e){}})();
 if(S.set.bism===undefined)S.set.bism=1;
@@ -1354,7 +1343,6 @@ async function printDoc(name,body){if(LANG=="en")body=trS(body);
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,400));
   await Promise.all([...wrap.querySelectorAll("img")].map(i=>(i.decode?i.decode():Promise.resolve()).catch(()=>{})));
-  for(const im of wrap.querySelectorAll("img")){try{if(!im.naturalWidth)continue;const r=im.getBoundingClientRect(),cn=document.createElement("canvas");cn.width=im.naturalWidth;cn.height=im.naturalHeight;cn.getContext("2d").drawImage(im,0,0);cn.style.cssText=im.style.cssText;cn.style.width=r.width+"px";cn.style.height=r.height+"px";cn.style.display="block";im.replaceWith(cn)}catch(e){}}
   const sc=Math.min(2,14000/Math.max(1,wrap.scrollHeight));
   const cv=await html2canvas(wrap,{scale:sc,backgroundColor:"#fff",useCORS:true});
   const wr=wrap.getBoundingClientRect(),cuts=[...wrap.querySelectorAll("tr,.pgb")].map(e=>(e.getBoundingClientRect().bottom-wr.top)*sc);
@@ -1597,7 +1585,7 @@ function idHtml(x,ph){
  qr=qrSvg([sc.name,x.name,"শ্রেণি: "+cl,"রোল: "+(x.roll||""),"মোবাইল: "+(x.phone||"")].join("\n"),96),
  w="width:260px;margin:10px auto;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px #0003;font-family:sans-serif;color:#222;background:#fff";
  return `<div style="${w}"><div style="background:#146c3a;color:#fff;text-align:center;padding:10px 8px 30px"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px">${lg(30)}<div><b style="font-size:14px">${esc(sc.name)}</b><div style="font-size:9px;color:#ffd54a">${esc(sc.nameEn||"")}</div></div>${lg(30)}</div><div style="font-size:9px;margin-top:3px">${esc(sc.addr)}</div><div style="font-size:9px;color:#ffd54a">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="color:#ffd54a;font-weight:700;font-size:13px;margin-top:4px">পরিচয়পত্র</div></div>
- <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px;position:relative;z-index:2"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0;position:relative;z-index:2">${ph?`<img src="${ph}" width="64" height="64" style="width:64px;height:64px;display:block">`:x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
+ <div style="background:#f5c518;height:5px"></div><div style="text-align:center;margin-top:-22px"><div style="display:inline-block;border:4px solid #f5c518;border-radius:50%;background:#fff;line-height:0">${ph?`<img src="${ph}" style="width:64px;height:64px;display:block">`:x.photo&&safeDataImage(x.photo)?`<img src="${safeDataImage(x.photo)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;display:block">`:`<div style="width:64px;height:64px;border-radius:50%;background:#d7f2e3;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1">👤</div>`}</div></div>
  <div style="text-align:center;color:#d32f2f;font-weight:700;font-size:16px;margin:4px 0">${esc(x.name)}</div><div style="padding:0 16px 8px">${r("পিতা",x.guardian)}${r("রোল",x.roll)}${r("শ্রেণি",cl)}${r("শিক্ষাবর্ষ",sc.year)}${r("মোবা",x.phone)}${r("ঠিকানা",x.addr)}</div>
  <div style="background:#d98a2b;color:#fff;text-align:right;padding:8px 12px;font-size:10px"><div style="border-top:1px solid #fff;display:inline-block;padding-top:2px">পরিচালকের স্বাক্ষর<br><b>${esc(sc.director||"")}</b></div></div></div>
  <div style="${w}"><div style="background:#d98a2b;height:12px"></div><div style="text-align:center;padding:10px">${qr}<div style="font-size:9px;color:#555">শিক্ষার্থীর তথ্য স্ক্যান করুন</div><b style="font-size:13px;display:block;margin-top:6px">${esc(sc.name)}</b><div style="font-size:10px">${esc(sc.nameEn||"")}</div><div style="font-size:10px;color:#146c3a">${esc(sc.addr)}</div><div style="font-size:10px;color:#146c3a">স্থাপিত: ${esc(sc.est||"—")}</div><div style="font-size:10px;margin-top:4px">প্রতিষ্ঠাতা: ${esc(sc.founder||"—")}</div><div style="font-size:10px">পরিচালক: ${esc(sc.director||"—")}</div><b style="font-size:11px">যোগাযোগ: ${esc(sc.phone||"—")}</b><div style="margin-top:6px">${lg(34)}</div></div>
@@ -2940,7 +2928,7 @@ ${stF("নাম (বাংলা)","cf_name",sc.name)}${stF("নাম (ইং�
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px"><div class="st-cn">🎓<b>${bn(S.students.length)}</b><small>মোট শিক্ষার্থী</small></div><div class="st-cn">🧑‍🏫<b>${bn(tc)}</b><small>শিক্ষক/কর্মচারী</small></div><div class="st-cn">👤<b>${bn(1)}</b><small>সিস্টেম ইউজার</small></div></div>
 <div class="card"><h2>প্রতিষ্ঠানের বিস্তারিত তথ্য</h2>${kv("📍","ঠিকানা",sc.addr)}${kv("📞","ফোন",sc.phone)}${kv("✉️","ইমেইল",sc.email)}${kv("👥","প্রধান শিক্ষক",sc.director)}${kv("📅","স্থাপিত",sc.est)}${kv("🏛","প্রতিষ্ঠাতা",sc.founder)}${kv("📘","শিক্ষাবর্ষ",sc.year)}${sc.bkash||sc.nagad?`<div class="st-kv"><span>💳</span><div><small>ফি গ্রহণের পেমেন্ট নম্বর</small>${sc.bkash?`<span class="pl" style="background:#fce7f3;color:#be185d">bKash: ${esc(sc.bkash)}</span>`:""}${sc.nagad?`<span class="pl" style="background:#ffedd5;color:#c2410c">Nagad: ${esc(sc.nagad)}</span>`:""}</div></div>`:""}</div>`}
 function cfSave(){const g=i=>$(i).value.trim();S.school={...S.school,name:g("cf_name")||S.school.name,nameEn:g("cf_nameEn"),desc:g("cf_desc"),addr:g("cf_addr"),phone:g("cf_phone"),email:g("cf_email"),director:g("cf_director"),founder:g("cf_founder"),est:g("cf_est"),year:g("cf_year"),bkash:g("cf_bkash"),nagad:g("cf_nagad")};S.set.stype=g("cf_type");stEd=false;save();render()}
-function stSec(){return stSec0()+(isSuper()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান ভূমিকা: ${esc(roleTxt(S.users.find(x=>x.id===activeUser?.id)||activeUser))} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
+function stSec(){return stSec0()+(isSuper()?"":`<div class="card"><h2>👤 বর্তমান লগইন</h2><p class="hint">বর্তমান role: ${esc(activeUser?.role||"admin")} · ${esc(activeUser?.identifier||"")}</p><button class="btn r s" onclick="logout()">লগআউট</button></div>`)}
 function stSec0(){
  if(S.set.pin)return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="color:#16a34a;font-weight:600;margin:8px 0">✔ PIN লক সক্রিয় আছে</div><div style="font-size:13px;color:var(--mu);margin-bottom:12px">অ্যাপ খোলার সময় PIN চাওয়া হবে। PIN ভুলে গেলে অ্যাপ খোলা যাবে না, তাই নিয়মিত ব্যাকআপ রাখুন।</div><div style="display:flex;gap:8px"><button class="btn o" style="flex:1" onclick="pinOff()">PIN বন্ধ করুন</button></div></div>`;
  return `<div class="card"><h2>🛡 PIN লক (২-স্তরের নিরাপত্তা)</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপে প্রবেশের সময় PIN চাইবে — অতিরিক্ত নিরাপত্তা।</div><label class="lb">PIN সেট করুন</label><input id="pn1" type="password" inputmode="numeric" placeholder="কমপক্ষে ৪ সংখ্যা"><label class="lb">PIN নিশ্চিত করুন</label><input id="pn2" type="password" inputmode="numeric" placeholder="একই PIN আবার লিখুন"><button class="btn" style="width:100%" onclick="pinOn()">🛡 PIN সক্রিয় করুন</button><div class="hint" style="margin-top:8px">PIN ভুলে গেলে অ্যাপ খোলা যাবে না। এই PIN ডিভাইসে সাধারণ সুরক্ষা দেয়, ব্যাংক-মানের এনক্রিপশন নয়।</div></div>`}
@@ -2950,17 +2938,8 @@ function lockCheck(){if(!S.set.pin||sessionStorage.getItem("smartEduUnlocked")==
 async function lockTry(){if(await verifyPin($("lkp").value,S.set.pin)){sessionStorage.setItem("smartEduUnlocked","1");$("lk").remove()}else{alert("PIN ভুল");$("lkp").value=""}}
 let scQ="",scSel="",umT=0,schLg="";
 const UROLES=["অ্যাডমিন","সহ-অ্যাডমিন","শিক্ষক","হিসাবরক্ষক","অভিভাবক","সাধারণ ইউজার"];
-function roleTxt(u){
-  if(!u)return "";
-  const em=String(u.identifier||"").toLowerCase();
-  if(SUPER_ADMIN_EMAILS.includes(em))return "Super Admin";
-  const su=(window._apUsers||[]).find(x=>String(x.email||"").toLowerCase()===em);
-  const r=(su&&su.roles&&su.roles.length)?su.roles:(u.srvRoles&&u.srvRoles.length?u.srvRoles:null);
-  if(r)return r.join(" + ");
-  return u.role==="admin"?"অ্যাডমিন":"শিক্ষক";
-}
 const UROLE_C={"Super Admin":"background:#ffe4e9;color:#be123c","অ্যাডমিন":"background:#f3e8ff;color:#7e22ce","সহ-অ্যাডমিন":"background:#e0e7ff;color:#4338ca","শিক্ষক":"background:#dbeafe;color:#1d4ed8","হিসাবরক্ষক":"background:#fef3c7;color:#b45309","অভিভাবক":"background:#dcfce7;color:#15803d","সাধারণ ইউজার":"background:var(--ln);color:var(--mu)"};
-const PMOD=[["একাডেমিক",[["stu","শিক্ষার্থী ব্যবস্থাপনা"],["att","উপস্থিতি"],["exam","পরীক্ষা"],["res","ফলাফল এন্ট্রি"],["card","রিপোর্ট কার্ড"],["cal","পরীক্ষার ক্যালেন্ডার"],["qb","প্রশ্নব্যাংক"]]],["লাইব্রেরি ও যোগাযোগ",[["lib","লাইব্রেরি"],["not","নোটিশ"],["msg","মেসেজিং"],["slog","SMS লগ"],["sdash","SMS ড্যাশবোর্ড"]]],["অর্থ",[["fee","ফি ব্যবস্থাপনা"],["fin","আর্থিক প্রতিবেদন"],["pay","পেমেন্ট"]]],["কর্মী ও প্রশাসন",[["tch","শিক্ষক তালিকা"],["usr","ব্যবহারকারী ব্যবস্থাপনা"],["set","সেটিংস"],["bk","ব্যাকআপ"]]]];
+const PMOD=[["একাডেমিক",[["stu","শিক্ষার্থী ব্যবস্থাপনা"],["att","উপস্থিতি"],["exam","পরীক্ষা"],["res","ফলাফল এন্ট্রি"],["card","রিপোর্ট কার্ড"],["cal","পরীক্ষার ক্যালেন্ডার"],["qb","প্রশ্নব্যাংক"]]],["লাইব্রেরি ও যোগাযোগ",[["lib","লাইব্রেরি"],["not","নোটিশ"],["msg","মেসেজিং"],["slog","SMS লগ"],["sdash","SMS ড্যাশবোর্ড"]]],["অর্থ",[["fee","ফি ব্যবস্থাপনা"],["fin","আর্থিক প্রতিবেদন"],["pay","পেমেন্ট"]]],["কর্মী ও প্রশাসন",[["tch","শিক্ষক তালিকা"],["stf","কর্মকর্তা/কর্মচারী"],["usr","ব্যবহারকারী ব্যবস্থাপনা"],["set","সেটিংস"],["bk","ব্যাকআপ"]]]];
 const PMK=PMOD.flatMap(g=>g[1].map(x=>x[0]));
 function defPerm(r){const f=fn=>Object.fromEntries(PMK.map(k=>[k,fn(k)]));return r=="অ্যাডমিন"?f(()=>true):r=="সহ-অ্যাডমিন"?f(k=>!["usr","set","bk"].includes(k)):r=="শিক্ষক"?f(k=>["stu","att","exam","res","card","cal","qb","lib","not","msg"].includes(k)):r=="হিসাবরক্ষক"?f(k=>["fee","fin","pay"].includes(k)):f(()=>false)}
 const schAll=()=>[{id:"main",main:1,name:S.school.name,logo:S.school.logo,email:S.school.email||"",addr:S.school.addr,phone:S.school.phone,est:S.school.est}].concat(S.schools);
