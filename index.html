@@ -451,7 +451,7 @@ function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন
 function canTab(t){return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings"};
 function canMenu(k){if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
-function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(has&&loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:""}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(setupInfo)return setupView();if(loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:`<button class="ob" style="width:100%;margin-top:10px" onclick="window._authMode='signup';setLoginTab('email')">📧 আমন্ত্রণ পেয়েছেন? ইমেইল দিয়ে অ্যাকাউন্ট খুলুন</button>`}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const ph=await hashPin(pin);const u={id:uid(),identifier:id,pinHash:ph,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];try{localStorage.setItem(AUTH_KEY,JSON.stringify(u))}catch(_){}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 async function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.active!==false);if(u&&await verifyPin(pin,u.pinHash||u.pin)){if(u.pin&&!u.pinHash){u.pinHash=await hashPin(pin);delete u.pin;save()}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
 function logout(){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");applySessionSchool("");try{if(sb)sb.auth.signOut()}catch(e){}render()}
@@ -561,6 +561,12 @@ async function completeLogin(authUser,email){
       }
 
       if(!access || access.status!=="approved"){
+        if(access?.status!=="blocked"){
+          try{
+            const iv=await sb.rpc("smartedu_my_admin_invite");
+            if(!iv.error&&iv.data===true){setupInfo={email};unlocked=false;render();return}
+          }catch(_){}
+        }
         await sb.auth.signOut();
         return lerr(
           access?.status==="blocked"
@@ -634,12 +640,37 @@ async function completeLogin(authUser,email){
     localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:sidSel}));
 
     unlocked=true;
+    await subFetchSrv();
     render();
+    syncMySchool();
 
   }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
 }
 
+window._remUsers=[];window._remSch={};
+function schNm(id){const r=window._remSch&&window._remSch[String(id)];if(r&&r.name)return r.name;const x=id?schOf(id):null;return x?x.name:""}
+function schAllR(){const a=schAll();return a.concat(Object.values(window._remSch||{}).filter(r=>!a.some(x=>String(x.id)===String(r.id))).map(r=>({id:r.id,name:r.name})))}
+async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m}}catch(e){}}
+async function loadRemoteUsers(){
+  if(!isSuper()||!sb||!navigator.onLine||window._remBusy)return;
+  window._remBusy=1;
+  try{
+    const {data:{session}}=await sb.auth.getSession();if(!session)return;
+    const a=await sb.rpc("smartedu_list_user_access");
+    if(!a.error){
+      window._apUsers=a.data||[];
+      window._remUsers=(a.data||[]).filter(u=>!isSupEmail(u.email)).map(u=>({id:u.user_id,remote:1,status:u.status,name:String(u.email||"").split("@")[0],email:u.email||"",roles:Array.isArray(u.roles)?u.roles:[],sid:u.school_id||"",blocked:u.status==="blocked"?1:0}));
+    }
+    await loadRemSch();
+    window._remAt=Date.now();
+  }catch(e){}finally{window._remBusy=0;stUl();stUc();if(typeof satT!=="undefined"&&satT===7&&unlocked)render()}
+}
+function usRoleR(id){window._fromUsers=1;userRoleForm(id)}
+function usStatR(id,st){window._fromUsers=1;changeApprovalStatus(id,st)}
+function usrBack(){if(window._fromUsers){window._fromUsers=0;closeM()}else loadApprovalPanel()}
+async function afterUsr(){if(window._fromUsers){window._fromUsers=0;closeM();await loadRemoteUsers()}else await loadApprovalPanel()}
 async function loadApprovalPanel(){
+  window._fromUsers=0;
   if(!isSuper()){
     alert("শুধু Super Admin এই কাজ করতে পারবেন।");
     return;
@@ -653,15 +684,16 @@ async function loadApprovalPanel(){
     const list=(users||[]).map(u=>isSupEmail(u.email)?{...u,status:"approved"}:u).sort(
       (a,b)=>(order[a.status]??3)-(order[b.status]??3)
     );
+    await loadRemSch();
     window._apUsers=list;
     const names={pending:"অনুমোদনের অপেক্ষায়",approved:"অনুমোদিত",blocked:"ব্লক করা"};
     const cnt=k=>list.filter(u=>u.status===k).length;
 
     const rows=list.map(u=>{
       const isSup=SUPER_ADMIN_EMAILS.includes(String(u.email||"").toLowerCase());
-      const sch=schAll().find(x=>String(x.id)===String(u.school_id));
+      const sch={name:schNm(u.school_id)};
       const roleTxt=isSup?"Super Admin":((u.roles&&u.roles.length)?u.roles.join(", "):"ভূমিকা নির্ধারণ হয়নি");
-      const info=u.status==="approved"?" · "+roleTxt+(sch?" · 🏛 "+sch.name:""):"";
+      const info=u.status==="approved"?" · "+roleTxt+(sch.name?" · 🏛 "+sch.name:""):"";
       const ok=`<button class="btn g s" onclick="changeApprovalStatus('${u.user_id}','approved')">অনুমোদন</button>`;
       const no=`<button class="btn r s" onclick="changeApprovalStatus('${u.user_id}','blocked')">ব্লক</button>`;
       const rl=`<button class="ob s" onclick="userRoleForm('${u.user_id}')">🔖 ভূমিকা</button>`;
@@ -725,7 +757,7 @@ async function changeApprovalStatus(userId,status){
         : "ব্যবহারকারী ব্লক হয়েছেন।"
     );
 
-    await loadApprovalPanel();
+    await afterUsr();
 
   }catch(e){
     alert("পরিবর্তন ব্যর্থ: "+e.message);
@@ -744,13 +776,13 @@ function userRoleForm(id){
   const u=(window._apUsers||[]).find(x=>x.user_id===id);
   if(!u) return;
   const pm=(u.perms&&Object.keys(u.perms).length)?u.perms:pmDefault(u.roles);
-  modal(`<span onclick="loadApprovalPanel()" style="float:right;font-size:22px">×</span><h2>🛡️ অ্যাক্সেস পারমিশন নির্ধারণ</h2><small>${esc(u.email||"")}</small>
+  modal(`<span onclick="usrBack()" style="float:right;font-size:22px">×</span><h2>🛡️ অ্যাক্সেস পারমিশন নির্ধারণ</h2><small>${esc(u.email||"")}</small>
 <label class="lb">ভূমিকা (একাধিক নির্বাচন করা যাবে)</label><div class="g2" style="margin-bottom:8px">${UROLES.map((r,i)=>`<label class="st-tg" style="margin:0"><input type="checkbox" id="ur_r${i}" style="width:auto;margin:0" onchange="urSet(pmDefault(urRoles()))" ${(u.roles||[]).includes(r)?"checked":""}>${r}</label>`).join("")}</div><div class="hint">একসাথে একাধিক ভূমিকা দিলে ঐ ব্যক্তি সবগুলো মডিউলে অ্যাক্সেস পাবেন।</div>
 <div style="font-size:13px;color:var(--mu);margin:10px 0 6px">মডিউল অ্যাক্সেস</div><div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn o s" style="color:var(--tx);border-color:var(--ln)" onclick="urAll(1)">সব অনুমোদন</button><button class="btn o s" style="color:var(--tx);border-color:var(--ln)" onclick="urAll(0)">সব বাতিল</button></div>
 <div id="ur_pm">${PMOD.map(g=>`<div style="font-size:12px;color:var(--mu);margin:10px 0 6px">${g[0]}</div>${g[1].map(x=>`<div class="st-tg" onclick="this.querySelector('.st-sw').classList.toggle('on')"><div style="flex:1;font-weight:600;font-size:14px">${x[1]}</div><div class="st-sw ${pm[x[0]]?"on":""}" data-k="${x[0]}"><i></i></div></div>`).join("")}`).join("")}</div>
 <div style="background:#fff7ed;color:#c2410c;border-radius:8px;padding:8px 10px;font-size:12px;margin:10px 0">⚠️ ভূমিকা বদলালে ডিফল্ট অ্যাক্সেস বসে যাবে; পরে প্রয়োজনমতো আলাদা মডিউল চালু/বন্ধ করুন। এই অ্যাক্সেস ইউজারের পরের লগইনে কার্যকর হবে।</div>
-<label class="lb" style="color:var(--pri)">🏛 কোন প্রতিষ্ঠানে নিয়োগ হবে নির্বাচন করুন</label><select id="ur_s"><option value="">— প্রতিষ্ঠান বাছাই করুন (ঐচ্ছিক) —</option>${schAll().map(x=>`<option value="${x.id}" ${String(u.school_id)===String(x.id)?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
-<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn o" onclick="loadApprovalPanel()">বাতিল</button><button class="btn" onclick="saveUserRoles('${id}')">সংরক্ষণ</button></div>`);
+<label class="lb" style="color:var(--pri)">🏛 কোন প্রতিষ্ঠানে নিয়োগ হবে নির্বাচন করুন</label><select id="ur_s"><option value="">— প্রতিষ্ঠান বাছাই করুন (ঐচ্ছিক) —</option>${schAllR().map(x=>`<option value="${x.id}" ${String(u.school_id)===String(x.id)?"selected":""}>${esc(x.name)}</option>`).join("")}</select>
+<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn o" onclick="usrBack()">বাতিল</button><button class="btn" onclick="saveUserRoles('${id}')">সংরক্ষণ</button></div>`);
 }
 
 async function saveUserRoles(id){
@@ -773,7 +805,7 @@ async function saveUserRoles(id){
     });
     if(error) throw error;
     alert(data===true?"অ্যাক্সেস সংরক্ষিত হয়েছে। ইউজারের পরের লগইনে কার্যকর হবে।":"পরিবর্তন করা যায়নি।");
-    await loadApprovalPanel();
+    await afterUsr();
   }catch(e){
     alert("পরিবর্তন ব্যর্থ: "+e.message);
   }
@@ -790,6 +822,40 @@ async function emailSignup(){
     if(error)throw error;
     lerr("");alert("নিবন্ধনের অনুরোধ সফল। ইমেইলের Inbox ও Spam ফোল্ডারে কনফার্মেশন লিংক দেখুন।");
   }catch(e){lerr("নিবন্ধন ব্যর্থ: "+e.message)}
+}
+var setupInfo=null;
+function setupView(){
+  const e=setupInfo&&setupInfo.email||"";
+  return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🏛</div><h1>প্রতিষ্ঠান প্রোফাইল তৈরি করুন</h1><p>আপনাকে অ্যাডমিন হিসেবে আমন্ত্রণ জানানো হয়েছে। আপনার প্রতিষ্ঠানের তথ্য দিন।</p><div style="font-size:12px;color:var(--mu);margin-bottom:8px">📧 ${esc(e)}</div><input id="sp_n" placeholder="প্রতিষ্ঠানের নাম *"><input id="sp_a" placeholder="ঠিকানা *"><input id="sp_p" type="tel" placeholder="যোগাযোগ নম্বর"><input id="sp_e" placeholder="স্থাপিত সাল (ঐচ্ছিক)"><input id="sp_d" placeholder="প্রধান/পরিচালকের নাম (ঐচ্ছিক)"><button class="btn" style="width:100%" onclick="claimInvite()">🏛 প্রতিষ্ঠান তৈরি করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelSetup()">বাতিল ও লগআউট</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`;
+}
+async function claimInvite(){
+  const g=i=>String($(i)?.value||"").trim(),n=g("sp_n"),a=g("sp_a");
+  if(!n)return lerr("প্রতিষ্ঠানের নাম দিন");
+  if(!a)return lerr("প্রতিষ্ঠানের ঠিকানা দিন");
+  if(!sb||!setupInfo)return lerr("সংযোগ নেই। ইন্টারনেট পরীক্ষা করুন।");
+  lerr("অপেক্ষা করুন...");
+  try{
+    const sc={name:n,addr:a,phone:g("sp_p"),est:g("sp_e"),director:g("sp_d"),email:setupInfo.email};
+    const {data,error}=await sb.rpc("smartedu_claim_admin_invite",{p_name:n,p_addr:a,p_phone:sc.phone,p_est:sc.est});
+    if(error)throw error;
+    const sid=String(data||"");
+    if(!sid)throw new Error("প্রতিষ্ঠান তৈরি করা যায়নি");
+    const roles=[UROLES[0]];
+    localStorage.setItem("smartEduPending",JSON.stringify({identifier:setupInfo.email,role:"admin",roleLabel:roleTxt(roles),permissions:permsFromAccess({roles,perms:{}}),sid,school:sc}));
+    localStorage.setItem("smartEduActiveSid",sid);
+    setupInfo=null;
+    location.reload();
+  }catch(e){lerr("ব্যর্থ: "+e.message)}
+}
+async function cancelSetup(){setupInfo=null;try{await sb.auth.signOut()}catch(_){}render()}
+async function syncMySchool(){
+  try{
+    if(!sb||!navigator.onLine||!activeUser||activeUser.role!=="admin"||isSuper()||ACT_SID==="main")return;
+    if(window._schSyncAt&&Date.now()-window._schSyncAt<600000)return;
+    const sc=S.school||{};if(!sc.name)return;
+    window._schSyncAt=Date.now();
+    await sb.rpc("smartedu_upsert_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||"")});
+  }catch(e){}
 }
 var recoveryMode=false;
 function recoveryView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔑</div><h1>নতুন পাসওয়ার্ড দিন</h1><p>কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড লিখুন</p><input id="emNew" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড"><input id="emNew2" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড আবার লিখুন" onkeydown="if(event.key==='Enter')saveNewPassword()"><button class="btn" style="width:100%" onclick="saveNewPassword()">পাসওয়ার্ড সংরক্ষণ করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelRecovery()">বাতিল</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
@@ -867,7 +933,9 @@ async function refreshRemembered(){
     activeUser.role=u.role;
     localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:access.school_id||""}));
     applySessionSchool(access.school_id);
+    await subFetchSrv();
     render();
+    syncMySchool();
   }catch(e){}
 }
 try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
@@ -889,6 +957,7 @@ function applyPending(){
     let u=S.users.find(x=>String(x.identifier).toLowerCase()===p.identifier);
     if(!u){u={id:uid(),identifier:p.identifier,pin:uid()+uid(),role:p.role,active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
     u.role=p.role;if(p.roleLabel)u.roleLabel=p.roleLabel;u.active=true;u.permissions=p.permissions||[];
+    if(p.school)S.school=Object.assign({},S.school||{},p.school,{_init:1});
     save();
     activeUser={id:u.id,identifier:u.identifier,role:u.role};
     sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));
@@ -1160,6 +1229,7 @@ function fixContrast(){
 function render(){
  updateNet();
  if(!unlocked){$("nv").innerHTML="";$("v").innerHTML=loginView();return}
+ if(subLocked()){$("nv").innerHTML="";$("v").innerHTML=subLockView();return}
  if(!canTab(tab))tab="home";
  const k=JSON.stringify([tab,sub,curExam,profId]);if(curKey&&k!==curKey&&!goingBack){hist.push(curKey);if(hist.length>60)hist.shift()}curKey=k;goingBack=false;
  $("nv").innerHTML=TABS.filter(t=>canTab(t[0])).map(t=>t[0]=="back"?`<button class="bk" onclick="goBack()"><b>${t[1]}</b> ${t[2]}</button>`:`<button class="${tab==t[0]?"on":""}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
@@ -2514,7 +2584,51 @@ function abSave(){const d=abk.d;let n=0;
 
 /* ---- Super Admin Tool (only the Super Admin can open it) ---- */
 let satT=0;
-const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["ঘোষণা","📢"],["অ্যাপ তথ্য","📊"],["লগআউট","🚪"]];
+const SAT_TABS=[["সব স্কুল","🏢"],["ব্যবহারকারী","👥"],["অ্যাকাউন্ট","🔑"],["সিঙ্ক","🔄"],["SaaS","🛡️"],["নবায়ন অনুরোধ","📩"],["ঘোষণা","📢"],["সাবস্ক্রিপশন","⏳"],["অ্যাপ তথ্য","📊"],["লগআউট","🚪"]];
+function satSubs(){
+  if(!isSuper())return"";
+  if(!window._remAt||Date.now()-window._remAt>20000)setTimeout(loadRemoteUsers,0);
+  const L=Object.values(window._remSch||{}).sort((a,b)=>String(srvCalc(a).end).localeCompare(String(srvCalc(b).end)));
+  const own=id=>{const u=(window._remUsers||[]).find(x=>x.id===id);return u?u.email:""};
+  const row=r=>{
+    const c=srvCalc(r),d=c.end?subDays(c.end):0,bad=r.locked||c.k==="none",warn=!bad&&d<=7;
+    const col=bad?"background:#ffe4e9;color:#be123c":warn?"background:#fef3c7;color:#b45309":"background:#dcfce7;color:#15803d";
+    return `<div class="card"><b>🏛 ${esc(r.name)}</b><div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(own(r.owner_user_id))}</div><div style="margin:6px 0"><span class="pl" style="${col}">${esc(subBadgeText(r))}</span></div><div style="font-size:12px;color:var(--mu)">ট্রায়াল শেষ: ${esc(r.trial_end||"—")} · পেইড মেয়াদ: ${esc(r.paid_end||"—")}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn g" onclick="satExt('${r.id}',1,0)">＋ ১ মাস</button><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="satExt('${r.id}',0,0)">＋ দিন যোগ</button><button class="btn ${r.locked?"g":"r"}" onclick="satFlag('${r.id}',${r.locked?"false":"true"},null)">${r.locked?"🔓 আনব্লক":"🔒 ব্লক"}</button><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="satFlag('${r.id}',null,${r.auto_block===false?"true":"false"})">${r.auto_block===false?"অটো-ব্লক চালু করুন":"অটো-ব্লক বন্ধ করুন"}</button></div></div>`;
+  };
+  return `<div class="ch"><h2>⏳ প্রতিষ্ঠানের সাবস্ক্রিপশন</h2><button class="ob s" onclick="window._remAt=0;render()">🔄 রিফ্রেশ</button></div><p class="hint" style="margin:6px 0 10px">নতুন প্রতিষ্ঠান তৈরির পর ১ মাস ফ্রি। মেয়াদ শেষ হলে অটো-ব্লক চালু থাকলে ওই প্রতিষ্ঠানের সবাই লক হয়ে নবায়ন স্ক্রিনে যাবে; আপনি যেকোনো সময় নিজে ব্লক/আনব্লক বা মেয়াদ বাড়াতে পারবেন।</p>${L.length?L.map(row).join(""):'<div class="em">সার্ভারে নিবন্ধিত কোনো প্রতিষ্ঠান নেই</div>'}`;
+}
+async function satExt(sid,m,d){
+  if(!isSuper())return;
+  if(!m){const v=prompt("কত দিন মেয়াদ বাড়াবেন? (সংখ্যা লিখুন)");d=parseInt(v,10);if(!(d>0))return}
+  try{
+    if(!(await needSession()))return;
+    const r=await sb.rpc("smartedu_extend_school",{p_sid:sid,p_months:m,p_days:d});
+    if(r.error)throw r.error;
+    await loadRemSch();render();
+  }catch(e){alert("মেয়াদ বাড়ানো যায়নি: "+e.message)}
+}
+async function satFlag(sid,lk,au){
+  if(!isSuper())return;
+  if(lk!==null&&!confirm(lk?"এই প্রতিষ্ঠানের সবাইকে ব্লক করবেন?":"প্রতিষ্ঠানকে আনব্লক করবেন?"))return;
+  try{
+    if(!(await needSession()))return;
+    const r=await sb.rpc("smartedu_set_school_flags",{p_sid:sid,p_locked:lk,p_auto:au});
+    if(r.error)throw r.error;
+    await loadRemSch();render();
+  }catch(e){alert("পরিবর্তন ব্যর্থ: "+e.message)}
+}
+async function subExtendFromRenewal(id){
+  try{
+    const x=(window._renAll||[]).find(r=>String(r.id)===String(id));if(!x)return;
+    const em=String(x.user_email||"").toLowerCase();
+    let u=(window._apUsers||[]).find(a=>String(a.email||"").toLowerCase()===em);
+    if(!u){const a=await sb.rpc("smartedu_list_user_access");if(!a.error){window._apUsers=a.data||[];u=window._apUsers.find(v=>String(v.email||"").toLowerCase()===em)}}
+    const sid=u&&u.school_id;if(!sid||sid==="main")return;
+    await loadRemSch();if(!window._remSch[String(sid)])return;
+    const r=await sb.rpc("smartedu_extend_school",{p_sid:sid,p_months:+x.months||0,p_days:0});
+    alert(r.error?"সার্ভারে প্রতিষ্ঠানের মেয়াদ বাড়ানো যায়নি: "+r.error.message+" — সাবস্ক্রিপশন ট্যাব থেকে নিজে বাড়ান।":"প্রতিষ্ঠানের মেয়াদ বাড়ানো হয়েছে।");
+  }catch(e){}
+}
 function satApp(){
  const st=[["শিক্ষার্থী",S.students.length],["শিক্ষক/কর্মচারী",S.teachers.length+S.staff.length],["ফি লেনদেন",S.fees.length],["বই",S.books.length]];
  return `<div class="card"><h2>📊 অ্যাপ পরিসংখ্যান</h2><div class="g2" style="margin-top:10px">${st.map(x=>`<div class="st-cn" style="background:rgba(59,91,219,.08)"><b style="color:var(--pri)">${bn(x[1])}</b><small>${x[0]}</small></div>`).join("")}</div></div><div class="card"><h2>🔗 GitHub</h2><p class="hint" style="margin:8px 0 12px">অ্যাপের সোর্স কোড ও আপডেট</p><button class="btn o" style="width:100%;color:var(--tx);border-color:var(--ln)" onclick="openExt('${GH_URL}')">GitHub খুলুন</button></div>`}
@@ -2522,7 +2636,7 @@ function satLogout(){return `<div class="card"><h2>🚪 লগআউট</h2><p c
 function superTool(){
  if(!isSuper())return `<div class="card"><h2>অনুমতি নেই</h2><p>এই পেইজ শুধু Super Admin-এর জন্য।</p></div>`;
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">👑</div><div><div style="font-size:20px;font-weight:700">Super Admin Tool</div><div style="color:var(--mu);font-size:13px">শুধু Super Admin-এর জন্য — প্রতিষ্ঠান, ব্যবহারকারী, সাবস্ক্রিপশন, সিঙ্ক ও SaaS নিয়ন্ত্রণ</div></div></div>
-${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,stAnn,satApp,satLogout][satT]()}
+${renewBanner()}<div class="st-tabs">${SAT_TABS.map((t,i)=>`<button class="${i==satT?"on":""}" onclick="satT=${i};render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+[stSch,stUsr,stAcc,stSync,saasDashboard,stRen,stAnn,satSubs,satApp,satLogout][satT]()}
 /* ---- attendance-based salary (teachers & staff) ---- */
 const offDay=()=>S.set.offDay==null?5:+S.set.offDay;
 function wDays(y,m){const ym=mk(y,m),o=S.set.wd&&+S.set.wd[ym];if(o>0)return o;const dim=new Date(y,m+1,0).getDate();let n=0;for(let d=1;d<=dim;d++){if(new Date(y,m,d).getDay()==offDay())continue;if(evOn(ym+"-"+p2(d)).some(e=>e.type=="ছুটি"))continue;n++}return n}
@@ -2998,25 +3112,44 @@ function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প�
  save();closeM();render()}
 function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
 function schSub(id){if(id=="main"){tab="more";sub="set";stT=5;render();return}schForm(id)}
-function usAll(){const tq=usQ.trim().toLowerCase(),me={me:1,name:S.school.director||"আপনি (অ্যাডমিন)",email:S.school.email||"",roles:["Super Admin"],sid:"main"};return[me].concat(S.invUsers).filter(u=>(!usR||u.roles.includes(usR))&&(!tq||((u.name||"")+(u.email||"")).toLowerCase().includes(tq)))}
+function usBase(){const rem=window._remUsers||[],em=new Set(rem.map(u=>String(u.email||"").toLowerCase()));return rem.concat(S.invUsers.filter(u=>!em.has(String(u.email||"").toLowerCase())))}
+function usAll(){const tq=usQ.trim().toLowerCase(),me={me:1,name:S.school.director||"আপনি (অ্যাডমিন)",email:S.school.email||"",roles:["Super Admin"],sid:"main"};return[me].concat(usBase()).filter(u=>(!usR||u.roles.includes(usR))&&(!tq||((u.name||"")+(u.email||"")).toLowerCase().includes(tq)))}
 function stUsr(){
- const cnt=r=>S.invUsers.filter(u=>u.roles.includes(r)).length,st=[["Super Admin",1],["অ্যাডমিন",cnt("অ্যাডমিন")],["সহ-অ্যাডমিন",cnt("সহ-অ্যাডমিন")],["শিক্ষক",cnt("শিক্ষক")]];
+ if(!window._remAt||Date.now()-window._remAt>20000)setTimeout(loadRemoteUsers,0);
  return `<div style="font-size:20px;font-weight:700">ইউজার ম্যানেজমেন্ট</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">ব্যবহারকারীর ভূমিকা, অ্যাক্সেস ও ব্লক নিয়ন্ত্রণ</div><button class="btn" style="margin-bottom:12px" onclick="usInv()">＋ নতুন ইউজার আমন্ত্রণ</button> <button class="btn g" style="margin-bottom:12px" onclick="loadApprovalPanel()">✅ ইমেইল ব্যবহারকারীর অনুমোদন</button>
-<div class="g2">${st.map(x=>`<div class="st-cn"><b>${bn(x[1])}</b><span class="pl" style="${UROLE_C[x[0]]}">${x[0]}</span></div>`).join("")}</div>
+<div class="g2" id="usc">${stUcH()}</div>
 <div class="card" style="background:rgba(239,68,68,.08);border-color:#fecaca;font-size:13px"><b style="color:#dc2626">🛡 Super Admin মোড সক্রিয়</b><br><span style="color:#dc2626">আপনি যেকোনো ইউজারকে ব্লক করতে, তাদের ভূমিকা পরিবর্তন করতে এবং মডিউল অ্যাক্সেস নির্ধারণ করতে পারবেন।</span></div>
 <input placeholder="🔍 নাম বা ইমেইল দিয়ে খুঁজুন..." value="${esc(usQ)}" oninput="usQ=this.value;stUl()"><select onchange="usR=this.value;stUl()"><option value="">সব ভূমিকা</option>${["Super Admin"].concat(UROLES).map(r=>`<option ${usR==r?"selected":""}>${r}</option>`).join("")}</select><div id="usl">${stUlH()}</div>`}
-function stUlH(){return usAll().map(u=>{const sc=schOf(u.sid);return `<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="av">👤</div><div style="flex:1;min-width:0"><b>${esc(u.name||u.email)}</b>${u.me?' <span style="color:#16a34a;font-size:12px">● আপনি</span>':""}<div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(u.email||u.phone||"")}</div><div style="margin-top:4px">${u.roles.map(r=>`<span class="pl" style="${UROLE_C[r]}">${r}</span>`).join("")}<span class="pl" style="${u.blocked?"background:#ffe4e9;color:#be123c":"background:#dcfce7;color:#15803d"}">${u.blocked?"⛔ ব্লকড":"✓ সক্রিয়"}</span></div>${sc?`<div style="font-size:12px;color:var(--mu)">🏛 ${esc(sc.name)}</div>`:""}</div></div>${u.me?'<div style="text-align:center;color:var(--mu);border-top:1px solid var(--ln);margin-top:10px;padding-top:6px">—</div>':`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="usPerm('${u.id}',0)">⚙ পারমিশন ও পদবী</button><button class="btn ${u.blocked?"g":"r"}" onclick="usBlk('${u.id}')">${u.blocked?"আনব্লক":"ব্লক"}</button></div>`}</div>`}).join("")||'<div class="em">কেউ পাওয়া যায়নি</div>'}
+function stUcH(){const b=usBase(),cnt=r=>b.filter(u=>u.roles.includes(r)).length,st=[["Super Admin",1],["অ্যাডমিন",cnt("অ্যাডমিন")],["সহ-অ্যাডমিন",cnt("সহ-অ্যাডমিন")],["শিক্ষক",cnt("শিক্ষক")]];return st.map(x=>`<div class="st-cn"><b>${bn(x[1])}</b><span class="pl" style="${UROLE_C[x[0]]}">${x[0]}</span></div>`).join("")}
+function stUc(){const e=$("usc");if(e)e.innerHTML=stUcH()}
+function stUlH(){return usAll().map(u=>{
+ const scn=u.me?"":schNm(u.sid);
+ const pill=(bg,c,t)=>`<span class="pl" style="background:${bg};color:${c}">${t}</span>`;
+ const stat=u.remote?(u.status==="pending"?pill("#fef3c7","#b45309","⏳ অনুমোদনের অপেক্ষায়"):u.blocked?pill("#ffe4e9","#be123c","⛔ ব্লকড"):pill("#dcfce7","#15803d","✓ সক্রিয়")):((u.newOrg&&!u.me)?pill("#e0f2fe","#0369a1","📨 আমন্ত্রিত — নিবন্ধনের অপেক্ষায়"):u.blocked?pill("#ffe4e9","#be123c","⛔ ব্লকড"):pill("#dcfce7","#15803d","✓ সক্রিয়"));
+ const gb="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px";
+ let act;
+ if(u.me)act='<div style="text-align:center;color:var(--mu);border-top:1px solid var(--ln);margin-top:10px;padding-top:6px">—</div>';
+ else if(u.remote&&u.status==="pending")act=`<div style="${gb}"><button class="btn g" onclick="usStatR('${u.id}','approved')">অনুমোদন</button><button class="btn r" onclick="usStatR('${u.id}','blocked')">ব্লক</button></div>`;
+ else if(u.remote&&u.blocked)act=`<div style="margin-top:10px"><button class="btn g" style="width:100%" onclick="usStatR('${u.id}','approved')">আনব্লক</button></div>`;
+ else if(u.remote)act=`<div style="${gb}"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="usRoleR('${u.id}')">⚙ পারমিশন ও পদবী</button><button class="btn r" onclick="usStatR('${u.id}','blocked')">ব্লক</button></div>`;
+ else act=`<div style="${gb}"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="usPerm('${u.id}',0)">⚙ পারমিশন ও পদবী</button><button class="btn ${u.blocked?"g":"r"}" onclick="usBlk('${u.id}')">${u.blocked?"আনব্লক":"ব্লক"}</button></div>`;
+ return `<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="av">👤</div><div style="flex:1;min-width:0"><b>${esc(u.name||u.email)}</b>${u.me?' <span style="color:#16a34a;font-size:12px">● আপনি</span>':""}<div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(u.email||u.phone||"")}</div><div style="margin-top:4px">${u.roles.map(r=>`<span class="pl" style="${UROLE_C[r]||""}">${r}</span>`).join("")}${stat}</div>${scn?`<div style="font-size:12px;color:var(--mu)">🏛 ${esc(scn)}${(window._remSch&&window._remSch[String(u.sid)])?" · "+esc(subBadgeText(window._remSch[String(u.sid)])):""}</div>`:""}</div></div>${act}</div>`}).join("")||'<div class="em">কেউ পাওয়া যায়নি</div>'}
 function stUl(){const e=$("usl");if(e)e.innerHTML=stUlH()}
 function usBlk(id){const u=S.invUsers.find(x=>x.id==id);if(!u||!confirm(u.blocked?"ইউজারকে আনব্লক করবেন?":"ইউজারকে ব্লক করবেন?"))return;u.blocked=u.blocked?0:1;save();stUl()}
 function usInv(){modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2>👤 নতুন ইউজার আমন্ত্রণ</h2><label class="lb">ইমেইল ঠিকানা *</label><input id="iv_e" type="email" placeholder="example@email.com"><label class="lb" style="color:#16a34a">💬 WhatsApp / মোবাইল নম্বর (ঐচ্ছিক)</label><input id="iv_p" type="tel" placeholder="01XXXXXXXXX"><div class="hint">দিলে আমন্ত্রণ বার্তা WhatsApp-এও পাঠানো যাবে।</div><label class="lb" style="color:#2563eb">📲 অ্যাপ ডাউনলোড লিংক (ঐচ্ছিক)</label><input id="iv_l" type="url" placeholder="https://..." value="${esc(S.school.appLink||"")}"><div class="hint">এই লিংক আমন্ত্রণ বার্তায় যাবে; লিংকে ক্লিক করলে সরাসরি অ্যাপ ডাউনলোড করা যাবে।</div>
 <label class="lb">ভূমিকা (একাধিক নির্বাচন করা যাবে)</label><div class="g2" style="margin-bottom:8px">${UROLES.map((r,i)=>`<label class="st-tg" style="margin:0"><input type="checkbox" id="iv_r${i}" style="width:auto;margin:0" ${r=="শিক্ষক"?"checked":""}>${r}</label>`).join("")}</div><div class="hint">একসাথে একাধিক ভূমিকা দিলে ঐ ব্যক্তি সবগুলো মডিউলে অ্যাক্সেস পাবেন।</div>
-<label class="lb" style="color:var(--pri)">🏛 কোন প্রতিষ্ঠানে নিয়োগ হবে নির্বাচন করুন</label><select id="iv_s"><option value="">— প্রতিষ্ঠান বাছাই করুন (ঐচ্ছিক) —</option>${schAll().map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>
-<div class="hint" style="margin-bottom:10px">এখানে ইউজারের রেকর্ড তৈরি হয় এবং আমন্ত্রণ বার্তা আপনার WhatsApp বা ইমেইল অ্যাপে খোলে। পারমিশন পরে "পারমিশন ও পদবী" থেকে ঠিক করুন।</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="usInvSend()">আমন্ত্রণ পাঠান</button></div>`)}
-function usInvSend(){const e=$("iv_e").value.trim().toLowerCase(),ph=$("iv_p").value.trim();if(!/^\S+@\S+\.\S+$/.test(e)){alert("সঠিক ইমেইল ঠিকানা দিন");return}if(S.invUsers.some(u=>(u.email||"").toLowerCase()==e)){alert("এই ইমেইলে আগেই ইউজার আছে");return}
+<label class="lb" style="color:var(--pri)">🏛 কোন প্রতিষ্ঠানে নিয়োগ হবে নির্বাচন করুন</label><select id="iv_s"><option value="">— নতুন প্রতিষ্ঠান (ইউজার নিজে তৈরি করবেন) —</option>${schAllR().map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select>
+<div class="hint" style="margin-bottom:6px;color:#0369a1">👑 "অ্যাডমিন" ভূমিকা দিয়ে প্রতিষ্ঠান খালি রাখলে ইউজার এই ইমেইলে নতুন অ্যাকাউন্ট খুলে নিজের প্রতিষ্ঠান প্রোফাইল তৈরি করবেন এবং Super Admin Tool ছাড়া বাকি সব পারমিশন পাবেন।</div><div class="hint" style="margin-bottom:10px">এখানে ইউজারের রেকর্ড তৈরি হয় এবং আমন্ত্রণ বার্তা আপনার WhatsApp বা ইমেইল অ্যাপে খোলে। পারমিশন পরে "পারমিশন ও পদবী" থেকে ঠিক করুন।</div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="usInvSend()">আমন্ত্রণ পাঠান</button></div>`)}
+async function usInvSend(){const e=$("iv_e").value.trim().toLowerCase(),ph=$("iv_p").value.trim();if(!/^\S+@\S+\.\S+$/.test(e)){alert("সঠিক ইমেইল ঠিকানা দিন");return}if(S.invUsers.some(u=>(u.email||"").toLowerCase()==e)){alert("এই ইমেইলে আগেই ইউজার আছে");return}
  const lk=$("iv_l").value.trim();if(lk&&!/^https?:\/\/\S+$/i.test(lk)){alert("সঠিক ডাউনলোড লিংক দিন (https:// দিয়ে শুরু)");return}if(lk)S.school.appLink=lk;
  let rs=UROLES.filter((r,i)=>$("iv_r"+i).checked);if(!rs.length)rs=["সাধারণ ইউজার"];const pm={};PMK.forEach(k=>pm[k]=rs.some(r=>defPerm(r)[k]));
- S.invUsers.push({id:uid(),name:e.split("@")[0],email:e,phone:ph,roles:rs,sid:$("iv_s").value,blocked:0,perms:pm,inv:today()});save();closeM();render();
- const msg="আসসালামু আলাইকুম, "+S.school.name+" অ্যাপে আপনাকে "+rs.join(", ")+" হিসেবে যুক্ত করা হয়েছে।"+(lk?"\n\nঅ্যাপ ডাউনলোড করতে এই লিংকে ক্লিক করুন:\n"+lk:"");
+ const sidv=$("iv_s").value,newOrg=rs.includes(UROLES[0])&&!sidv;
+ if(newOrg){
+  if(!(await needSession()))return;
+  try{const r=await sb.rpc("smartedu_invite_admin",{p_email:e});if(r.error||r.data!==true){alert("আমন্ত্রণ নিবন্ধন করা যায়নি: "+(r.error?r.error.message:"অনুমতি নেই"));return}}catch(x){alert("আমন্ত্রণ নিবন্ধন ব্যর্থ: "+x.message);return}
+ }
+ S.invUsers.push({id:uid(),name:e.split("@")[0],email:e,phone:ph,roles:rs,sid:sidv,blocked:0,perms:pm,inv:today(),newOrg:newOrg?1:0});save();closeM();render();
+ const msg=newOrg?"আসসালামু আলাইকুম, আপনাকে অ্যাপে অ্যাডমিন হিসেবে আমন্ত্রণ জানানো হয়েছে।"+(lk?"\n\n১) অ্যাপ ডাউনলোড করুন:\n"+lk:"\n\n১) অ্যাপটি ইন্সটল করুন")+"\n২) অ্যাপে \"ইমেইল দিয়ে অ্যাকাউন্ট খুলুন\" চেপে এই ইমেইল ("+e+") ও পাসওয়ার্ড দিয়ে নতুন অ্যাকাউন্ট তৈরি করুন এবং ইমেইল কনফার্ম করুন\n৩) লগইন করে আপনার প্রতিষ্ঠানের প্রোফাইল তৈরি করুন।":"আসসালামু আলাইকুম, "+S.school.name+" অ্যাপে আপনাকে "+rs.join(", ")+" হিসেবে যুক্ত করা হয়েছে।"+(lk?"\n\nঅ্যাপ ডাউনলোড করতে এই লিংকে ক্লিক করুন:\n"+lk:"");
  if(ph&&confirm("WhatsApp-এ আমন্ত্রণ বার্তা পাঠাবেন?"))openExt(waLink(ph,msg));else if(!ph&&confirm("ইমেইলে আমন্ত্রণ পাঠাবেন?"))openExt("mailto:"+e+"?subject="+encodeURIComponent("আমন্ত্রণ — "+S.school.name)+"&body="+encodeURIComponent(msg))}
 function usPerm(id,t){const u=S.invUsers.find(x=>x.id==id);if(!u)return;umT=t;u.perms=u.perms||defPerm(u.roles[0]);
  const tabs=`<div class="st-tabs" style="margin:10px 0"><button class="${t==0?"on":""}" style="flex:1" onclick="usPerm('${id}',0)">পারমিশন</button><button class="${t==1?"on":""}" style="flex:1" onclick="usPerm('${id}',1)">প্রতিষ্ঠান প্রোফাইল</button></div>`;
@@ -3043,8 +3176,40 @@ function subInit(){
   S.sub.reqs=S.sub.reqs||[];
   if(!S.sub.trialStart||!S.sub.iid){S.sub.trialStart=S.sub.trialStart||today();S.sub.iid=S.sub.iid||(uid()+uid());save()}
 }
+function subDays(end){return Math.ceil((new Date(end+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5)}
+function srvCalc(r){const T=today(),tE=r.trial_end||"",pE=r.paid_end||"";return{k:(pE&&pE>=T)?"paid":(tE&&tE>=T)?"trial":"none",end:[tE,pE].sort().pop()||""}}
+function subBadgeText(r){
+  if(r.locked)return"🔒 ব্লকড";
+  const c=srvCalc(r);
+  if(c.k==="none")return"⛔ মেয়াদ শেষ"+(r.auto_block===false?" (অটো-ব্লক বন্ধ)":"");
+  return(c.k==="trial"?"ফ্রি ট্রায়াল":"সক্রিয়")+" — "+bn(subDays(c.end))+" দিন বাকি";
+}
+async function subFetchSrv(){
+  try{
+    if(!sb||!navigator.onLine||isSuper())return false;
+    const {data:{session}}=await sb.auth.getSession();if(!session)return false;
+    const {data,error}=await sb.rpc("smartedu_my_school_status");
+    if(error)return false;
+    const r=Array.isArray(data)?data[0]:data;
+    if(r&&r.school_id){subInit();S.sub.srv={trial_end:r.trial_end||"",paid_end:r.paid_end||"",locked:!!r.locked,auto_block:r.auto_block!==false,at:Date.now()};save();return true}
+  }catch(e){}
+  return false;
+}
+function subLocked(){
+  if(!activeUser||isSuper()||ACT_SID==="main")return false;
+  const sr=S.sub&&S.sub.srv;if(!sr)return false;
+  return !!sr.locked||(sr.auto_block!==false&&srvCalc(sr).k==="none");
+}
+function subLockView(){
+  const sr=S.sub.srv||{},st=srvCalc(sr),adm=activeUser&&activeUser.role==="admin";
+  const why=sr.locked?"আপনার প্রতিষ্ঠানের অ্যাক্সেস Super Admin বন্ধ রেখেছেন।":"সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে ("+st.end+")।";
+  return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔒</div><h1>${esc(S.school.name||"")}</h1><p style="color:#dc2626;font-weight:600">${why}</p>${sr.locked?`<p>বিস্তারিত জানতে যোগাযোগ করুন: <b>${SUB_PAY_NO}</b></p>`:`<p>অ্যাপ আবার চালু করতে সাবস্ক্রিপশন নবায়ন করুন।<br>${money(SUB_PLAN.price)}/মাস — bKash / Nagad: <b>${SUB_PAY_NO}</b></p>${adm?`<button class="btn" style="width:100%;margin-bottom:8px" onclick="subRenew()">👑 নবায়ন অনুরোধ পাঠান</button>`:`<p style="font-size:12px;color:var(--mu)">নবায়নের জন্য প্রতিষ্ঠানের অ্যাডমিনকে জানান।</p>`}`}${subReqCards()}<button class="ob" style="width:100%;margin-top:8px" onclick="subLockRefresh()">🔄 স্ট্যাটাস রিফ্রেশ</button><button class="ob" style="width:100%;margin-top:8px" onclick="logout()">🚪 লগআউট</button></div></div>`;
+}
+async function subLockRefresh(){await subFetchSrv();await subSync();render()}
+setInterval(async()=>{try{if(!unlocked||isSuper())return;const b=subLocked();await subFetchSrv();if(b!==subLocked())render()}catch(e){}},600000);
 function subState(){
   subInit();
+  if(S.sub.srv&&ACT_SID!=="main"&&!isSuper())return srvCalc(S.sub.srv);
   const T=today(),tEnd=addMonths(S.sub.trialStart,1),pEnd=S.sub.end||"";
   if(pEnd&&pEnd>=T)return{k:"paid",end:pEnd};
   if(tEnd>=T)return{k:"trial",end:tEnd};
@@ -3055,7 +3220,7 @@ function stSub(){
   if(!window._subT||Date.now()-window._subT>15000){window._subT=Date.now();setTimeout(subSync,0)}
   const st=subState(),P=SUB_PLAN,bad=st.k==="none";
   const chk=f=>`<div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--gr);font-weight:700">✔</span><span>${f}</span></div>`;
-  const stTxt=st.k==="paid"?"সক্রিয় — মেয়াদ: "+st.end:st.k==="trial"?"ফ্রি ট্রায়াল চলছে — শেষ: "+st.end:"কোনো সক্রিয় সাবস্ক্রিপশন নেই";
+  const stTxt=st.k==="paid"?"সক্রিয় — মেয়াদ: "+st.end+" ("+bn(subDays(st.end))+" দিন বাকি)":st.k==="trial"?"ফ্রি ট্রায়াল চলছে — শেষ: "+st.end+" ("+bn(subDays(st.end))+" দিন বাকি)":"কোনো সক্রিয় সাবস্ক্রিপশন নেই";
   const hist=(S.sub.payments||[]).length?`<div class="card"><h2 style="font-size:16px;margin-bottom:6px">পেমেন্টের ইতিহাস</h2>${S.sub.payments.map(p=>`<div class="row"><div class="f"><b>${bn(p.months)} মাস — ${money(p.paid)}</b><small style="display:block;color:var(--mu)">${esc(p.date)} · ${esc(p.method)} · TXN ${esc(p.txn)}${p.note?" · "+esc(p.note):""}</small></div></div>`).join("")}</div>`:"";
   return `<div style="margin-bottom:12px"><h2 style="font-size:24px">সাবস্ক্রিপশন</h2><p style="font-size:13px;color:var(--mu)">আপনার প্ল্যান ও পেমেন্টের তথ্য দেখুন</p></div>
 <button class="btn" style="margin-bottom:14px" onclick="subRenew()">＋ নবায়ন / পেমেন্ট</button>
@@ -3159,7 +3324,7 @@ async function renDecide(id,ok){
     if(!(await needSession()))return;
     const {data,error}=await sb.rpc("smartedu_decide_renewal",{rid:id,approve:ok});
     if(error)throw error;
-    if(data!==true)alert("অবস্থা পরিবর্তন করা যায়নি (আগেই সিদ্ধান্ত হয়ে থাকতে পারে)।");
+    if(data!==true)alert("অবস্থা পরিবর্তন করা যায়নি (আগেই সিদ্ধান্ত হয়ে থাকতে পারে)।");else if(ok)await subExtendFromRenewal(id);
     window._renLoaded=false;
     await refreshPending();
     render();
