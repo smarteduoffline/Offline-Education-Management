@@ -1820,7 +1820,7 @@ function att(){
  let h=`<div class="top" style="justify-content:space-between"><div><h1 style="font-size:20px">উপস্থিতি ব্যবস্থাপনা</h1><small style="color:var(--mu)">${new Date().toLocaleDateString(LC(),{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</small></div><div style="display:flex;gap:6px"><button class="tgb ${take?"":"on"}" onclick="setView('list')">তালিকা</button><button class="tgb ${take?"on":""}" onclick="setView('take')">উপস্থিতি নিন</button></div></div>
  <div class="g3"><div class="sc" style="background:#ecfdf5"><i style="color:#16a34a">✓</i><div><b style="color:#16a34a">${bn(c3("p"))}</b><small>উপস্থিত</small></div></div><div class="sc" style="background:#fff1f2"><i style="color:#e11d48">✕</i><div><b style="color:#e11d48">${bn(c3("a"))}</b><small>অনুপস্থিত</small></div></div><div class="sc" style="background:#fffbeb"><i style="color:#f59e0b">◔</i><div><b style="color:#f59e0b">${bn(c3("l"))}</b><small>বিলম্বিত</small></div></div></div>
  <div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><h2 style="margin:0">মাসিক উপস্থিতির রিপোর্ট</h2><small style="color:var(--mu);font-size:12px">গত ১২ মাসের গড় উপস্থিতির শতাংশ</small></div><div style="display:flex;gap:4px">${[Y-1,Y,Y+1].map(y=>`<button class="chip ${attYear==y?"on":""}" style="padding:6px 9px;font-size:12px" onclick="attYear=${y};render()">${bn(y)}</button>`).join("")}</div></div><span class="tag" style="margin-top:8px;display:inline-block">গড় ${bn(avg)}%</span>
- <svg viewBox="0 0 220 220" width="210" style="display:block;margin:4px auto"><circle cx="110" cy="110" r="82" fill="none" stroke="#c9cfdd" stroke-dasharray="2 5"/>${dots}<text x="110" y="108" text-anchor="middle" font-size="26" font-weight="700" fill="currentColor">${bn(avg)}%</text><text x="110" y="128" text-anchor="middle" font-size="11" fill="#6b7385">${bn(attYear)} গড় উপস্থিতি</text></svg>
+ ${donut(vals.map((v,k)=>({v:v||0,c:MC[k]})),210,28,bn(avg)+"%",bn(attYear)+" গড় উপস্থিতি")}
  <div class="g2" style="gap:6px 14px;margin:0">${MN.map((m,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:13px"><i style="width:8px;height:8px;border-radius:50%;background:${MC[i]};flex:none"></i><span style="flex:1">${m}</span><span style="color:var(--mu)">${vals[i]==null?"—":bn(vals[i])+"%"}</span></div>`).join("")}</div></div>
  <div class="seg">${[["stu","শিক্ষার্থী"],["tea","শিক্ষক"],["staff","কর্মী"]].map(g=>`<button class="${attGroup==g[0]?"on":""}" onclick="setGrp('${g[0]}')">${g[1]}</button>`).join("")}</div>
  ${attGroup!="stu"?`<div style="margin:6px 0 8px"><div style="font-size:20px;font-weight:700">${attGroup=="tea"?"শিক্ষক উপস্থিতি":"কর্মী উপস্থিতি"}</div><div style="color:var(--mu);font-size:13px">দৈনিক ইন/আউট টাইম ও মাসিক বেতন রিপোর্ট</div></div><div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="attBulk()">👥 বাল্ক এন্ট্রি</button><button class="btn" onclick="attEntry()">＋ নতুন এন্ট্রি</button></div>`:""}<div class="sub">${[["daily","দৈনিক হাজিরা"],["qr","দ্রুত চেক-ইন"],["report","মাসিক প্রতিবেদন"],["register","মাসিক রেজিস্টার"]].concat(attGroup!="stu"?[["salary","বেতন হিসাব"]]:[]).map(t=>`<button class="${attSub==t[0]?"on":""}" onclick="attSub='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`;
@@ -1982,10 +1982,62 @@ async function pickPdf(cb){
 }
 function pdfFile(f){if(!f)return;if(f.size>1048576){alert("PDF ১ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=()=>{if(pdfCb)pdfCb(r.result,f.name)};r.readAsDataURL(f)}
 function bk(){
- const cl=[...new Set(S.tbooks.map(b=>b.cls))],l=S.tbooks.filter(b=>!bkCls||b.cls==bkCls);
- return phdr("শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" onclick="bkForm()">＋ নতুন পাঠ্যবই</button><button class="ob" onclick="bkPdf()">🗎 PDF</button></div>
+ const cl=[...new Set(S.tbooks.map(b=>b.cls).concat(tbf().map(f=>f.cls)))].filter(Boolean),l=S.tbooks.filter(b=>!bkCls||b.cls==bkCls);
+ return phdr("শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" onclick="bkForm()">＋ নতুন পাঠ্যবই</button><button class="ob" onclick="tbfForm()">📎 তালিকা আপলোড</button><button class="ob" onclick="bkPdf()">🗎 PDF</button></div>
  <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px"><button class="chip ${bkCls?"":"on"}" onclick="bkCls='';render()">সব (${bn(S.tbooks.length)})</button>${cl.map(c=>`<button class="chip ${bkCls==c?"on":""}" onclick="bkCls='${esc(c)}';render()">${esc(c)} (${bn(S.tbooks.filter(b=>b.cls==c).length)})</button>`).join("")}</div>`
+ +tbfSec()
  +(l.map(b=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(b.name)}</b> <span class="pl b">${esc(b.cls)}</span></div><span onclick="bkForm('${b.id}')" style="padding:0 6px">✏️</span></div><div style="font-size:12px;color:var(--mu);line-height:1.7;margin-top:4px">${b.subject?"বিষয়: "+esc(b.subject)+"<br>":""}${b.author?"✍ "+esc(b.author)+"<br>":""}${b.code?"বই নম্বর: "+esc(b.code):""}${b.shelf?" · তাক: "+esc(b.shelf):""}${b.copies?"<br>সংখ্যা: "+bn(b.copies):""}${b.price?" · মূল্য: "+money(b.price):""}</div>${b.syllabus?`<div style="font-size:12px;margin-top:4px">${esc(b.syllabus)}</div>`:""}${b.pdf?`<button class="btn o s" style="margin-top:8px" onclick="bkOpen('${b.id}')">📄 PDF খুলুন</button>`:""}</div>`).join("")||'<div class="em">কোনো পাঠ্যবই নেই। "নতুন পাঠ্যবই" চাপুন।</div>');
+}
+/* ---- class-wise textbook list files (PDF / image) ---- */
+let tbfD={};
+function tbf(){if(!Array.isArray(S.tbFiles))S.tbFiles=[];return S.tbFiles}
+function tbfSec(){
+  const l=tbf().filter(f=>!bkCls||f.cls==bkCls);
+  return `<div class="card"><div class="ch" style="margin:0 0 6px"><b>📎 শ্রেণি অনুযায়ী পাঠ্যবইয়ের তালিকা</b><button class="btn o s" onclick="tbfForm()">⬆ আপলোড</button></div>${l.length?l.map(f=>`<div class="row" style="align-items:center;gap:10px"><div onclick="tbfView('${f.id}')" style="width:48px;height:48px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">${f.type==="img"?`<img src="${f.data}" style="width:48px;height:48px;object-fit:cover">`:"📄"}</div><div class="f" style="min-width:0"><b>${esc(f.title||f.fname||"তালিকা")}</b> <span class="pl b">${esc(f.cls)}</span><small style="display:block;color:var(--mu)">${f.type==="img"?"ছবি":"PDF"} · ${esc(f.date||"")}</small></div><span onclick="tbfView('${f.id}')" style="padding:0 6px">👁</span><span onclick="tbfDel('${f.id}')" style="padding:0 6px;color:var(--rd)">🗑</span></div>`).join(""):'<div class="hint" style="margin:6px 0">শ্রেণির নাম দিয়ে পাঠ্যবইয়ের তালিকা PDF বা ছবি আকারে আপলোড করুন।</div>'}</div>`;
+}
+function tbfForm(){tbfD={cls:bkCls||"",title:"",type:"",data:"",fname:""};drawTbf()}
+function tbfGrab(){["cls","title"].forEach(k=>{const e=$("tbf_"+k);if(e)tbfD[k]=e.value.trim()})}
+function drawTbf(){
+  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:6px">পাঠ্যবইয়ের তালিকা আপলোড</h2><datalist id="tbfcl">${allCls().map(c=>`<option value="${esc(c)}">`).join("")}</datalist>${fi("শ্রেণির নাম","tbf_cls",tbfD.cls,"text",1,"যেমন: প্রথম","list=\"tbfcl\"")}${fi("শিরোনাম (ঐচ্ছিক)","tbf_title",tbfD.title,"text",0,"যেমন: প্রথম শ্রেণির বই তালিকা")}<label class="lb">PDF বা ছবি</label><div class="row" style="border:0;padding:2px 0"><button class="btn o s" onclick="tbfPick()">⬆ ফাইল বাছুন</button>${tbfD.data?`<span style="font-size:12px">✓ ${esc(tbfD.fname||"ফাইল")}</span>`:""}</div>${tbfD.type==="img"?`<img src="${tbfD.data}" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:6px">`:""}<input id="tbfin" type="file" accept="application/pdf,image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="tbfRead(this.files[0]);this.value=''"><div class="hint">PDF সর্বোচ্চ ২ MB; ছবি স্বয়ংক্রিয়ভাবে ছোট করা হবে</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="tbfSave()">সংরক্ষণ করুন</button></div>`);$("mt").onclick=null;
+}
+function tbfPick(){tbfGrab();$("tbfin").click()}
+function tbfRead(f){
+  if(!f)return;
+  const pdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name),img=/^image\//.test(f.type);
+  if(!pdf&&!img){alert("শুধু PDF বা ছবি আপলোড করা যাবে");return}
+  if(pdf&&f.size>2*1048576){alert("PDF ২ MB-এর বেশি হতে পারবে না");return}
+  if(img&&f.size>12*1048576){alert("ছবি ১২ MB-এর বেশি হতে পারবে না");return}
+  const r=new FileReader();
+  r.onload=()=>{
+    if(pdf){tbfD.data=r.result;tbfD.type="pdf";tbfD.fname=f.name;drawTbf();return}
+    const im=new Image();
+    im.onload=()=>{const k=Math.min(1,1400/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);tbfD.data=c.toDataURL("image/jpeg",.82);tbfD.type="img";tbfD.fname=f.name;drawTbf()};
+    im.onerror=()=>alert("ছবি পড়া যায়নি");
+    im.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+function tbfSave(){
+  tbfGrab();
+  if(!tbfD.cls){alert("শ্রেণির নাম দিন");return}
+  if(!tbfD.data){alert("PDF বা ছবি বাছুন");return}
+  const rec={id:uid(),cls:tbfD.cls,title:tbfD.title,type:tbfD.type,data:tbfD.data,fname:tbfD.fname,date:today()};
+  tbf().push(rec);
+  try{logA("add","পাঠ্যবই তালিকা",rec.cls);save();closeM();render()}
+  catch(e){S.tbFiles=S.tbFiles.filter(x=>x.id!==rec.id);alert("সংরক্ষণ করা যায়নি (স্টোরেজ ভরে গেছে): "+e.message)}
+}
+function tbfDel(id){if(!confirm("ফাইলটি মুছবেন?"))return;S.tbFiles=tbf().filter(x=>x.id!==id);save();render()}
+function tbfView(id){
+  const f=tbf().find(x=>x.id===id);if(!f)return;
+  if(f.type==="img")modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:8px">${esc(f.title||f.cls)} <span class="pl b">${esc(f.cls)}</span></h2><img src="${f.data}" style="width:100%;border-radius:8px"><div class="bt"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="tbfOpen('${id}')">↗ বাইরে খুলুন</button></div>`);
+  else tbfOpen(id);
+}
+async function tbfOpen(id){
+  const f=tbf().find(x=>x.id===id);if(!f)return;
+  const mime=f.type==="img"?"image/jpeg":"application/pdf",P=window.Capacitor&&Capacitor.Plugins,d64=f.data.split("base64,")[1];
+  if(P&&P.Filesystem&&P.Share){try{const r=await P.Filesystem.writeFile({path:"tbl-"+id+(f.type==="img"?".jpg":".pdf"),data:d64,directory:"CACHE"});await P.Share.share({url:r.uri,title:f.title||f.cls});return}catch(e){if(e&&/cancel/i.test(e.message||""))return}}
+  const bin=atob(d64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+  openExt(URL.createObjectURL(new Blob([u8],{type:mime})));
 }
 function bkForm(id){bkId=id||null;const o=S.tbooks.find(x=>x.id==id);bkD=o?{...o}:{cls:bkCls||"",copies:1};drawBk()}
 function bkGrab(){["name","cls","subject","author","code","shelf","copies","price","syllabus","note"].forEach(k=>{const e=$("bk_"+k);if(e)bkD[k]=e.value.trim()})}
