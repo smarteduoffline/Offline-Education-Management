@@ -3216,6 +3216,12 @@ function pPdf(k){
 #hdr .hdr1 .ib:not(:first-child) .bd{top:-6px;right:-6px;min-width:15px;height:15px;line-height:15px;font-size:9px;padding:0 3px}
 #hdr .hdr1 .netIn{font-size:9.5px;padding:3px 7px;gap:3px}
 #hdr .hdr1 .annbar{height:46px;line-height:38px;font-size:15px;padding:3px 14px;border-radius:14px}
+/* ঘোষণা বার আরও চওড়া: পাশের জিনিস ও ফাঁকা জায়গা কমানো */
+#hdr .hdr1{gap:4px;margin-left:-4px;margin-right:-4px}
+#hdr .hdr1 .ib:first-child{width:34px;height:34px;border-radius:11px}
+#hdr .hdr1 .ib:first-child svg{width:18px;height:18px}
+#hdr .hdr1 .netIn{font-size:9px;padding:3px 6px;gap:3px}
+#hdr .hdr1 .annbar{padding:3px 8px}
 </style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
 }
 function pTable(k,l){
