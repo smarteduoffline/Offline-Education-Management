@@ -288,6 +288,24 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--pri);box-sh
 .lg-go{background:linear-gradient(135deg,#0a6c57,#16a34a);box-shadow:0 8px 20px rgba(22,163,74,.3)}
 .login-card,.lg-card{box-shadow:0 16px 44px rgba(15,61,42,.14)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* হেডার: ওপরে ☰ + চওড়া বোল্ড ঘোষণা বার; শুধু হোমে নিচের সারি */
+#hdr .hdr1{display:flex;align-items:center;gap:4px;margin:0 -4px 6px}
+#hdr .hdr1 .ib:first-child{width:34px;height:34px;border-radius:11px}
+#hdr .hdr1 .ib:first-child svg{width:18px;height:18px}
+#hdr .hdr1 .annbar{flex:1;width:100%;height:46px;line-height:38px;font-size:15px;font-weight:700;padding:3px 10px;border-radius:14px}
+#hdr .hdr1 .annbar .mq{font-weight:700}
+#hdr .hdr2{display:flex;align-items:center;gap:6px;margin:2px -4px 12px 0;min-height:30px}
+#hdr .hdr2 .hl{display:flex;flex-direction:column;align-items:flex-start;gap:3px;flex:none}
+#hdr .hdr2 .grt{font-size:11px;line-height:1.2;color:var(--mu);white-space:nowrap}
+#hdr .hdr2 .hl .netIn{font-size:9px;padding:2px 6px}
+#hdr .hdr2 .bism{flex:1;min-width:0;text-align:center;font-weight:700;font-size:clamp(15px,4.8vw,22px);line-height:1.5;white-space:nowrap}
+#hdr .hdr2 .bism>span{display:inline-block;transform:scaleX(1.1);transform-origin:center}
+#hdr .hdr2 .hr{display:flex;align-items:center;gap:4px;flex:none}
+#hdr .hdr2 .ib{width:28px;height:28px;border-radius:9px}
+#hdr .hdr2 .ib svg{width:14px;height:14px}
+#hdr .hdr2 .ib .bd{top:-5px;right:-5px;min-width:13px;height:13px;line-height:13px;font-size:8px;padding:0 3px}
+body:has(#hdr) #net{display:none}
 </style>
 </head>
 <body>
@@ -1220,7 +1238,8 @@ setTimeout(annFetch,2000);setInterval(annFetch,300000);addEventListener("online"
 function appHeader(){
   const bell=S.set.bell?`<span class="ib" style="position:relative" onclick="notifOpen()">${ico("bell",21)}${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:"";
   const tb=S.set.tbtn?`<span class="ib" onclick="themeTog()">${ico(isDark()?"sun":"moon",21)}</span>`:"";
-  return `<div id="hdr"><div class="hdr1"><span class="ib" onclick="drawer()">${ico("menu",22)}</span><div id="annSlot" style="flex:1;min-width:0;display:flex">${annBarHtml()}</div></div><div class="hdr2"><div class="hl"><span class="grt">${tab==="home"&&S.set.greet?"👋 "+greet():""}</span><span class="netIn${navigator.onLine?"":" off"}">${netTxt()}</span></div>${S.set.bism?`<span class="bism" lang="ar" dir="rtl"><span>${BISM}</span></span>`:`<span style="flex:1"></span>`}<div class="hr">${bell}${tb}</div></div></div>`;
+  const row2=tab==="home"?`<div class="hdr2"><div class="hl"><span class="grt">${S.set.greet?"👋 "+greet():""}</span><span class="netIn${navigator.onLine?"":" off"}">${netTxt()}</span></div>${S.set.bism?`<span class="bism" lang="ar" dir="rtl"><span>${BISM}</span></span>`:`<span style="flex:1"></span>`}<div class="hr">${bell}${tb}</div></div>`:"";
+  return `<div id="hdr"><div class="hdr1"><span class="ib" onclick="drawer()">${ico("menu",22)}</span><div id="annSlot" style="flex:1;min-width:0;display:flex">${annBarHtml()}</div></div>${row2}</div>`;
 }
 function clockStr(d){
   let t=d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD");
@@ -3206,42 +3225,7 @@ function pList(k){const q1=(k=="tea"?tq:sq).toLowerCase();return k=="tea"?S.teac
 function pExcel(k){const l=pList(k),c=v=>'"'+String(v??"").replace(/"/g,'""')+'"',H=["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","লিঙ্গ","মোবাইল","ইমেইল","যোগদান","বেতন","অবস্থা","ঠিকানা"];shareFile((k=="tea"?"teachers-":"staff-")+today()+".csv","\uFEFF"+[H.map(c).join(",")].concat(l.map(t=>[t.name,t.desig,k=="tea"?t.sub:t.dept,t.gender,t.phone,t.email,t.joinDate,t.salary,t.status||"সক্রিয়",t.permAddr].map(c).join(","))).join("\r\n"),(k=="tea"?"শিক্ষক":"কর্মী")+" তালিকা (Excel/CSV)")}
 function pPdf(k){
  const l=pList(k),d=new Date();
- printDoc(k=="tea"?"teachers-list":"staff-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}.ptb th{color:#666;font-weight:500}/* হেডার: ঘোষণা বার বড়, অনলাইন/বেল/থিম আইকন ছোট */
-#hdr .hdr1{gap:6px}
-#hdr .hdr1 .ib:not(:first-child){width:32px;height:32px;border-radius:10px}
-#hdr .hdr1 .ib:not(:first-child) svg{width:16px;height:16px}
-#hdr .hdr1 .ib:not(:first-child) .bd{top:-6px;right:-6px;min-width:15px;height:15px;line-height:15px;font-size:9px;padding:0 3px}
-#hdr .hdr1 .netIn{font-size:9.5px;padding:3px 7px;gap:3px}
-#hdr .hdr1 .annbar{height:46px;line-height:38px;font-size:15px;padding:3px 14px;border-radius:14px}
-/* ঘোষণা বার আরও চওড়া: পাশের জিনিস ও ফাঁকা জায়গা কমানো */
-#hdr .hdr1{gap:4px;margin-left:-4px;margin-right:-4px}
-#hdr .hdr1 .ib:first-child{width:34px;height:34px;border-radius:11px}
-#hdr .hdr1 .ib:first-child svg{width:18px;height:18px}
-#hdr .hdr1 .netIn{font-size:9px;padding:3px 6px;gap:3px}
-#hdr .hdr1 .annbar{padding:3px 8px}
-/* হেডার: ওপরের সারিতে চওড়া ঘোষণা বার (বোল্ড), নিচের সারিতে শুভেচ্ছা+অনলাইন ও বোল্ড চওড়া বিসমিল্লাহ */
-#hdr .hdr1 .annbar,#hdr .hdr1 .annbar .mq{font-weight:700}
-#hdr .hdr2{display:flex;align-items:center;gap:6px}
-#hdr .hdr2 .hl{display:flex;flex-direction:column;align-items:flex-start;gap:3px;flex:none}
-#hdr .hdr2 .grt{font-size:11px;line-height:1.2}
-#hdr .hdr2 .hl .netIn{font-size:9px;padding:2px 6px}
-#hdr .hdr2 .bism{flex:1;min-width:0;text-align:center;font-weight:700;font-size:clamp(17px,5.6vw,26px);line-height:1.5;white-space:nowrap}
-#hdr .hdr2 .bism>span{display:inline-block;transform:scaleX(1.1);transform-origin:center}
-#hdr .hdr2:has(#hdrBack button) .bism{font-size:clamp(14px,4.2vw,19px)}
-#hdrBack{flex:none}
-/* বেল ও থিম আইকন নিচের সারির ডানে (ফিরে যান-এর জায়গায়); ঘোষণা বার ওপরে ডান প্রান্ত পর্যন্ত */
-#hdr .hdr2 .hr{display:flex;align-items:center;gap:6px;flex:none}
-#hdr .hdr2 .ib{width:32px;height:32px;border-radius:10px}
-#hdr .hdr2 .ib svg{width:16px;height:16px}
-#hdr .hdr2 .ib .bd{top:-6px;right:-6px;min-width:15px;height:15px;line-height:15px;font-size:9px;padding:0 3px}
-#hdr .hdr2 .bism{font-size:clamp(15px,4.8vw,22px)}
-#hdr .hdr1 .annbar{flex:1;width:100%}
-/* বেল ও থিম আইকন আরও ছোট, আরও ডানে */
-#hdr .hdr2 .hr{gap:4px;margin-right:-6px}
-#hdr .hdr2 .ib{width:28px;height:28px;border-radius:9px}
-#hdr .hdr2 .ib svg{width:14px;height:14px}
-#hdr .hdr2 .ib .bd{top:-5px;right:-5px;min-width:13px;height:13px;line-height:13px;font-size:8px;padding:0 3px}
-</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
+ printDoc(k=="tea"?"teachers-list":"staff-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}.ptb th{color:#666;font-weight:500}</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
 }
 function pTable(k,l){
  const hd=k=="tea"?["নাম","পদবি","বিষয়","মোবাইল","যোগদান","অবস্থা"]:["নাম","পদ","বিভাগ","মোবাইল","বেতন","অবস্থা"];
