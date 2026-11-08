@@ -1010,6 +1010,16 @@ async function claimInvite(){
 }
 async function cancelSetup(){setupInfo=null;try{await sb.auth.signOut()}catch(_){}render()}
 // সুপার এডমিন/সার্ভারে প্রতিষ্ঠানের নাম বা তথ্য বদলালে তা এই ডিভাইসের লোকাল তথ্যে নামিয়ে আনে
+// সুপার এডমিন প্রতিষ্ঠানের তথ্য বদলালে সার্ভারেও পাঠানো হয় (সার্ভারে smartedu_update_school ফাংশন থাকলে)
+async function pushSchoolToServer(id,o){
+  try{
+    if(!sb||!navigator.onLine||!isSuper()||!id||id==="main")return;
+    const r=await _wt(sb.rpc("smartedu_update_school",{p_id:String(id),p_name:o.name||"",p_addr:o.addr||"",p_phone:o.phone||"",p_est:String(o.est||"")}),15000);
+    if(r.error){
+      if(!window._schPushWarned){window._schPushWarned=1;alert("প্রতিষ্ঠানের নাম এই ডিভাইসে বদলেছে, কিন্তু সার্ভারে আপডেট হয়নি: "+r.error.message+"\nতাই ওই প্রতিষ্ঠানের ইউজারের ফোনে পুরোনো নাম দেখাতে পারে। (Supabase-এ smartedu_update_school ফাংশন যোগ করুন)")}
+    }
+  }catch(e){}
+}
 async function pullMySchool(){
   try{
     if(!sb||!navigator.onLine||!activeUser||isSuper()||ACT_SID==="main")return;
@@ -3538,6 +3548,7 @@ function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প�
  const ad={name:g("sf_an"),email:g("sf_ae"),phone:g("sf_ap")},m=+$("sf_m").value||0;let sc=id?S.schools.find(x=>x.id==id):null;
  if(!sc){sc={id:uid(),sub:{}};S.schools.push(sc);if(ad.name||ad.email)S.invUsers.push({id:uid(),name:ad.name,email:ad.email,phone:ad.phone,roles:["অ্যাডমিন"],sid:sc.id,blocked:0,perms:defPerm("অ্যাডমিন"),inv:today()})}
  Object.assign(sc,{name:n,addr:g("sf_a"),phone:g("sf_p"),est:g("sf_e"),logo:schLg,admin:ad,email:ad.email||sc.email||""});
+ pushSchoolToServer(sc.id,{name:sc.name,addr:sc.addr,phone:sc.phone,est:sc.est});
  sc.sub={plan:$("sf_pl").value,status:$("sf_s").value,exp:m?addMo(sc.sub.exp&&sc.sub.exp>today()?sc.sub.exp:today(),m):(sc.sub.exp||"")};
  save();closeM();render()}
 function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);rmSchIdx(id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
@@ -3593,7 +3604,7 @@ function pmAll(id,v){const u=S.invUsers.find(x=>x.id==id);PMK.forEach(k=>u.perms
 function usRole(id,r){const u=S.invUsers.find(x=>x.id==id);u.roles=[r];u.perms=defPerm(r);save();usPerm(id,0);stUl()}
 function upFill(){const sc=schOf($("up_s").value)||{};$("up_n").value=sc.name||"";$("up_a").value=sc.addr||"";$("up_p").value=sc.phone||"";$("up_e").value=sc.email||""}
 function upSave(id){const u=S.invUsers.find(x=>x.id==id),sid=$("up_s").value;u.sid=sid;const n=$("up_n").value.trim(),a=$("up_a").value.trim(),ph=$("up_p").value.trim(),em=$("up_e").value.trim();
- if(sid=="main"){if(n)S.school.name=n;S.school.addr=a;S.school.phone=ph;S.school.email=em}else if(sid){const sc=S.schools.find(x=>x.id==sid);if(sc){if(n)sc.name=n;sc.addr=a;sc.phone=ph;sc.email=em}}
+ if(sid=="main"){if(n)S.school.name=n;S.school.addr=a;S.school.phone=ph;S.school.email=em}else if(sid){const sc=S.schools.find(x=>x.id==sid);if(sc){if(n)sc.name=n;sc.addr=a;sc.phone=ph;sc.email=em;pushSchoolToServer(sc.id,{name:sc.name,addr:a,phone:ph,est:sc.est})}}
  save();closeM();render()}
 function usDel(id){if(!confirm("এই ইউজার মুছে ফেলবেন?"))return;S.invUsers=S.invUsers.filter(x=>x.id!=id);save();closeM();render()}
 function stAcc(){return userPanel()}
