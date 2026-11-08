@@ -317,6 +317,17 @@ body:has(#hdr) #net{display:none}
   const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
 
+// ইমেইল কনফার্মেশন / OAuth লিংক থেকে ফিরে এলে URL-এ টোকেন থাকে — createClient তা মুছে ফেলার আগেই ধরে রাখা
+const _authRedirect = (function(){
+  try{
+    const u = (location.hash||"") + "&" + (location.search||"");
+    return /(access_token|[?&#]code|token_hash)=/.test(u) && !/type=recovery/.test(u);
+  }catch(e){return false}
+})();
+// কোনো অনুরোধ অনির্দিষ্টকালের জন্য ঝুলে থাকলে (অপেক্ষা করুন... আটকে গেলে) timeout দিয়ে ত্রুটি দেখাবে
+function _wt(p, ms, msg){
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg || "সার্ভার সাড়া দিচ্ছে না। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।")), ms || 20000))]);
+}
 let sb = null;
 try {
   if (
@@ -332,7 +343,9 @@ try {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: true,
+          // Android WebView/APK-তে navigator.locks আটকে গিয়ে লগইন ঝুলে যেত; তাই lock বাইপাস করা হলো
+          lock: async (name, acquireTimeout, fn) => await fn()
         }
       }
     );
@@ -652,10 +665,10 @@ async function emailLogin(){
   lerr("অপেক্ষা করুন...");
 
   try{
-    const {data:authData,error}=await sb.auth.signInWithPassword({
+    const {data:authData,error}=await _wt(sb.auth.signInWithPassword({
       email,
       password:pw
-    });
+    }),25000,"সার্ভারে সংযোগ হচ্ছে না। ইন্টারনেট পরীক্ষা করে আবার চেষ্টা করুন।");
     if(error) throw error;
 
     await completeLogin(authData.user,email);
@@ -697,11 +710,11 @@ async function completeLogin(authUser,email){
 
       save();
     }else{
-      const {data:access,error:accessError}=await sb
+      const {data:access,error:accessError}=await _wt(sb
         .from("smartedu_user_access")
         .select("status,roles,school_id,perms")
         .eq("user_id",authUser.id)
-        .maybeSingle();
+        .maybeSingle(),20000);
 
       if(accessError){
         await sb.auth.signOut();
@@ -788,7 +801,7 @@ async function completeLogin(authUser,email){
     localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:sidSel}));
 
     unlocked=true;
-    await subFetchSrv();
+    try{await _wt(subFetchSrv(),8000)}catch(_){}
     render();
     syncMySchool();
 
@@ -1315,7 +1328,6 @@ function emailLoginView(){
   const F='<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H7.08v3.47h3.05v8.39a12.1 12.1 0 003.74 0v-8.39h2.8z"/></svg>';
   return `<div class="login-box"><div class="lg-card">
 <div style="text-align:center;margin-bottom:14px">${logo}<div style="font-size:20px;font-weight:700;margin-top:6px">${esc((S.school&&S.school.name)||"")}</div><div style="font-size:13px;color:var(--mu)">${su?"Create your account":"Sign in to continue"}</div></div>
-${schSel()}
 <button class="lg-soc" onclick="oauthLogin('google')">${G}Continue with Google</button>
 <button class="lg-soc" onclick="oauthLogin('facebook')">${F}Continue with Facebook</button>
 <div class="lg-or"><span>OR</span></div>
@@ -1331,7 +1343,15 @@ ${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div
 </div></div>`;
 }
 (async()=>{try{
-  if(!sb||activeUser)return;
+  if(!sb)return;
+  if(_authRedirect){
+    // নতুন ইউজার কনফার্মেশন লিংকে ক্লিক করেছেন: আগের (যেমন সুপার এডমিনের) সেশন/ইউজার বাদ দিয়ে এই ইউজারকেই যাচাই করা হবে
+    activeUser=null;unlocked=false;
+    try{sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");applySessionSchool("")}catch(_){}
+    loginTab="email";
+    try{history.replaceState(null,"",location.pathname)}catch(_){}
+    render();
+  }else if(activeUser)return;
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user&&session.user.email)await completeLogin(session.user,String(session.user.email).toLowerCase());
 }catch(e){}})();
