@@ -414,7 +414,7 @@ function migrateState(raw){
 }
 let S;try{S=migrateState(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=D()}LANG=(S.set&&S.set.lang)||"bn";
 if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
-const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
+const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
@@ -2224,13 +2224,66 @@ function pFind(q){
   const t=d.slice(-10);
   return{by:"ph",m:S.students.filter(s=>s.status!=="নিষ্ক্রিয়"&&Object.keys(s).some(k=>/phone|mobile/i.test(k)&&nd(s[k]).slice(-10)===t))};
 }
-function pGo(){pq=String($("pq")?.value||"").trim();pSelId=null;try{localStorage.setItem("smartEduPq",pq)}catch(e){}render()}
+let pRem=null;
+function pErr(e){
+  const m=String((e&&(e.message||e.details))||e||""),c=String((e&&e.code)||"");
+  if(/not allowed/i.test(m))return "আপনার অ্যাকাউন্টে প্রতিষ্ঠান যুক্ত নেই বা অনুমোদন হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।";
+  if(c==="PGRST202"||/could not find the function|schema cache/i.test(m))return "সার্ভারে অভিভাবক পোর্টাল সেটআপ করা হয়নি। অ্যাডমিন parent-portal.sql Supabase-এ চালালে কাজ করবে।";
+  if(/jwt|session|auth/i.test(m))return "লগইন সেশন শেষ হয়েছে। লগআউট করে আবার লগইন করুন।";
+  return "তথ্য লোড করতে সমস্যা হয়েছে। ইন্টারনেট দেখে আবার চেষ্টা করুন।";
+}
+async function pRemote(){
+  const q0=pq,r=pFind(q0);
+  if(r.by==="bad"||r.m.length)return;
+  if(!sb||!navigator.onLine){pRem={q:q0,err:"ইন্টারনেট সংযোগ নেই। সংযোগ চালু করে আবার খুঁজুন।"};render();return}
+  pRem={q:q0,busy:1};render();
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)throw Error("session");
+    const {data,error}=await sb.rpc("smartedu_parent_lookup",{p_phone:nd(q0)});
+    if(error)throw error;
+    if(pq!==q0)return;
+    pRem={q:q0,list:(Array.isArray(data)?data:[]).map(x=>Object.assign({},x,{_r:1}))};
+  }catch(e){if(pq!==q0)return;pRem={q:q0,err:pErr(e)}}
+  render();
+}
+function pGo(){pq=String($("pq")?.value||"").trim();pSelId=null;pRem=null;try{localStorage.setItem("smartEduPq",pq)}catch(e){}render()}
+let _pubT=null,_pubSig="";
+function pubParentSoon(){clearTimeout(_pubT);_pubT=setTimeout(pubParents,6000)}
+function pThumb(src){return new Promise(res=>{try{const k=src.length+":"+src.slice(-48),C=window._thC=window._thC||{};if(C[k]!==undefined)return res(C[k]);const im=new Image();im.onload=()=>{try{const c=document.createElement("canvas");c.width=96;c.height=112;const x=c.getContext("2d"),f=Math.max(96/im.width,112/im.height),w=im.width*f,h=im.height*f;x.drawImage(im,(96-w)/2,(112-h)/2,w,h);C[k]=c.toDataURL("image/jpeg",.6);res(C[k])}catch(e){res("")}};im.onerror=()=>res("");im.src=src}catch(e){res("")}})}
+async function pubParents(){
+  try{
+    if(!sb||!navigator.onLine||!activeUser||!unlocked||isParent()||isSuper())return;
+    if(!(activeUser.role==="admin"||hasPerm("students")))return;
+    const {data:{session}}=await sb.auth.getSession();if(!session)return;
+    const rows=[];
+    for(const s of S.students){
+      if(s.status==="নিষ্ক্রিয়")continue;
+      const ks=[...new Set(Object.keys(s).filter(k=>/phone|mobile/i.test(k)).map(k=>nd(s[k])).filter(d=>d.length>=10).map(d=>d.slice(-10)))];
+      if(!ks.length)continue;
+      const b=pBundle(s);let ph="";
+      if(s.photo){const src=safeDataImage(s.photo);if(src)ph=await pThumb(src)}
+      rows.push({id:String(s.id),k:ks,d:{id:String(s.id),name:s.name||"",roll:s.roll||"",cls:s.cls||"",branch:s.branch||"",gender:s.gender||"",guardian:s.guardian||"",photo:ph,f:b.fs,ft:b.ft,fp:b.fp,m:b.rs,a:b.c,pc:b.pc}});
+    }
+    let sig=JSON.stringify(rows);
+    if(sig===_pubSig)return;
+    if(sig.length>6e6){rows.forEach(r=>r.d.photo="");sig=JSON.stringify(rows)}
+    const {error}=await sb.rpc("smartedu_publish_parents",{p_rows:rows});
+    if(!error)_pubSig=sig;else console.warn("parent publish:",error.message||error);
+  }catch(e){console.warn("parent publish failed",e)}
+}
+addEventListener("online",pubParentSoon);setTimeout(pubParentSoon,5000);
 function pPick(id){pSelId=id;render()}
+function pBundle(s){
+  const all=S.fees.filter(f=>f.sid==s.id).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  const ft=all.reduce((a,f)=>a+(+f.amt||0),0),fp=all.reduce((a,f)=>a+(+f.paid||0),0);
+  const fs=all.slice(0,60).map(f=>({title:f.title||"",type:f.type||"",date:f.date||"",amt:+f.amt||0,paid:+f.paid||0}));
+  const rs=S.exams.filter(e=>e.cls===s.cls&&e.marks&&e.marks[s.id]!==undefined&&e.marks[s.id]!==null&&e.marks[s.id]!=="").sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,60).map(e=>({name:e.name||"",subject:e.subject||"",date:e.date||"",total:e.total||"",pass:+e.pass||0,m:+e.marks[s.id]}));
+  return {fs,ft,fp,rs,c:cnt(s.id,""),pc:pctOf([s.id],"")};
+}
 function pCard(s){
-  const fs=S.fees.filter(f=>f.sid==s.id).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
-  const tot=fs.reduce((a,f)=>a+(+f.amt||0),0),paid=fs.reduce((a,f)=>a+(+f.paid||0),0),dueT=Math.max(0,tot-paid);
-  const c=cnt(s.id,""),pc=pctOf([s.id],"");
-  const rs=S.exams.filter(e=>e.cls===s.cls&&e.marks&&e.marks[s.id]!==undefined&&e.marks[s.id]!==null&&e.marks[s.id]!=="").sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  const B=s._r?{fs:s.f||[],ft:+s.ft||0,fp:+s.fp||0,rs:s.m||[],c:s.a||{p:0,a:0,l:0,h:0},pc:s.pc}:pBundle(s);
+  const fs=B.fs,tot=B.ft,paid=B.fp,dueT=Math.max(0,tot-paid),c=B.c,pc=B.pc,rs=B.rs;
   const f1=(l,v)=>`<div style="min-width:0"><div style="font-size:12px;color:var(--mu)">${l}</div><div style="font-size:15px;font-weight:600;word-break:break-word">${v?esc(v):"—"}</div></div>`;
   const tile=(v,l,bg,col)=>`<div style="background:${bg};border:1px solid ${col}33;border-radius:16px;padding:18px 8px;text-align:center"><div style="font-size:26px;font-weight:700;color:${col}">${v}</div><div style="font-size:13px;color:${col};margin-top:2px">${l}</div></div>`;
   const hd=(ic,t,col)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:20px">${ic}</span><b style="font-size:17px;color:${col||"var(--tx)"}">${t}</b></div>`;
@@ -2238,12 +2291,18 @@ function pCard(s){
   return `<div class="card" style="padding:18px">${hd("👤","শিক্ষার্থীর তথ্য","#2563eb")}<div style="display:flex;gap:14px;align-items:flex-start"><div style="width:96px;height:112px;border-radius:14px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:40px;flex:none">${s.photo?`<img src="${safeDataImage(s.photo)}" style="width:100%;height:100%;object-fit:cover">`:"👤"}</div><div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px 10px">${f1("নাম",s.name)}${f1("রোল নম্বর",s.roll)}${f1("শ্রেণি",s.cls)}${f1("শাখা",s.branch)}${f1("লিঙ্গ",s.gender)}${f1("অভিভাবক",s.guardian)}</div></div></div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px">${tile(money(tot),"মোট ফি","#eff6ff","#2563eb")}${tile(money(paid),"পরিশোধিত","#f0fdf4","#15803d")}${tile(money(dueT),"বকেয়া","#fef2f2","#b91c1c")}${tile(bn(pc||0)+"%","উপস্থিতি","#faf5ff","#7e22ce")}</div>
 <div class="card" style="padding:18px">${hd("💳","ফি বিবরণ")}${fs.length?fs.slice(0,40).map(f=>{const d=(+f.amt||0)-(+f.paid||0);return `<div class="row" style="align-items:center"><div class="f"><b>${esc(f.title||f.type||"ফি")}</b><small>${bn(f.date||"")} · মোট ${money(f.amt)} · পরিশোধিত ${money(f.paid)}</small></div>${d>0?`<span class="pl" style="background:#ffe4e9;color:#be123c">বকেয়া ${money(d)}</span>`:`<span class="pl" style="background:#dcfce7;color:#15803d">পরিশোধিত</span>`}</div>`}).join(""):'<div style="color:var(--mu)">কোনো ফি রেকর্ড নেই।</div>'}</div>
-<div class="card" style="padding:18px">${hd("📖","পরীক্ষার ফলাফল","#16a34a")}${rs.length?rs.map(e=>{const m=+e.marks[s.id],ok=m>=(+e.pass||0);return `<div class="row" style="align-items:center"><div class="f"><b>${esc(e.name)}</b> <span class="tag">${esc(e.subject||"")}</span><small>${bn(e.date||"")}</small></div><div style="text-align:right"><b>${bn(m)}/${bn(e.total||"")}</b><div style="font-size:11px;color:${ok?"#15803d":"#be123c"}">${ok?"উত্তীর্ণ":"অনুত্তীর্ণ"}</div></div></div>`}).join(""):'<div style="color:var(--mu)">কোনো ফলাফল নেই।</div>'}</div>
+<div class="card" style="padding:18px">${hd("📖","পরীক্ষার ফলাফল","#16a34a")}${rs.length?rs.map(e=>{const m=+e.m,ok=m>=(+e.pass||0);return `<div class="row" style="align-items:center"><div class="f"><b>${esc(e.name)}</b> <span class="tag">${esc(e.subject||"")}</span><small>${bn(e.date||"")}</small></div><div style="text-align:right"><b>${bn(m)}/${bn(e.total||"")}</b><div style="font-size:11px;color:${ok?"#15803d":"#be123c"}">${ok?"উত্তীর্ণ":"অনুত্তীর্ণ"}</div></div></div>`}).join(""):'<div style="color:var(--mu)">কোনো ফলাফল নেই।</div>'}</div>
 <div class="card" style="padding:18px">${hd("📋","উপস্থিতির সারসংক্ষেপ","#7e22ce")}<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${at(c.p,"উপস্থিত")}${at(c.a,"অনুপস্থিত")}${at(c.l,"বিলম্বে")}${at(c.h,"ছুটি")}</div></div>`;
 }
 function portal(){
-  const r=pq?pFind(pq):null;let res="";
-  if(r){
+  let r=pq?pFind(pq):null;let res="";
+  if(r&&r.by==="ph"&&!r.m.length){
+    if(!pRem||pRem.q!==pq){if(sb&&navigator.onLine){setTimeout(pRemote,0);res=`<div class="card" style="text-align:center;color:var(--mu)">⏳ তথ্য খোঁজা হচ্ছে...</div>`}}
+    else if(pRem.busy)res=`<div class="card" style="text-align:center;color:var(--mu)">⏳ তথ্য খোঁজা হচ্ছে...</div>`;
+    else if(pRem.err)res=`<div class="card" style="color:var(--rd)">${esc(pRem.err)}</div>`;
+    else r={by:"ph",m:pRem.list};
+  }
+  if(r&&!res){
     if(r.by==="bad")res=`<div class="card" style="color:var(--rd)">সঠিক মোবাইল নম্বর লিখুন (যেমন: 01XXXXXXXXX)।</div>`;
     else if(!r.m.length)res=`<div class="card" style="color:var(--rd)">এই ফোন নম্বরে কোনো শিক্ষার্থী পাওয়া যায়নি। বিদ্যালয়ে দেওয়া অভিভাবকের নম্বরটি আবার দেখুন।</div>`;
     else{
@@ -3150,7 +3209,14 @@ function pList(k){const q1=(k=="tea"?tq:sq).toLowerCase();return k=="tea"?S.teac
 function pExcel(k){const l=pList(k),c=v=>'"'+String(v??"").replace(/"/g,'""')+'"',H=["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","লিঙ্গ","মোবাইল","ইমেইল","যোগদান","বেতন","অবস্থা","ঠিকানা"];shareFile((k=="tea"?"teachers-":"staff-")+today()+".csv","\uFEFF"+[H.map(c).join(",")].concat(l.map(t=>[t.name,t.desig,k=="tea"?t.sub:t.dept,t.gender,t.phone,t.email,t.joinDate,t.salary,t.status||"সক্রিয়",t.permAddr].map(c).join(","))).join("\r\n"),(k=="tea"?"শিক্ষক":"কর্মী")+" তালিকা (Excel/CSV)")}
 function pPdf(k){
  const l=pList(k),d=new Date();
- printDoc(k=="tea"?"teachers-list":"staff-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}.ptb th{color:#666;font-weight:500}</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
+ printDoc(k=="tea"?"teachers-list":"staff-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}.ptb th{color:#666;font-weight:500}/* হেডার: ঘোষণা বার বড়, অনলাইন/বেল/থিম আইকন ছোট */
+#hdr .hdr1{gap:6px}
+#hdr .hdr1 .ib:not(:first-child){width:32px;height:32px;border-radius:10px}
+#hdr .hdr1 .ib:not(:first-child) svg{width:16px;height:16px}
+#hdr .hdr1 .ib:not(:first-child) .bd{top:-6px;right:-6px;min-width:15px;height:15px;line-height:15px;font-size:9px;padding:0 3px}
+#hdr .hdr1 .netIn{font-size:9.5px;padding:3px 7px;gap:3px}
+#hdr .hdr1 .annbar{height:46px;line-height:38px;font-size:15px;padding:3px 14px;border-radius:14px}
+</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">${k=="tea"?"শিক্ষক ব্যবস্থাপনা":"কর্মকর্তা/কর্মচারী ব্যবস্থাপনা"}</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">${esc(S.school.name)} · তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","পদ/পদবি",k=="tea"?"বিষয়":"বিভাগ","মোবাইল","যোগদান","বেতন","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.desig||"")}</td><td>${esc(k=="tea"?t.sub:t.dept)}</td><td>${esc(t.phone||"")}</td><td>${t.joinDate?bn(t.joinDate):""}</td><td>${t.salary?money(t.salary):""}</td><td>${esc(t.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
 }
 function pTable(k,l){
  const hd=k=="tea"?["নাম","পদবি","বিষয়","মোবাইল","যোগদান","অবস্থা"]:["নাম","পদ","বিভাগ","মোবাইল","বেতন","অবস্থা"];
