@@ -185,7 +185,6 @@ body:has(.netIn) #net{display:none}
 .lg-or:before,.lg-or:after{content:"";flex:1;height:1px;background:#e5e7eb}
 .lg-lb{display:block;text-align:center;font-size:14px;font-weight:600;color:var(--tx);margin:12px 0 6px}
 .lg-in{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--ln);border-radius:16px;padding:0 14px}
-.lg-eye{background:none;border:0;padding:4px;margin:0;font-size:18px;line-height:1;cursor:pointer;color:var(--mu);flex:none}
 .lg-in input{border:0;background:transparent;margin:0;padding:14px 0;flex:1;font-size:15px;outline:0;box-shadow:none}
 .lg-go{width:100%;margin-top:18px;padding:15px;background:#0f172a;color:#fff;border:0;border-radius:16px;font-size:16px;font-weight:700}
 .lg-sub{text-align:center;font-size:14px;color:var(--mu);margin-top:14px}
@@ -432,7 +431,7 @@ function migrateState(raw){
   return out;
 }
 let S;try{S=migrateState(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=D()}LANG=(S.set&&S.set.lang)||"bn";
-if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").concat(JSON.parse(localStorage.getItem("smartEduSchRemote")||"[]")).find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
+if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
 const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
@@ -799,10 +798,7 @@ async function completeLogin(authUser,email){
 window._remUsers=[];window._remSch={};
 function schNm(id){const r=window._remSch&&window._remSch[String(id)];if(r&&r.name)return r.name;const x=id?schOf(id):null;return x?x.name:""}
 function schAllR(){const a=schAll();return a.concat(Object.values(window._remSch||{}).filter(r=>!a.some(x=>String(x.id)===String(r.id))).map(r=>({id:r.id,name:r.name})))}
-function cacheRemSch(a){try{localStorage.setItem("smartEduSchRemote",JSON.stringify(a.filter(x=>x&&x.id!=null&&x.name).map(x=>({id:String(x.id),name:x.name}))))}catch(e){}}
-async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;cacheRemSch(b.data||[])}}catch(e){}}
-// লগইন পেইজের জন্য সব প্রতিষ্ঠানের তালিকা (সার্ভার থেকে, না পেলে ক্যাশ)
-async function loadLoginSchools(){if(window._lgSchTried||!sb||!navigator.onLine)return;window._lgSchTried=1;try{let r=await sb.rpc("smartedu_public_schools");if(r.error||!Array.isArray(r.data)||!r.data.length)r=await sb.rpc("smartedu_list_schools");if(!r.error&&Array.isArray(r.data)&&r.data.length){cacheRemSch(r.data);const e=document.getElementById("schSelBox");if(e)e.outerHTML=schSel()}}catch(e){}}
+async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})))}}catch(e){}}
 async function loadRemoteUsers(){
   if(!isSuper()||!sb||!navigator.onLine||window._remBusy)return;
   window._remBusy=1;
@@ -1010,7 +1006,7 @@ async function syncMySchool(){
   }catch(e){}
 }
 var recoveryMode=false;
-function recoveryView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔑</div><h1>নতুন পাসওয়ার্ড দিন</h1><p>কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড লিখুন</p><input id="emNew" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড"><input id="emNew2" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড আবার লিখুন" onkeydown="if(event.key==='Enter')saveNewPassword()"><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 10px"><input type="checkbox" style="width:auto;margin:0" onchange="['emNew','emNew2'].forEach(i=>{const e=document.getElementById(i);if(e)e.type=this.checked?'text':'password'})"> পাসওয়ার্ড দেখান</label><button class="btn" style="width:100%" onclick="saveNewPassword()">পাসওয়ার্ড সংরক্ষণ করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelRecovery()">বাতিল</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
+function recoveryView(){return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔑</div><h1>নতুন পাসওয়ার্ড দিন</h1><p>কমপক্ষে ৬ অক্ষরের নতুন পাসওয়ার্ড লিখুন</p><input id="emNew" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড"><input id="emNew2" type="password" autocomplete="new-password" placeholder="নতুন পাসওয়ার্ড আবার লিখুন" onkeydown="if(event.key==='Enter')saveNewPassword()"><label class="hint" style="display:flex;gap:6px;align-items:center;margin:2px 0 8px"><input type="checkbox" style="width:auto;margin:0" onchange="['emNew','emNew2'].forEach(i=>$(i).type=this.checked?'text':'password')">পাসওয়ার্ড দেখান</label><button class="btn" style="width:100%" onclick="saveNewPassword()">পাসওয়ার্ড সংরক্ষণ করুন</button><button class="ob" style="width:100%;margin-top:10px" onclick="cancelRecovery()">বাতিল</button><div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function emailReset(){
   if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি। ইন্টারনেট পরীক্ষা করুন।");
   const email=($("emEmail").value||"").trim().toLowerCase();
@@ -1093,13 +1089,39 @@ async function refreshRemembered(){
 try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
 refreshRemembered();
 
-function writeSchIdx(){try{localStorage.setItem("smartEduSchIdx",JSON.stringify(schAll().map(x=>({id:x.id,name:x.name,addr:x.addr,phone:x.phone,email:x.email,est:x.est}))))}catch(e){}}
-function schSel(){
+function mergeSchIdx(list){
+  try{
+    let idx=[];try{idx=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]")}catch(e){}
+    list.forEach(x=>{if(x&&x.id!=null&&!idx.some(y=>String(y.id)===String(x.id)))idx.push({id:x.id,name:x.name})});
+    localStorage.setItem("smartEduSchIdx",JSON.stringify(idx));
+  }catch(e){}
+}
+function writeSchIdx(){
+  try{
+    const loc=(typeof schAllR==="function"?schAllR():schAll());
+    let idx=[];try{idx=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]")}catch(e){}
+    const m=new Map(idx.map(x=>[String(x.id),x]));
+    loc.forEach(x=>m.set(String(x.id),{id:x.id,name:x.name,addr:x.addr,phone:x.phone,email:x.email,est:x.est}));
+    localStorage.setItem("smartEduSchIdx",JSON.stringify([...m.values()]));
+  }catch(e){}
+}
+function rmSchIdx(id){try{const idx=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").filter(x=>String(x.id)!==String(id));localStorage.setItem("smartEduSchIdx",JSON.stringify(idx))}catch(e){}}
+function schSelInner(){
   let idx=[];try{idx=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]")}catch(e){}
-  try{const rm=JSON.parse(localStorage.getItem("smartEduSchRemote")||"[]");rm.forEach(r=>{if(!idx.some(x=>String(x.id)===String(r.id)))idx.push(r)})}catch(e){}
-  setTimeout(loadLoginSchools,0);
   if(idx.length<2)return "";
-  return `<select id="schSelBox" onchange="switchDataset(this.value)" style="margin:6px 0 10px">${idx.map(x=>`<option value="${x.id}" ${String(x.id)===ACT_SID?"selected":""}>🏛 ${esc(x.name)}</option>`).join("")}</select>`;
+  return `<select onchange="switchDataset(this.value)" style="margin:6px 0 10px">${idx.map(x=>`<option value="${x.id}" ${String(x.id)===ACT_SID?"selected":""}>🏛 ${esc(x.name)}</option>`).join("")}</select>`;
+}
+function schSel(){
+  if(!window._lsT||Date.now()-window._lsT>60000){window._lsT=Date.now();setTimeout(loadLoginSch,0)}
+  return `<div id="schSelBox">${schSelInner()}</div>`;
+}
+async function loadLoginSch(){
+  try{
+    if(!sb||!navigator.onLine||window._lsBusy)return;
+    window._lsBusy=1;
+    const b=await sb.rpc("smartedu_list_schools");
+    if(!b.error&&b.data){mergeSchIdx(b.data.map(r=>({id:r.id,name:r.name})));const e=$("schSelBox");if(e)e.innerHTML=schSelInner()}
+  }catch(e){}finally{window._lsBusy=0}
 }
 function switchDataset(sid){localStorage.setItem("smartEduActiveSid",sid);location.reload()}
 function applyPending(){
@@ -1278,7 +1300,6 @@ async function installApp(){
   if(l&&/^https?:\/\//i.test(l)){window.open(l,"_blank");return}
   alert("ফোনে ইন্সটল করতে Chrome-এর ⋮ মেনু থেকে \"Install app\" বা \"Add to Home screen\" বাছুন।");
 }
-function togPw(b){const i=b.parentNode.querySelector("input");if(!i)return;const h=i.type==="password";i.type=h?"text":"password";b.textContent=h?"🙈":"👁"}
 function authMode(m){window._authMode=m;render()}
 async function oauthLogin(p){
   if(!sb)return lerr("Supabase সংযোগ তৈরি হয়নি।");
@@ -1299,8 +1320,8 @@ ${schSel()}
 <button class="lg-soc" onclick="oauthLogin('facebook')">${F}Continue with Facebook</button>
 <div class="lg-or"><span>OR</span></div>
 <label class="lg-lb">Email</label><div class="lg-in"><span>✉️</span><input id="emEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
-<label class="lg-lb">Password</label><div class="lg-in"><span>🔒</span><input id="emPass" type="password" autocomplete="${su?"new-password":"current-password"}" placeholder="••••••••" onkeydown="if(event.key==='Enter')${go}"><button type="button" class="lg-eye" aria-label="পাসওয়ার্ড দেখান/লুকান" onclick="togPw(this)">👁</button></div>
-${su?`<label class="lg-lb">Confirm password</label><div class="lg-in"><span>🔒</span><input id="emPass2" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="lg-eye" aria-label="পাসওয়ার্ড দেখান/লুকান" onclick="togPw(this)">👁</button></div>`:""}
+<label class="lg-lb">Password</label><div class="lg-in"><span>🔒</span><input id="emPass" type="password" autocomplete="${su?"new-password":"current-password"}" placeholder="••••••••" onkeydown="if(event.key==='Enter')${go}"><span onclick="togPw('emPass',this)" style="cursor:pointer;padding:6px 2px;font-size:18px">👁</span></div>
+${su?`<label class="lg-lb">Confirm password</label><div class="lg-in"><span>🔒</span><input id="emPass2" type="password" autocomplete="new-password" placeholder="••••••••"><span onclick="togPw('emPass2',this)" style="cursor:pointer;padding:6px 2px;font-size:18px">👁</span></div>`:""}
 <button class="lg-go" onclick="${go}">${su?"Create account":"Sign in"}</button>
 ${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div>`}
 <div class="lg-sub">${su?`Already have an account? <b onclick="authMode('signin')">Sign in</b>`:`Need an account? <b onclick="authMode('signup')">Sign up</b>`}</div>
@@ -1378,6 +1399,19 @@ function fixContrast(){
       el.style.setProperty("color",l2<.4?"#e8ecf5":"#13281d","important");
     }
   });
+}
+function togPw(id,b){const i=$(id);if(!i)return;const h=i.type==="password";i.type=h?"text":"password";b.textContent=h?"🙈":"👁"}
+async function usDelR(id){
+  if(!isSuper())return;
+  const u=(window._remUsers||[]).find(x=>String(x.id)===String(id))||{};
+  if(!confirm("এই ইউজারকে সম্পূর্ণ মুছে ফেলবেন"+(u.email?" ("+u.email+")":"")+"?\nতার অ্যাকাউন্ট ও অনুমোদনের তথ্য সার্ভার থেকেও মুছে যাবে।"))return;
+  if(!(await needSession()))return;
+  try{
+    const {data,error}=await sb.rpc("smartedu_delete_user",{target_user_id:id});
+    if(error)throw error;
+    alert(data===true?"ইউজার মুছে ফেলা হয়েছে।":"মুছে ফেলা যায়নি (Super Admin ইমেইল মোছা যায় না)।");
+    window._remAt=0;await loadRemoteUsers();stUl();
+  }catch(e){alert("ব্যর্থ: "+e.message)}
 }
 function render(){
  updateNet();
@@ -3460,11 +3494,11 @@ ${stF("প্রতিষ্ঠানের নাম *","sf_n",sc?sc.name:"")}$
 function schPick(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");schLg=x;const e=$("slgp");if(e)e.innerHTML=`<img style="width:56px;height:56px;object-fit:contain" src="${x}">`};pickPhoto()}
 function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প্রতিষ্ঠানের নাম দিন");return}
  const ad={name:g("sf_an"),email:g("sf_ae"),phone:g("sf_ap")},m=+$("sf_m").value||0;let sc=id?S.schools.find(x=>x.id==id):null;
- if(!sc){sc={id:uid(),sub:{}};S.schools.push(sc);if((ad.name||ad.email)&&!S.invUsers.some(x=>ad.email&&String(x.email||"").toLowerCase()==String(ad.email).toLowerCase()))S.invUsers.push({id:uid(),name:ad.name,email:ad.email,phone:ad.phone,roles:["অ্যাডমিন"],sid:sc.id,blocked:0,perms:defPerm("অ্যাডমিন"),inv:today()})}
+ if(!sc){sc={id:uid(),sub:{}};S.schools.push(sc);if(ad.name||ad.email)S.invUsers.push({id:uid(),name:ad.name,email:ad.email,phone:ad.phone,roles:["অ্যাডমিন"],sid:sc.id,blocked:0,perms:defPerm("অ্যাডমিন"),inv:today()})}
  Object.assign(sc,{name:n,addr:g("sf_a"),phone:g("sf_p"),est:g("sf_e"),logo:schLg,admin:ad,email:ad.email||sc.email||""});
  sc.sub={plan:$("sf_pl").value,status:$("sf_s").value,exp:m?addMo(sc.sub.exp&&sc.sub.exp>today()?sc.sub.exp:today(),m):(sc.sub.exp||"")};
  save();closeM();render()}
-function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
+function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);rmSchIdx(id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
 function schSub(id){if(id=="main"){tab="more";sub="set";stT=5;render();return}schForm(id)}
 function usBase(){const rem=window._remUsers||[],em=new Set(rem.map(u=>String(u.email||"").toLowerCase()));return rem.concat(S.invUsers.filter(u=>!em.has(String(u.email||"").toLowerCase())))}
 function usAll(){const tq=usQ.trim().toLowerCase(),me={me:1,name:S.school.director||"আপনি (অ্যাডমিন)",email:S.school.email||"",roles:["Super Admin"],sid:"main"};return[me].concat(usBase()).filter(u=>(!usR||u.roles.includes(usR))&&(!tq||((u.name||"")+(u.email||"")).toLowerCase().includes(tq)))}
@@ -3487,7 +3521,8 @@ function stUlH(){return usAll().map(u=>{
  else if(u.remote&&u.blocked)act=`<div style="margin-top:10px"><button class="btn g" style="width:100%" onclick="usStatR('${u.id}','approved')">আনব্লক</button></div>`;
  else if(u.remote)act=`<div style="${gb}"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="usRoleR('${u.id}')">⚙ পারমিশন ও পদবী</button><button class="btn r" onclick="usStatR('${u.id}','blocked')">ব্লক</button></div>`;
  else act=`<div style="${gb}"><button class="btn o" style="color:var(--tx);border-color:var(--ln)" onclick="usPerm('${u.id}',0)">⚙ পারমিশন ও পদবী</button><button class="btn ${u.blocked?"g":"r"}" onclick="usBlk('${u.id}')">${u.blocked?"আনব্লক":"ব্লক"}</button></div>`;
- return `<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="av">👤</div><div style="flex:1;min-width:0"><b>${esc(u.name||u.email)}</b>${u.me?' <span style="color:#16a34a;font-size:12px">● আপনি</span>':""}<div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(u.email||u.phone||"")}</div><div style="margin-top:4px">${u.roles.map(r=>`<span class="pl" style="${UROLE_C[r]||""}">${r}</span>`).join("")}${stat}</div>${scn?`<div style="font-size:12px;color:var(--mu)">🏛 ${esc(scn)}${(window._remSch&&window._remSch[String(u.sid)])?" · "+esc(subBadgeText(window._remSch[String(u.sid)])):""}</div>`:""}</div></div>${act}${u.me?"":`<button class="btn o" style="width:100%;margin-top:8px;color:#dc2626;border-color:#fecaca" onclick="${u.remote?`usDelR('${u.id}')`:`usDelL('${u.id}')`}">🗑 ইউজার মুছুন</button>`}</div>`}).join("")||'<div class="em">কেউ পাওয়া যায়নি</div>'}
+ if(!u.me)act+=`<div style="margin-top:8px"><button class="btn o" style="width:100%;color:#dc2626;border-color:#fca5a5" onclick="${u.remote?"usDelR":"usDel"}('${u.id}')">🗑 মুছুন</button></div>`;
+ return `<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="av">👤</div><div style="flex:1;min-width:0"><b>${esc(u.name||u.email)}</b>${u.me?' <span style="color:#16a34a;font-size:12px">● আপনি</span>':""}<div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(u.email||u.phone||"")}</div><div style="margin-top:4px">${u.roles.map(r=>`<span class="pl" style="${UROLE_C[r]||""}">${r}</span>`).join("")}${stat}</div>${scn?`<div style="font-size:12px;color:var(--mu)">🏛 ${esc(scn)}${(window._remSch&&window._remSch[String(u.sid)])?" · "+esc(subBadgeText(window._remSch[String(u.sid)])):""}</div>`:""}</div></div>${act}</div>`}).join("")||'<div class="em">কেউ পাওয়া যায়নি</div>'}
 function stUl(){const e=$("usl");if(e)e.innerHTML=stUlH()}
 function usBlk(id){const u=S.invUsers.find(x=>x.id==id);if(!u||!confirm(u.blocked?"ইউজারকে আনব্লক করবেন?":"ইউজারকে ব্লক করবেন?"))return;u.blocked=u.blocked?0:1;save();stUl()}
 function usInv(){modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2>👤 নতুন ইউজার আমন্ত্রণ</h2><label class="lb">ইমেইল ঠিকানা *</label><input id="iv_e" type="email" placeholder="example@email.com"><label class="lb" style="color:#16a34a">💬 WhatsApp / মোবাইল নম্বর (ঐচ্ছিক)</label><input id="iv_p" type="tel" placeholder="01XXXXXXXXX"><div class="hint">দিলে আমন্ত্রণ বার্তা WhatsApp-এও পাঠানো যাবে।</div><label class="lb" style="color:#2563eb">📲 অ্যাপ লিংক — লগইন/সাইন আপ পেইজ</label><input id="iv_l" type="url" placeholder="https://..." value="${esc(loginLink())}"><div class="hint">এই লিংক স্বয়ংক্রিয়ভাবে বসেছে এবং আমন্ত্রণ বার্তায় যাবে; ইউজার লিংকে ক্লিক করলে সরাসরি লগইন/সাইন আপ পেইজ খুলবে।</div>
@@ -3518,14 +3553,6 @@ function upFill(){const sc=schOf($("up_s").value)||{};$("up_n").value=sc.name||"
 function upSave(id){const u=S.invUsers.find(x=>x.id==id),sid=$("up_s").value;u.sid=sid;const n=$("up_n").value.trim(),a=$("up_a").value.trim(),ph=$("up_p").value.trim(),em=$("up_e").value.trim();
  if(sid=="main"){if(n)S.school.name=n;S.school.addr=a;S.school.phone=ph;S.school.email=em}else if(sid){const sc=S.schools.find(x=>x.id==sid);if(sc){if(n)sc.name=n;sc.addr=a;sc.phone=ph;sc.email=em}}
  save();closeM();render()}
-function usDelL(id){const u=S.invUsers.find(x=>x.id==id);if(!u)return;if(!confirm("এই ইউজার মুছে ফেলবেন?\n"+(u.email||u.name||"")))return;S.invUsers=S.invUsers.filter(x=>x.id!=id);save();stUl();stUc()}
-async function usDelR(id){const u=(window._remUsers||[]).find(x=>String(x.id)===String(id));if(!u)return;if(!confirm("এই ইউজারের অ্যাক্সেস সার্ভার থেকে মুছে ফেলবেন?\n"+u.email+"\n(ইউজার আবার সাইন আপ করলে নতুন করে অনুমোদন লাগবে)"))return;
- try{const r=await sb.from("smartedu_user_access").delete().eq("user_id",id).select();
-  if(r.error)throw r.error;
-  if(!r.data||!r.data.length){alert("সার্ভার ইউজারটি মুছতে দেয়নি। Supabase-এ Super Admin-এর জন্য delete policy দরকার (নির্দেশনা উত্তরে দেওয়া আছে)।");return}
-  window._remUsers=(window._remUsers||[]).filter(x=>String(x.id)!==String(id));
-  S.invUsers=S.invUsers.filter(x=>String(x.email||"").toLowerCase()!==String(u.email||"").toLowerCase());save();stUl();stUc();
- }catch(e){alert("মুছতে ব্যর্থ: "+e.message)}}
 function usDel(id){if(!confirm("এই ইউজার মুছে ফেলবেন?"))return;S.invUsers=S.invUsers.filter(x=>x.id!=id);save();closeM();render()}
 function stAcc(){return userPanel()}
 function stSync(){return `<div class="card"><h2>অনলাইন সিঙ্ক</h2><p class="hint">API URL না দিলে অ্যাপ সম্পূর্ণ offline থাকবে। API URL দিলে অনলাইন হলে queue সিঙ্ক হবে।</p><input id="syncUrl" type="url" placeholder="https://example.com/api/sync" value="${esc(S.sync?.apiUrl||"")}"><input id="syncKey" type="password" placeholder="ঐচ্ছিক legacy API key" value="${esc(getSyncApiKey())}"><button class="btn o s" onclick="saveSyncSettings()">সেটিংস সংরক্ষণ</button> <button class="btn g s" onclick="syncNow(true)">এখন সিঙ্ক করুন</button><hr><label class="lb">Backend JWT login</label><input id="serverUser" autocomplete="username" placeholder="admin@example.com" value="${esc(sessionStorage.getItem("smartEduServerUser")||"")}"><input id="serverTenant" placeholder="Institution slug (যেমন alpha-school)"><input id="serverPass" type="password" autocomplete="current-password" placeholder="Server password (সংরক্ষণ হবে না)"><button class="btn o s" onclick="serverLogin()">JWT login</button> ${getSyncToken()?'<button class="ob s" onclick="serverLogout()">JWT logout</button>':'<small style="color:var(--mu)">JWT token শুধু এই session-এ থাকবে</small>'}<small style="display:block;color:var(--mu);margin-top:6px">Queue: ${bn((S.syncQueue||[]).length)} · Retry: ${S.sync.nextRetryAt?new Date(S.sync.nextRetryAt).toLocaleTimeString("bn-BD"):"প্রস্তুত"}</small></div>`}
