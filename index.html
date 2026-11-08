@@ -1009,13 +1009,35 @@ async function claimInvite(){
   }catch(e){lerr("ব্যর্থ: "+e.message)}
 }
 async function cancelSetup(){setupInfo=null;try{await sb.auth.signOut()}catch(_){}render()}
+// সুপার এডমিন/সার্ভারে প্রতিষ্ঠানের নাম বা তথ্য বদলালে তা এই ডিভাইসের লোকাল তথ্যে নামিয়ে আনে
+async function pullMySchool(){
+  try{
+    if(!sb||!navigator.onLine||!activeUser||isSuper()||ACT_SID==="main")return;
+    const b=await _wt(sb.rpc("smartedu_list_schools"),10000);
+    if(b.error||!Array.isArray(b.data))return;
+    const r=b.data.find(x=>String(x.id)===String(ACT_SID));
+    if(!r||!r.name)return;
+    const sc=S.school=S.school||{};
+    const srvSig=JSON.stringify([r.name,r.addr||"",r.phone||"",String(r.est||"")]);
+    if(sc._srvSig===srvSig)return;
+    sc.name=r.name;
+    if(r.addr!=null&&r.addr!=="")sc.addr=r.addr;
+    if(r.phone!=null&&r.phone!=="")sc.phone=r.phone;
+    if(r.est!=null&&String(r.est)!=="")sc.est=r.est;
+    sc._srvSig=srvSig;
+    save();
+    if(unlocked)render();
+  }catch(e){}
+}
 async function syncMySchool(){
   try{
+    await pullMySchool();
     if(!sb||!navigator.onLine||!activeUser||activeUser.role!=="admin"||isSuper()||ACT_SID==="main")return;
     if(window._schSyncAt&&Date.now()-window._schSyncAt<600000)return;
     const sc=S.school||{};if(!sc.name)return;
     window._schSyncAt=Date.now();
-    await sb.rpc("smartedu_upsert_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||"")});
+    const up=await sb.rpc("smartedu_upsert_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||"")});
+    if(!up.error)sc._srvSig=JSON.stringify([sc.name,sc.addr||"",sc.phone||"",String(sc.est||"")]);
   }catch(e){}
 }
 var recoveryMode=false;
