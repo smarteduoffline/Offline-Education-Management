@@ -831,7 +831,7 @@ async function completeLogin(authUser,email){
     unlocked=true;
     try{await _wt(subFetchSrv(),8000)}catch(_){}
     render();
-    syncMySchool();snapSync();
+    syncMySchool();snapSync();try{if(isSuper()&&ACT_SID==="main"){loadRemSch().then(()=>{try{render()}catch(_){}})}}catch(_){}
 
   }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
 }
@@ -839,7 +839,19 @@ async function completeLogin(authUser,email){
 window._remUsers=[];window._remSch={};
 function schNm(id){const r=window._remSch&&window._remSch[String(id)];if(r&&r.name)return r.name;const x=id?schOf(id):null;return x?x.name:""}
 function schAllR(){const a=schAll();return a.concat(Object.values(window._remSch||{}).filter(r=>!a.some(x=>String(x.id)===String(r.id))).map(r=>({id:r.id,name:r.name})))}
-async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})))}}catch(e){}}
+async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})));try{if(typeof schReconcile==="function")schReconcile(b.data||[])}catch(_){}}}catch(e){}}
+// সুপার এডমিনের তালিকায় সার্ভারে নিবন্ধিত প্রতিষ্ঠান না থাকলে (লোকাল ডেটা হারালে/নতুন ডিভাইসে) তা ফিরিয়ে আনে
+function schReconcile(list){
+  if(!activeUser||!isSuper()||ACT_SID!=="main"||!Array.isArray(list))return;
+  let add=0;
+  list.forEach(r=>{
+    if(!r||r.id==null||String(r.id)==="main")return;
+    if(S.schools.some(x=>String(x.id)===String(r.id)))return;
+    S.schools.push({id:r.id,name:r.name||"",addr:r.addr||"",phone:r.phone||"",est:r.est||"",email:r.email||"",sub:{}});
+    add++;
+  });
+  if(add){save();try{toast(add+"টি প্রতিষ্ঠান সার্ভার থেকে তালিকায় ফিরিয়ে আনা হয়েছে")}catch(_){}}
+}
 async function loadRemoteUsers(){
   if(!isSuper()||!sb||!navigator.onLine||window._remBusy)return;
   window._remBusy=1;
@@ -1156,7 +1168,7 @@ async function refreshRemembered(){
     applySessionSchool(access.school_id);
     await subFetchSrv();
     render();
-    syncMySchool();snapSync();
+    syncMySchool();snapSync();try{if(isSuper()&&ACT_SID==="main"){loadRemSch().then(()=>{try{render()}catch(_){}})}}catch(_){}
   }catch(e){}
 }
 try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
@@ -1514,8 +1526,8 @@ let homeCls="",logAll=false,photoCb=null,photoDoc=false;
 const p2=n=>String(n).padStart(2,"0");
 function logA(ty,cat,tx){const row={t:Date.now(),ty,cat,tx,user:activeUser?.identifier||"local"};S.log.unshift(row);S.log=S.log.slice(0,60);S.audit.unshift(row);S.audit=S.audit.slice(0,200)}
 function autoFees(){const d=new Date(),ym=mk(d.getFullYear(),d.getMonth()),mo=MN[d.getMonth()]+" "+bn(d.getFullYear());S.students.forEach(s=>{if(s.status=="নিষ্ক্রিয়")return;
- if(+s.monthlyFee>0&&!S.fees.some(f=>f.sid==s.id&&f.auto==ym&&(f.type||"মাসিক বেতন")=="মাসিক বেতন"))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+mo,amt:+s.monthlyFee,paid:0,date:today(),auto:ym,ym,type:"মাসিক বেতন"});
- if(s.type=="আবাসিক"&&+s.boardFee>0&&!S.fees.some(f=>f.sid==s.id&&f.auto==ym&&f.type=="বোর্ডিং খরচ"))S.fees.push({id:uid(),sid:s.id,title:"বোর্ডিং খরচ — "+mo,amt:+s.boardFee,paid:0,date:today(),auto:ym,ym,type:"বোর্ডিং খরচ"})})}
+ if(+s.monthlyFee>0&&!S.fees.some(f=>f.sid==s.id&&fym(f)==ym&&ftype(f)=="মাসিক বেতন"))S.fees.push({id:uid(),sid:s.id,title:"মাসিক বেতন — "+mo,amt:+s.monthlyFee,paid:0,date:today(),auto:ym,ym,type:"মাসিক বেতন"});
+ if(s.type=="আবাসিক"&&+s.boardFee>0&&!S.fees.some(f=>f.sid==s.id&&fym(f)==ym&&ftype(f)=="বোর্ডিং খরচ"))S.fees.push({id:uid(),sid:s.id,title:"বোর্ডিং খরচ — "+mo,amt:+s.boardFee,paid:0,date:today(),auto:ym,ym,type:"বোর্ডিং খরচ"})})}
 function bnDate(d){d=new Date(d.getTime()+((+(S.set&&S.set.bd)||0))*864e5);const Y=d.getFullYear(),st=new Date(d<new Date(Y,3,14)?Y-1:Y,3,14),sy=st.getFullYear(),n=Math.floor((new Date(d.getFullYear(),d.getMonth(),d.getDate())-st)/864e5),lp=(y=>y%4==0&&(y%100!=0||y%400==0))(sy+1),L=[31,31,31,31,31,30,30,30,30,30,lp?30:29,30],M=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];let m=0,r=n;while(m<11&&r>=L[m]){r-=L[m];m++}return bn(r+1)+" "+M[m]+", "+bn(sy-593)+" বাংলা"}
 const HJM=["মুহাররম","সফর","রবিউল আউয়াল","রবিউস সানি","জমাদিউল আউয়াল","জমাদিউস সানি","রজব","শাবান","রমজান","শাওয়াল","জিলকদ","জিলহজ"];
 function hjTab(d){const jdn=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)+2440588;let l=jdn-1948440+10632;const n=Math.floor((l-1)/10631);l=l-10631*n+354;const j=Math.floor((10985-l)/5316)*Math.floor(50*l/17719)+Math.floor(l/5670)*Math.floor(43*l/15238);l=l-Math.floor((30-j)/15)*Math.floor(17719*j/50)-Math.floor(j/16)*Math.floor(15238*j/43)+29;const m=Math.floor(24*l/709);return[l-Math.floor(709*m/24),m,30*n+j-30]}
@@ -2483,6 +2495,53 @@ function snapStatusText(){
   if(st.err)return "⚠ "+esc(st.err)+(m.ts?" (সর্বশেষ সফল: "+new Date(m.ts).toLocaleString(LC())+")":"");
   return m.ts?"সর্বশেষ সিঙ্ক: "+new Date(m.ts).toLocaleString(LC()):"এখনও সিঙ্ক হয়নি";
 }
+function snapCfgMain(){return {sid:String(ACT_SID||"main"),mk:_snapMetaKey(),bk:_snapBaseKey(),payload:snapPayload,fresh:snapFresh,apply:snapApply}}
+// সুপার এডমিনের নিজস্ব তালিকা (প্রতিষ্ঠান ও আমন্ত্রণ) আলাদা স্ন্যাপশটে ('__super') সংরক্ষিত হয়; শুধু সুপার এডমিন ইমেইল এটি পড়তে/লিখতে পারে
+function snapCfgSuper(){return {sid:"__super",mk:KEY+":snapmeta:super",bk:KEY+":snapbase:super",
+  payload:()=>JSON.parse(JSON.stringify({schools:S.schools||[],invUsers:S.invUsers||[]})),
+  fresh:d=>!(d.schools&&d.schools.length)&&!(d.invUsers&&d.invUsers.length),
+  apply:m=>{
+    if(Array.isArray(m.schools))S.schools=m.schools;
+    if(Array.isArray(m.invUsers))S.invUsers=m.invUsers;
+    S.updatedAt=Date.now();
+    try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){console.warn("snap apply super",e)}
+    try{writeSchIdx()}catch(e){}
+  }}}
+async function snapRun(cfg){
+  const sid=cfg.sid;
+  let meta={},base=null;
+  try{meta=JSON.parse(localStorage.getItem(cfg.mk)||"{}")}catch(e){}
+  try{base=JSON.parse(localStorage.getItem(cfg.bk)||"null")}catch(e){}
+  let changedLocal=false,done=false;
+  for(let attempt=0;attempt<4&&!done;attempt++){
+    const g=await _wt(sb.rpc("smartedu_snap_get",{p_school:sid}),25000);
+    if(g.error)throw g.error;
+    const info=g.data||{},local=cfg.payload();
+    let merged,sdata=null,serverVer=0;
+    if(info.exists){
+      serverVer=+info.version;sdata=info.data||{};
+      if(meta.ver===serverVer)merged=local;
+      else if(!base&&cfg.fresh(local))merged=sdata;
+      else merged=snapM3(base||{},local,sdata);
+    }else{
+      if(cfg.fresh(local)){done=true;break}
+      merged=local;
+    }
+    if(!snapEq(merged,local)){cfg.apply(merged);changedLocal=true}
+    if(info.exists&&snapEq(merged,sdata)){
+      meta={ver:serverVer,ts:Date.now()};base=merged;done=true;
+    }else{
+      if(JSON.stringify(merged).length>8*1024*1024)throw new Error("ডেটা ৮ MB-এর বেশি; ছবি বা পুরোনো তথ্য কমান");
+      const r=await _wt(sb.rpc("smartedu_snap_put",{p_school:sid,p_data:merged,p_base:serverVer,p_device:String(S.sync&&S.sync.deviceId||"")}),40000);
+      if(r.error)throw r.error;
+      if(r.data&&r.data.ok){meta={ver:+r.data.version,ts:Date.now()};base=merged;done=true}
+    }
+  }
+  if(done){
+    try{localStorage.setItem(cfg.mk,JSON.stringify(meta));if(base)localStorage.setItem(cfg.bk,JSON.stringify(base))}catch(e){console.warn("snap base save",e)}
+  }
+  return {done,changedLocal};
+}
 async function snapSync(manual){
   if(_snapBusy)return;
   try{
@@ -2490,42 +2549,15 @@ async function snapSync(manual){
     if(!navigator.onLine){if(manual)toast("ইন্টারনেট সংযোগ নেই");return}
     _snapBusy=true;window._snapStatus={busy:1};
     const {data:{session}}=await sb.auth.getSession();if(!session){_snapBusy=false;window._snapStatus={};return}
-    const sid=String(ACT_SID||"main");
-    let meta={},base=null;
-    try{meta=JSON.parse(localStorage.getItem(_snapMetaKey())||"{}")}catch(e){}
-    try{base=JSON.parse(localStorage.getItem(_snapBaseKey())||"null")}catch(e){}
-    let changedLocal=false,done=false;
-    for(let attempt=0;attempt<4&&!done;attempt++){
-      const g=await _wt(sb.rpc("smartedu_snap_get",{p_school:sid}),25000);
-      if(g.error)throw g.error;
-      const info=g.data||{},local=snapPayload();
-      let merged,sdata=null,serverVer=0;
-      if(info.exists){
-        serverVer=+info.version;sdata=info.data||{};
-        if(meta.ver===serverVer)merged=local;
-        else if(!base&&snapFresh(local))merged=sdata;
-        else merged=snapM3(base||{},local,sdata);
-      }else{
-        if(snapFresh(local)){done=true;break}
-        merged=local;
-      }
-      if(!snapEq(merged,local)){snapApply(merged);changedLocal=true}
-      if(info.exists&&snapEq(merged,sdata)){
-        meta={ver:serverVer,ts:Date.now()};base=merged;done=true;
-      }else{
-        if(JSON.stringify(merged).length>8*1024*1024)throw new Error("ডেটা ৮ MB-এর বেশি; ছবি বা পুরোনো তথ্য কমান");
-        const r=await _wt(sb.rpc("smartedu_snap_put",{p_school:sid,p_data:merged,p_base:serverVer,p_device:String(S.sync&&S.sync.deviceId||"")}),40000);
-        if(r.error)throw r.error;
-        if(r.data&&r.data.ok){meta={ver:+r.data.version,ts:Date.now()};base=merged;done=true}
-        // ok=false: অন্য কেউ এর মধ্যে সিঙ্ক করেছে — আবার মিলিয়ে নেওয়া হবে
-      }
+    const r1=await snapRun(snapCfgMain());
+    let changed=r1.changedLocal,ok=r1.done;
+    if(isSuper()&&ACT_SID==="main"){
+      try{const r2=await snapRun(snapCfgSuper());changed=changed||r2.changedLocal;ok=ok&&r2.done}
+      catch(e){console.warn("super registry sync failed",e)}
     }
-    if(done){
-      try{localStorage.setItem(_snapMetaKey(),JSON.stringify(meta));if(base)localStorage.setItem(_snapBaseKey(),JSON.stringify(base))}catch(e){console.warn("snap base save",e)}
-      window._snapStatus={};
-      if(manual)toast("✅ ক্লাউডে সিঙ্ক সম্পন্ন");
-    }else window._snapStatus={err:"অন্যদের সাথে মেলানো যায়নি, একটু পরে আবার চেষ্টা হবে"};
-    if(changedLocal){
+    if(ok){window._snapStatus={};if(manual)toast("✅ ক্লাউডে সিঙ্ক সম্পন্ন")}
+    else window._snapStatus={err:"অন্যদের সাথে মেলানো যায়নি, একটু পরে আবার চেষ্টা হবে"};
+    if(changed){
       const ae=document.activeElement,tg=ae&&ae.tagName||"";
       if(/INPUT|TEXTAREA|SELECT/.test(tg))toast("অন্য ডিভাইসের নতুন তথ্য এসেছে, ফর্ম শেষ করার পর দেখা যাবে");
       else render();
@@ -2897,7 +2929,7 @@ function csView(id){
 function csWa(){const c=window._cs,x=c.sid?sOf(c.sid):null;if(!x||!x.phone){alert("অভিভাবকের মোবাইল নম্বর পাওয়া যায়নি (শিক্ষার্থী নির্বাচন করে জারি করলে নম্বর যুক্ত হয়)");return}sendTo(x,"wa",S.school.name+"\n"+c.type+" — "+c.name+"\nক্রমিক: "+bn(c.serial||"")+" · তারিখ: "+bn(c.date)+"\nপ্রয়োজন: "+c.purpose)}
 /* ================= ফিন্যান্স ও হিসাব ================= */
 const FT=["মাসিক বেতন","ভর্তি ফি","বই ফি","বিদ্যুৎ বিল","পরীক্ষা ফি","অন্যান্য ফি"],PM=["নগদ","bKash","Nagad","ব্যাংক"],INC=["দান","অনুদান","বই/সামগ্রী বিক্রয়","ভাড়া আয়","অন্যান্য"],EXC=["বেতন","বিদ্যুৎ বিল","ভাড়া","খাদ্য/রান্না","মেরামত","স্টেশনারি","যাতায়াত","অন্যান্য"],MS=["জানু","ফেব্রু","মার্চ","এপ্রি","মে","জুন","জুলা","আগ","সেপ্টে","অক্টো","নভে","ডিসে"];
-let fTab="list",fQ="",fCls="",fMon="",fStat="due",trCls="",trY=new Date().getFullYear(),ieTab="sum",ieM=new Date().getMonth(),ieY=new Date().getFullYear(),slM=new Date().getMonth(),slY=new Date().getFullYear(),slTab="pay",pdTab="stu",pdQ="",pdCls="",pdType="",pdSel={},pdBulk=false,pyQ="",pySid="",pyM="নগদ",fbD={},payC={ids:[],m:"নগদ"},slC={},txD={},txId=null,txT="in",fD={};
+let pdYm="",pyYm="",fTab="list",fQ="",fCls="",fMon="",fStat="due",trCls="",trY=new Date().getFullYear(),ieTab="sum",ieM=new Date().getMonth(),ieY=new Date().getFullYear(),slM=new Date().getMonth(),slY=new Date().getFullYear(),slTab="pay",pdTab="stu",pdQ="",pdCls="",pdType="",pdSel={},pdBulk=false,pyQ="",pySid="",pyM="নগদ",fbD={},payC={ids:[],m:"নগদ"},slC={},txD={},txId=null,txT="in",fD={};
 const fym=f=>f.ym||f.auto||(f.date||"").slice(0,7),ftype=f=>f.type||String(f.title||"").split(" — ")[0],fmon=f=>MN[(+fym(f).slice(5,7)||1)-1]||"";
 const fchip=f=>due(f)<=0?'<span class="pl g" style="margin:0">পরিশোধিত</span>':f.paid>0?'<span class="pl" style="margin:0;background:#fef3c7;color:#b45309">আংশিক</span>':'<span class="pl r" style="margin:0">বকেয়া</span>';
 const rcpNo=()=>"RCP-"+Date.now()+"-"+Math.random().toString(16).slice(2,6);
@@ -2924,7 +2956,7 @@ const fcard=f=>{const x=sOf(f.sid);return `<div class="card" style="padding:12px
 function fee(){
  const all=S.fees.filter(f=>sOf(f.sid)),tp=S.fees.reduce((a,f)=>a+f.paid,0),td=S.fees.reduce((a,f)=>a+due(f),0),nd=all.filter(f=>due(f)>0).length;
  return phdr("ফি ব্যবস্থাপনা","বেতন ও পেমেন্ট ট্র্যাক করুন")
- +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"><button class="ob" style="color:#d97706;border-color:#f59e0b" onclick="remAll()">🔔 রিমাইন্ডার</button><button class="ob" style="color:#16a34a" onclick="remMail()">✉ ইমেইল রিমাইন্ডার</button><button class="ob" onclick="fExcel()">📄 Excel</button><button class="ob" onclick="fPdf()">🗎 PDF</button><button class="ob" style="color:#d97706;border-color:#f59e0b" onclick="fbOpen()">📋 বকেয়া যোগ করুন</button><button class="btn" onclick="feeForm()">＋ নতুন ফি</button></div>
+ +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"><button class="ob" style="color:#d97706;border-color:#f59e0b" onclick="remAll()">🔔 রিমাইন্ডার</button><button class="ob" style="color:#16a34a" onclick="remMail()">✉ ইমেইল রিমাইন্ডার</button><button class="ob" onclick="fExcel()">📄 Excel</button><button class="ob" onclick="fPdf()">🗎 PDF</button><button class="ob" style="color:#d97706;border-color:#f59e0b" onclick="fbOpen()">📋 বকেয়া তৈরি করুন</button>${feeDupGroups().length?`<button class="ob" style="color:#dc2626;border-color:#fca5a5" onclick="feeDupOpen()">🧹 ডুপ্লিকেট (${bn(feeDupGroups().length)})</button>`:""}<button class="btn" onclick="feeForm()">＋ নতুন ফি</button></div>
  <div class="st" style="background:linear-gradient(135deg,#10b981,#059669);margin-bottom:10px"><span class="ic">👛</span><small>মোট আদায়</small><div>${money(tp)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48);margin-bottom:12px"><span class="ic">👛</span><small>মোট বকেয়া</small><div>${money(td)}</div></div>
  <div class="sub">${[["list","ফি তালিকা"],["track","মাসিক বেতন ট্র্যাকার"],["stu","শিক্ষার্থী-ভিত্তিক বকেয়া"]].map(t=>`<button class="${fTab==t[0]?"on":""}" onclick="fTab='${t[0]}';render()">${t[1]}</button>`).join("")}</div>`
  +(fTab=="list"?fListView(nd,all.length-nd):fTab=="track"?fTrack():duesBy(true).map(g=>stuDueCard(g)).join("")||'<div class="em">কোনো বকেয়া নেই</div>');
@@ -2960,6 +2992,7 @@ function feeForm(id){if(!allow("fees"))return;
 function feeSave(id){
  const sid=gv("ff_s"),type=gv("ff_t"),amt=+gv("ff_a"),mm=gv("ff_m")||"01",yy=gv("ff_y")||String(new Date().getFullYear()),st=gv("ff_st"),pd=gv("ff_d"),pm=gv("ff_pm");
  if(!sid||!type||!amt){alert("শিক্ষার্থী, ফি ধরন ও পরিমাণ দিন");return}
+ if(type!=="অন্যান্য ফি"&&S.fees.some(f=>f.id!=id&&f.sid==sid&&ftype(f)==type&&fym(f)==yy+"-"+mm)){alert("এই শিক্ষার্থীর "+type+" ("+MN[+mm-1]+" "+bn(yy)+") ইতিমধ্যে আছে।\nএকই মাসের একই ফি দ্বিতীয়বার তৈরি করা যাবে না — আগেরটি সম্পাদনা করুন।");return}
  let paid=st=="পরিশোধিত"?amt:st=="বকেয়া"?0:Math.min(+gv("ff_p")||0,amt);
  const o={sid,type,amt,paid,ym:yy+"-"+mm,title:type+" — "+MN[+mm-1]+" "+bn(yy),method:pm,rcp:gv("ff_r")};
  if(paid>0){o.pdate=pd||today();if(!o.rcp)o.rcp=rcpNo()}else{o.pdate="";}
@@ -2967,23 +3000,76 @@ function feeSave(id){
  logA(id?"edit":"add","ফি",(id?"ফি আপডেট: ":"নতুন ফি: ")+stuName(sid)+" — "+type+" ("+money(amt)+")");save();closeM();render();
 }
 /* bulk dues */
-function fbOpen(){const d=new Date();fbD={type:"মাসিক বেতন",y:String(d.getFullYear()),m:p2(d.getMonth()+1),amt:"",sel:{}};drawFb()}
-function fbList(){const ym=fbD.y+"-"+fbD.m;return activeStu().map(s=>{const amt=fbD.amt!==""?+fbD.amt:(fbD.type=="মাসিক বেতন"?+s.monthlyFee||0:0),ex=S.fees.some(f=>f.sid==s.id&&ftype(f)==fbD.type&&fym(f)==ym);return {s,amt,ex}})}
-function fbGrab(){fbD.type=gv("fb_t");fbD.y=gv("fb_y");fbD.m=gv("fb_m");fbD.amt=gv("fb_a")}
-function drawFb(){
- const l=fbList(),ex=l.filter(r=>r.ex).length,okSel=l.filter(r=>fbD.sel[r.s.id]&&!r.ex&&r.amt>0),tot=okSel.reduce((a,r)=>a+r.amt,0);
- modal(HND+`<h2 style="font-size:16px">📋 বকেয়া যোগ করুন</h2><div class="g2" style="margin:0"><div>${fsel("বকেয়ার ধরন","fb_t",FT,fbD.type).replace("<select ",'<select onchange="fbGrab();drawFb()" ')}</div><div>${fi("সাল","fb_y",fbD.y,"number",0,"","onchange=\"fbGrab();drawFb()\"")}</div><div>${fsel("মাস","fb_m",MN.map((m,i)=>[p2(i+1),m]),fbD.m).replace("<select ",'<select onchange="fbGrab();drawFb()" ')}</div><div>${fi("পরিমাণ (সবার জন্য)","fb_a",fbD.amt,"number",0,fbD.type=="মাসিক বেতন"?"ডিফল্ট: মাসিক বেতন":"পরিমাণ","onchange=\"fbGrab();drawFb()\"")}</div></div>
- <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0"><small style="color:var(--mu)">শিক্ষার্থী নির্বাচন (${bn(l.length)} জন উপলব্ধ)</small><span><button class="chip" onclick="fbSel(true)">সব নির্বাচন</button> <button class="chip" onclick="fbSel(false)">বাতিল</button></span></div>
- <div class="card" style="padding:4px;max-height:260px;overflow:auto">${l.map(r=>`<div class="row" style="${r.ex?"opacity:.45":""}"><input type="checkbox" class="cb" ${fbD.sel[r.s.id]&&!r.ex?"checked":""} ${r.ex?"disabled":""} onchange="fbTog('${r.s.id}')"><div class="f"><b>${esc(r.s.name)}</b><small>${esc(r.s.cls)}${r.s.branch?" • "+esc(r.s.branch):""}</small></div><span style="color:var(--mu)">${money(r.amt)}</span></div>`).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}</div>
- ${ex?`<div style="font-size:12px;color:#d97706;margin:6px 0">⚠ ${bn(ex)} জনের এই ধরনে ইতিমধ্যে রেকর্ড আছে — তালিকায় বাদ রাখা হয়েছে।</div>`:""}
- <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px"><small>নির্বাচিত ও বৈধ: <b>${bn(okSel.length)} জন</b><br>মোট বকেয়া পরিমাণ: <b style="color:#d97706">${money(tot)}</b></small><button class="btn ${okSel.length?"":"o"}" onclick="fbSave()">✓ বকেয়া তালিকায় যোগ</button></div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);$("mt").onclick=null;
+const FB_MON=(y,m1,m2)=>{const o=[];for(let m=+m1;m<=+m2;m++)o.push(y+"-"+p2(m));return o};
+const feeHas=(sid,type,ym)=>S.fees.some(f=>f.sid==sid&&ftype(f)==type&&fym(f)==ym);
+function fbOpen(){const d=new Date();fbD={type:"মাসিক বেতন",y:String(d.getFullYear()),m:p2(d.getMonth()+1),m2:p2(d.getMonth()+1),amt:"",cls:"",q:"",sel:{}};drawFb()}
+function fbAll(){
+  const mons=FB_MON(fbD.y,fbD.m,fbD.m2);
+  return activeStu().map(s=>{
+    const amt=fbD.amt!==""?+fbD.amt:(fbD.type=="মাসিক বেতন"?+s.monthlyFee||0:0);
+    const need=mons.filter(ym=>!feeHas(s.id,fbD.type,ym));
+    return {s,amt,need,ex:need.length==0};
+  });
 }
-function fbTog(id){fbGrab();if(fbD.sel[id])delete fbD.sel[id];else fbD.sel[id]=1;drawFb()}
-function fbSel(on){fbGrab();fbD.sel={};if(on)fbList().filter(r=>!r.ex&&r.amt>0).forEach(r=>fbD.sel[r.s.id]=1);drawFb()}
+function fbShown(){const q=(fbD.q||"").toLowerCase();return fbAll().filter(r=>(!fbD.cls||r.s.cls==fbD.cls)&&(!q||(r.s.name+" "+(r.s.roll||"")+" "+(r.s.phone||"")).toLowerCase().includes(q)))}
+function fbGrab(){fbD.type=gv("fb_t")||fbD.type;fbD.y=gv("fb_y")||fbD.y;fbD.m=gv("fb_m")||fbD.m;fbD.m2=gv("fb_m2")||fbD.m2;if(+fbD.m2<+fbD.m)fbD.m2=fbD.m;fbD.amt=gv("fb_a");fbD.cls=gv("fb_c")}
+function fbRows(){
+  const l=fbShown();
+  return l.map(r=>`<div class="row" style="${r.ex?"opacity:.45":""}"><input type="checkbox" class="cb" ${fbD.sel[r.s.id]&&!r.ex?"checked":""} ${r.ex?"disabled":""} onchange="fbTog('${r.s.id}')"><div class="f"><b>${esc(r.s.name)}</b><small>${esc(r.s.cls)}${r.s.branch?" • "+esc(r.s.branch):""}${r.ex?" • ইতিমধ্যে আছে":r.need.length>1?" • "+bn(r.need.length)+" মাস":""}</small></div><span style="color:var(--mu)">${money(r.amt*r.need.length)}</span></div>`).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>';
+}
+function fbSummary(){
+  const all=fbAll(),ok=all.filter(r=>fbD.sel[r.s.id]&&!r.ex&&r.amt>0),recs=ok.reduce((a,r)=>a+r.need.length,0),tot=ok.reduce((a,r)=>a+r.amt*r.need.length,0),ex=fbShown().filter(r=>r.ex).length;
+  return (ex?`<div style="font-size:12px;color:#d97706;margin:6px 0">⚠ ${bn(ex)} জনের এই মাস/ধরনে আগে থেকেই বকেয়া আছে — আবার তৈরি হবে না।</div>`:"")+`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px"><small>নির্বাচিত: <b>${bn(ok.length)} জন</b> · নতুন রেকর্ড: <b>${bn(recs)}টি</b><br>মোট বকেয়া: <b style="color:#d97706">${money(tot)}</b></small><button class="btn ${ok.length?"":"o"}" onclick="fbSave()">✓ বকেয়া তৈরি করুন</button></div>`;
+}
+function fbRefresh(){const a=$("fbl"),b=$("fbs");if(a)a.innerHTML=fbRows();if(b)b.innerHTML=fbSummary()}
+function drawFb(){
+  const cl=xClsList(),re='onchange="fbGrab();drawFb()"';
+  modal(HND+`<h2 style="font-size:16px">📋 বকেয়া তৈরি করুন</h2>
+<div class="g2" style="margin:0"><div>${fsel("বকেয়ার ধরন","fb_t",FT,fbD.type).replace("<select ","<select "+re+" ")}</div><div>${fi("সাল","fb_y",fbD.y,"number",0,"",re)}</div><div>${fsel("মাস (থেকে)","fb_m",MN.map((m,i)=>[p2(i+1),m]),fbD.m).replace("<select ","<select "+re+" ")}</div><div>${fsel("মাস (পর্যন্ত)","fb_m2",MN.map((m,i)=>[p2(i+1),m]),fbD.m2).replace("<select ","<select "+re+" ")}</div></div>
+${fi("পরিমাণ (প্রতি মাস, সবার জন্য)","fb_a",fbD.amt,"number",0,fbD.type=="মাসিক বেতন"?"ফাঁকা = প্রত্যেকের মাসিক বেতন":"পরিমাণ",re)}
+${fsel("শ্রেণী ভিত্তিক","fb_c",[["","সকল শ্রেণী"],...cl.map(c=>[c,c])],fbD.cls).replace("<select ","<select "+re+" ")}
+<input id="fb_q" placeholder="🔍 একক শিক্ষার্থী খুঁজুন (নাম/রোল/মোবাইল)" value="${esc(fbD.q||"")}" oninput="fbD.q=this.value;fbRefresh()" style="margin-top:8px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0"><small style="color:var(--mu)">শিক্ষার্থী নির্বাচন</small><span><button class="chip" onclick="fbSel(true)">তালিকার সব</button> <button class="chip" onclick="fbSel(false)">বাতিল</button></span></div>
+<div class="card" id="fbl" style="padding:4px;max-height:240px;overflow:auto">${fbRows()}</div><div id="fbs">${fbSummary()}</div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);$("mt").onclick=null;
+}
+function fbTog(id){if(fbD.sel[id])delete fbD.sel[id];else fbD.sel[id]=1;fbRefresh()}
+function fbSel(on){fbD.sel=on?{...fbD.sel}:{};if(on)fbShown().filter(r=>!r.ex&&r.amt>0).forEach(r=>fbD.sel[r.s.id]=1);fbRefresh();const a=$("fbl");if(a)a.scrollTop=0}
 function fbSave(){
- fbGrab();const l=fbList().filter(r=>fbD.sel[r.s.id]&&!r.ex&&r.amt>0);if(!l.length){alert("অন্তত একজন বৈধ শিক্ষার্থী নির্বাচন করুন (পরিমাণ শূন্য হতে পারবে না)");return}
- l.forEach(r=>S.fees.push({id:uid(),sid:r.s.id,type:fbD.type,title:fbD.type+" — "+MN[+fbD.m-1]+" "+bn(fbD.y),amt:r.amt,paid:0,date:today(),ym:fbD.y+"-"+fbD.m}));
- logA("add","ফি",bn(l.length)+" জনের "+fbD.type+" বকেয়া যোগ ("+MN[+fbD.m-1]+")");save();closeM();fStat="due";render();toast("✅ "+bn(l.length)+" জনের বকেয়া যোগ হয়েছে");
+  fbGrab();const l=fbAll().filter(r=>fbD.sel[r.s.id]&&!r.ex&&r.amt>0);
+  if(!l.length){alert("অন্তত একজন বৈধ শিক্ষার্থী নির্বাচন করুন (পরিমাণ শূন্য হতে পারবে না)");return}
+  let n=0;
+  l.forEach(r=>r.need.forEach(ym=>{if(feeHas(r.s.id,fbD.type,ym))return;const mm=+ym.slice(5,7);S.fees.push({id:uid(),sid:r.s.id,type:fbD.type,title:fbD.type+" — "+MN[mm-1]+" "+bn(ym.slice(0,4)),amt:r.amt,paid:0,date:today(),ym});n++}));
+  logA("add","ফি",bn(l.length)+" জনের "+fbD.type+" বকেয়া ("+MN[+fbD.m-1]+(fbD.m2!=fbD.m?"–"+MN[+fbD.m2-1]:"")+") — "+bn(n)+"টি রেকর্ড");
+  save();closeM();fStat="due";render();toast("✅ "+bn(n)+"টি বকেয়া তৈরি হয়েছে");
+}
+/* duplicate dues cleanup */
+function feeDupGroups(){
+  const m={};
+  S.fees.forEach(f=>{const t=ftype(f);if(t==="অন্যান্য ফি"||!fym(f))return;const k=f.sid+"|"+t+"|"+fym(f);(m[k]=m[k]||[]).push(f)});
+  return Object.values(m).filter(g=>g.length>1);
+}
+function feeDupInfo(){
+  let del=0,manual=0;const gs=feeDupGroups();
+  gs.forEach(g=>{
+    const keep=g.slice().sort((a,b)=>b.paid-a.paid)[0];
+    g.forEach(f=>{if(f===keep)return;if(f.paid>0)manual++;else del++});
+  });
+  return {del,manual,groups:gs.length};
+}
+function feeDupOpen(){
+  const i=feeDupInfo();
+  if(!i.groups){alert("কোনো ডুপ্লিকেট বকেয়া পাওয়া যায়নি ✅");return}
+  modal(HND+`<h2 style="font-size:16px">🧹 ডুপ্লিকেট বকেয়া মেলান</h2><div style="font-size:13px;line-height:1.7">একই শিক্ষার্থীর একই ধরনের ফি একই মাসে একাধিকবার পাওয়া গেছে।<br><b>${bn(i.groups)}টি</b> ক্ষেত্রে ডুপ্লিকেট আছে।<br>• যে বাড়তি রেকর্ডে <b>কোনো টাকা আদায় হয়নি</b>: <b style="color:#dc2626">${bn(i.del)}টি মুছে যাবে</b><br>• যেগুলোতে আদায় হয়ে গেছে: <b>${bn(i.manual)}টি অক্ষত থাকবে</b> (হিসাব নষ্ট হবে না, আপনি নিজে দেখে নেবেন)</div><div class="card" style="font-size:12px;margin:8px 0;background:#fffbeb;color:#78350f">মুছে ফেলার আগে ব্যাকআপ নিয়ে রাখা ভালো।</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" style="background:#dc2626" onclick="feeDupClean()">মুছে পরিষ্কার করুন</button></div>`);$("mt").onclick=null;
+}
+function feeDupClean(){
+  let n=0;const rm=new Set();
+  feeDupGroups().forEach(g=>{
+    const keep=g.slice().sort((a,b)=>b.paid-a.paid)[0];
+    g.forEach(f=>{if(f!==keep&&!(f.paid>0)){rm.add(f.id);n++}});
+  });
+  S.fees=S.fees.filter(f=>!rm.has(f.id));
+  logA("edit","ফি","ডুপ্লিকেট বকেয়া পরিষ্কার: "+bn(n)+"টি");
+  save();closeM();render();toast("✅ "+bn(n)+"টি ডুপ্লিকেট বকেয়া মুছে ফেলা হয়েছে");
 }
 /* receipt */
 function rcpHtml(f){
@@ -3028,7 +3114,7 @@ function remMail(){
 /* ---- payment dashboard ---- */
 function duesBy(raw){
  const q=pdQ.toLowerCase(),m={};
- S.fees.filter(f=>due(f)>0).forEach(f=>{const x=sOf(f.sid);if(!x)return;if(!raw){if(pdCls&&x.cls!=pdCls)return;if(pdType&&ftype(f)!=pdType)return;if(q&&!(x.name+" "+(x.phone||"")+" "+(x.guardian||"")).toLowerCase().includes(q))return}(m[x.id]=m[x.id]||{x,fs:[]}).fs.push(f)});
+ S.fees.filter(f=>due(f)>0).forEach(f=>{const x=sOf(f.sid);if(!x)return;if(!raw){if(pdCls&&x.cls!=pdCls)return;if(pdType&&ftype(f)!=pdType)return;if(pdYm&&fym(f)!=pdYm)return;if(q&&!(x.name+" "+(x.phone||"")+" "+(x.guardian||"")).toLowerCase().includes(q))return}(m[x.id]=m[x.id]||{x,fs:[]}).fs.push(f)});
  return Object.values(m).sort((a,b)=>b.fs.reduce((t,f)=>t+due(f),0)-a.fs.reduce((t,f)=>t+due(f),0));
 }
 function stuDueCard(g,bulk){
@@ -3045,8 +3131,8 @@ function pdash(){
  +`<div style="display:flex;gap:8px;margin:10px 0"><button class="ob" onclick="render()">⟳ রিফ্রেশ</button><button class="btn" style="background:#d97706" onclick="remAll()">🔔 সকলকে রিমাইন্ডার</button></div>
  <div class="g2">${tile("#dc2626","#fff1f2","⚠","মোট বকেয়া",money(td),bn(dues.length)+"টি ফি বকেয়া")}${tile("#d97706","#fffbeb","👥","বকেয়া শিক্ষার্থী",bn(sids.length),bn(wp)+" জনের ফোন আছে")}${tile("#16a34a","#f0fdf4","✓","আদায়যোগ্য",money(col),"পরিশোধিত")}${tile("#2563eb","#eff6ff","💬","WhatsApp যোগাযোগ",bn(wp),"অভিভাবকের নম্বর আছে")}</div>
  <div class="sub">${[["stu","শিক্ষার্থী-ভিত্তিক বকেয়া"],["list","বিস্তারিত ফি তালিকা"]].map(t=>`<button class="${pdTab==t[0]?"on":""}" onclick="pdTab='${t[0]}';render()">${t[1]}</button>`).join("")}</div>
- <div class="card"><input placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." value="${esc(pdQ)}" oninput="pdQ=this.value;pdKeep()"><select onchange="pdCls=this.value;render()"><option value="">সকল শ্রেণী</option>${xClsList().map(c=>`<option ${pdCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><select onchange="pdType=this.value;render()" style="margin:0 0 8px"><option value="">সকল ধরন</option>${FT.map(c=>`<option ${pdType==c?"selected":""}>${c}</option>`).join("")}</select><button class="ob" style="width:100%" onclick="pdBulk=!pdBulk;if(!pdBulk)pdSel={};render()">⚲ বাল্ক নির্বাচন</button></div>
- ${pdBulk&&n?`<div class="card" style="padding:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="flex:1">${bn(n)} জন নির্বাচিত</b><button class="btn g s" onclick="pdBulkWa()">💬 রিমাইন্ডার</button><button class="btn s" onclick="pdBulkPay()">✓ সব পরিশোধ</button></div>`:""}
+ <div class="card"><input placeholder="🔍 নাম বা মোবাইল দিয়ে খুঁজুন..." value="${esc(pdQ)}" oninput="pdQ=this.value;pdKeep()"><select onchange="pdCls=this.value;render()"><option value="">সকল শ্রেণী</option>${xClsList().map(c=>`<option ${pdCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><select onchange="pdType=this.value;render()"><option value="">সকল ধরন</option>${FT.map(c=>`<option ${pdType==c?"selected":""}>${c}</option>`).join("")}</select><select onchange="pdYm=this.value;render()" style="margin:0 0 8px"><option value="">সকল মাস</option>${[...new Set(S.fees.filter(f=>due(f)>0).map(f=>fym(f)).filter(Boolean))].sort().reverse().map(y=>`<option value="${y}" ${pdYm==y?"selected":""}>${MN[+y.slice(5,7)-1]} ${bn(y.slice(0,4))}</option>`).join("")}</select><button class="ob" style="width:100%" onclick="pdBulk=!pdBulk;if(!pdBulk)pdSel={};render()">⚲ বাল্ক নির্বাচন</button></div>
+ ${pdBulk?`<div class="card" style="padding:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="flex:1">${bn(n)} জন নির্বাচিত</b><button class="chip" onclick="pdSelAll(true)">তালিকার সব</button><button class="chip" onclick="pdSelAll(false)">বাতিল</button>${n?`<button class="btn g s" onclick="pdBulkWa()">💬 রিমাইন্ডার</button><button class="btn s" onclick="pdBulkPay()">✓ সব আদায়</button>`:""}</div>`:""}
  <div id="pdl">${pdBody(g)}</div>`;
 }
 function pdBody(g){
@@ -3055,25 +3141,26 @@ function pdBody(g){
 }
 function pdKeep(){const e=$("pdl");if(e)e.innerHTML=pdBody(duesBy())}
 function pdBulkWa(){const ids=Object.keys(pdSel).filter(id=>sOf(id)&&sOf(id).phone);if(!ids.length){alert("নির্বাচিতদের কারো মোবাইল নম্বর নেই");return}msgM(ids,"প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর মোট বকেয়া ফি {বকেয়া}। অনুগ্রহ করে দ্রুত পরিশোধ করুন।\n\nধন্যবাদ\n"+S.school.name)}
-function pdBulkPay(){const ids=S.fees.filter(f=>due(f)>0&&pdSel[f.sid]).map(f=>f.id);if(!ids.length)return;pdSel={};payM(ids)}
+function pdSelAll(on){pdSel={};if(on)duesBy().forEach(r=>pdSel[r.x.id]=1);const y=$("v").scrollTop;render();$("v").scrollTop=y}
+function pdBulkPay(){const ids=duesBy().filter(r=>pdSel[r.x.id]).flatMap(r=>r.fs.map(f=>f.id));if(!ids.length)return;pdSel={};payM(ids)}
 /* ---- payment collection page ---- */
 function py(){
  const q=pyQ.toLowerCase(),l=activeStu().filter(s=>!q||(s.name+" "+s.roll+" "+(s.phone||"")).toLowerCase().includes(q)).slice(0,25),x=pySid?sOf(pySid):null;
  const recent=S.fees.filter(f=>f.paid>0&&sOf(f.sid)).sort((a,b)=>(b.pdate||"")>(a.pdate||"")?1:-1).slice(0,10);
  let body="";
  if(x){
-  const ds=S.fees.filter(f=>f.sid==x.id&&due(f)>0);
+  const dsAll=S.fees.filter(f=>f.sid==x.id&&due(f)>0),yms=[...new Set(dsAll.map(f=>fym(f)).filter(Boolean))].sort(),ds=dsAll.filter(f=>!pyYm||fym(f)==pyYm);
   body=`<div class="card" style="border-color:#16a34a"><div style="display:flex;gap:10px;align-items:center">${avt(x,44)}<div class="f"><b>${esc(x.name)}</b><small>${esc(x.cls)} · রোল ${esc(x.roll)}${x.guardian?" · "+esc(x.guardian):""}</small></div><span onclick="pySid='';render()" style="padding:6px">✕</span></div>
-  ${ds.map(f=>`<div class="row"><input type="checkbox" class="cb" id="pc_${f.id}" checked onchange="pyTot()"><div class="f">${esc(ftype(f))}<small>${fmon(f)} · বাকি ${money(due(f))}</small></div><input id="pm_${f.id}" type="number" value="${due(f)}" oninput="pyTot()" style="width:90px;margin:0"></div>`).join("")||'<div class="em">কোনো বকেয়া নেই 🎉</div>'}
+  ${yms.length>1?`<select onchange="pyYm=this.value;render()" style="margin:8px 0"><option value="">সব মাসের বকেয়া (${bn(dsAll.length)}টি)</option>${yms.map(y=>`<option value="${y}" ${pyYm==y?"selected":""}>${MN[+y.slice(5,7)-1]} ${bn(y.slice(0,4))}</option>`).join("")}</select>`:""}${ds.map(f=>`<div class="row"><input type="checkbox" class="cb" id="pc_${f.id}" checked onchange="pyTot()"><div class="f">${esc(ftype(f))}<small>${fmon(f)} · বাকি ${money(due(f))}</small></div><input id="pm_${f.id}" type="number" value="${due(f)}" oninput="pyTot()" style="width:90px;margin:0"></div>`).join("")||'<div class="em">কোনো বকেয়া নেই 🎉</div>'}
   ${ds.length?`${fi("তারিখ","py_d",today(),"date")}<label class="lb">মাধ্যম</label><div style="display:flex;gap:6px;flex-wrap:wrap">${pChips(pyM,"pyM=this.dataset.m")}</div><button class="btn g" style="width:100%;margin-top:10px" onclick="pySave()">✓ আদায় করুন (<span id="pyt">${money(ds.reduce((a,f)=>a+due(f),0))}</span>)</button>`:""}</div>`;
- }else body=`<div class="card" style="padding:6px">${l.map(s=>{const d=S.fees.filter(f=>f.sid==s.id).reduce((a,f)=>a+due(f),0);return `<div class="row" onclick="pySid='${s.id}';render()">${avt(s,34)}<div class="f"><b>${esc(s.name)}</b><small>${esc(s.cls)} · রোল ${esc(s.roll)}</small></div><b style="color:${d?"var(--rd)":"var(--gr)"}">${d?money(d):"✓"}</b></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}</div>`;
+ }else body=`<div class="card" style="padding:6px">${l.map(s=>{const d=S.fees.filter(f=>f.sid==s.id).reduce((a,f)=>a+due(f),0);return `<div class="row" onclick="pySid='${s.id}';pyYm='';render()">${avt(s,34)}<div class="f"><b>${esc(s.name)}</b><small>${esc(s.cls)} · রোল ${esc(s.roll)}</small></div><b style="color:${d?"var(--rd)":"var(--gr)"}">${d?money(d):"✓"}</b></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}</div>`;
  return phdr("পেমেন্ট","ফি আদায় ও রসিদ ইস্যু")+`<input placeholder="🔍 শিক্ষার্থীর নাম, রোল বা মোবাইল..." value="${esc(pyQ)}" oninput="pyQ=this.value;pySid='';render()" style="margin-top:12px">${body}
  <div class="card"><b style="font-size:14px">🕘 সাম্প্রতিক পেমেন্ট</b>${recent.map(f=>`<div class="row"><div class="f"><b>${esc(stuName(f.sid))}</b><small>${esc(ftype(f))} · ${fmon(f)} · ${esc(f.method||"নগদ")} · ${bn(f.pdate||"")}</small></div><b style="color:var(--gr)">${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾</button></div>`).join("")||'<div class="em">কোনো পেমেন্ট নেই</div>'}</div>`;
 }
-function pyTot(){const ds=S.fees.filter(f=>f.sid==pySid&&due(f)>0);let t=0;ds.forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m)t+=Math.min(+m.value||0,due(f))});const e=$("pyt");if(e)e.textContent=money(t)}
+function pyTot(){const ds=S.fees.filter(f=>f.sid==pySid&&due(f)>0&&(!pyYm||fym(f)==pyYm));let t=0;ds.forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m)t+=Math.min(+m.value||0,due(f))});const e=$("pyt");if(e)e.textContent=money(t)}
 function pySave(){
  const d=gv("py_d")||today(),done=[];
- S.fees.filter(f=>f.sid==pySid&&due(f)>0).forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m&&payFee(f,+m.value,pyM,d))done.push(f)});
+ S.fees.filter(f=>f.sid==pySid&&due(f)>0&&(!pyYm||fym(f)==pyYm)).forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m&&payFee(f,+m.value,pyM,d))done.push(f)});
  if(!done.length){alert("অন্তত একটি ফি বেছে পরিমাণ দিন");return}
  logA("add","পেমেন্ট",stuName(pySid)+" — "+bn(done.length)+"টি ফি আদায়");save();render();
  if(done.length==1)rcptM(done[0].id);else modal(HND+`<div style="text-align:center"><div style="font-size:40px">✅</div><h2>পেমেন্ট সম্পন্ন</h2></div>`+done.map(f=>`<div class="row"><div class="f">${esc(ftype(f))}<small>${fmon(f)}</small></div><b>${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾 রসিদ</button></div>`).join("")+`<button class="btn o" style="width:100%;margin-top:10px" onclick="closeM()">বন্ধ</button>`);
@@ -3606,7 +3693,16 @@ function fbDel(id){if(confirm("ফিডব্যাক মুছবেন?")){S
 let stT=0,stEd=false,usQ="",usR="";
 const ST_T=[["সাধারণ","⚙️"],["স্ক্রল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["ব্যাকআপ","🗄"],["সাবস্ক্রিপশন","💳"],["বিপজ্জনক","⚠️"]];
 const isDark=()=>document.documentElement.dataset.theme=="dark";
-function applyTheme(){const t=S.set.theme,h=new Date().getHours();document.documentElement.dataset.theme=(t=="dark"||(t=="auto"&&(h<6||h>=18)))?"dark":"light";const mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.content=document.documentElement.dataset.theme=="dark"?"#10131c":"#d9f3e4"}
+function sysDark(){try{return !!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)}catch(e){return false}}
+function applyTheme(){const t=S.set.theme||"auto",h=new Date().getHours(),night=h<6||h>=18;
+  // auto = ফোনের নিজস্ব ডার্ক/লাইট সেটিং; time = সন্ধ্যা ৬টা–সকাল ৬টা নাইট
+  const dark=t=="dark"||(t=="time"&&night)||(t=="auto"&&(window.matchMedia?sysDark():night));
+  const prev=document.documentElement.dataset.theme,nv=dark?"dark":"light";document.documentElement.dataset.theme=nv;
+  try{document.documentElement.style.colorScheme=nv}catch(e){}const mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.content=document.documentElement.dataset.theme=="dark"?"#10131c":"#d9f3e4";return prev!==nv}
+function themeSync(){try{if(applyTheme()&&unlocked)render()}catch(e){}}
+try{const _mq=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)");if(_mq){_mq.addEventListener?_mq.addEventListener("change",themeSync):_mq.addListener(themeSync)}}catch(e){}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")themeSync()});
+addEventListener("focus",themeSync);
 function themeTog(){S.set.theme=isDark()?"light":"dark";save();applyTheme();render()}
 function greet(){const h=new Date().getHours();return h>=4&&h<12?"শুভ সকাল":h<15?"শুভ দুপুর":h<18?"শুভ বিকাল":h<20?"শুভ সন্ধ্যা":"শুভ রাত্রি"}
 const pinH=p=>{let h=5381;for(const c of String(p))h=((h<<5)+h+c.charCodeAt(0))|0;return String(h)};
@@ -3638,8 +3734,8 @@ function setng(){
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">⚙️</div><div><div style="font-size:20px;font-weight:700">সেটিংস</div><div style="color:var(--mu);font-size:13px">অ্যাপের পছন্দ ও নিরাপত্তা নিয়ন্ত্রণ করুন</div></div></div>
 <div class="st-tabs">${ST_T.map((t,i)=>`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng][stT]||stGen)()}
 function stGen(){
- const th=S.set.theme,M=[["auto","🔄","অটো মোড"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
- return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো মোডে সময় অনুযায়ী (সকাল ৬টা–বিকাল ৬টা ডে, রাত নাইট) স্বয়ংক্রিয় পরিবর্তন হবে</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
+ const th=S.set.theme,M=[["auto","🔄","অটো (ফোনের সেটিং)"],["time","🕕","সময় অনুযায়ী"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
+ return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো: ফোনের ডার্ক/লাইট সেটিং অনুসরণ করবে। সময় অনুযায়ী: সকাল ৬টা–বিকাল ৬টা ডে, তারপর নাইট।</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
 <div class="card"><h2>🌐 ভাষা / Language</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অ্যাপের ভাষা নির্বাচন করুন</div><div class="st-lg">${[["bn","🇧🇩","বাংলা"],["en","🇬🇧","English"]].map(x=>`<div class="${LANG==x[0]?"on":""}" onclick="setLang('${x[0]}')"><span style="font-size:24px">${x[1]}</span><br>${x[2]}${LANG==x[0]?'<br><u style="text-decoration:none;background:var(--pri);color:#fff;border-radius:6px;font-size:10px;padding:1px 8px">সক্রিয়</u>':""}</div>`).join("")}</div></div></div>
 <div class="card"><h2>📅 তারিখ প্রদর্শন</h2>${stTg("হোমে আরবি ও বাংলা তারিখ দেখান","বন্ধ থাকলে হোমে শুধু সময় ও ইংরেজি তারিখ দেখাবে","dates")}<label class="lb">হিজরী তারিখ সমন্বয় (চাঁদ দেখা অনুযায়ী)</label><select onchange="stSet('hj',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.hj||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select><label class="lb">বাংলা তারিখ সমন্বয়</label><select onchange="stSet('bd',+this.value)">${[[-2,"২ দিন আগে"],[-1,"১ দিন আগে"],[0,"ডিফল্ট"],[1,"১ দিন পরে"],[2,"২ দিন পরে"]].map(x=>`<option value="${x[0]}" ${(+S.set.bd||0)==x[0]?"selected":""}>${x[1]}</option>`).join("")}</select></div>
 <div class="card"><h2>🧩 ইন্টারফেস এলিমেন্ট</h2>${stTg("গ্রিটিং মেসেজ","হোমের ওপরে শুভ সকাল/দুপুর/বিকাল/রাত্রি দেখান","greet")}${stTg("নোটিফিকেশন বেল","হোমের ওপরে নোটিশ বেল আইকন দেখান","bell")}${stTg("বিসমিল্লাহ","হেডারে আরবিতে বিসমিল্লাহির রাহমানির রাহিম দেখান","bism")}${stTg("থিম টগল","হোমের ওপরে ডার্ক/লাইট মোড টগল বাটন দেখান","tbtn")}</div>`}
@@ -4115,7 +4211,7 @@ function trInit(){
  trNode(document.body);
  new MutationObserver(ms=>{for(const m of ms){if(m.type==="characterData")trNode(m.target);else m.addedNodes.forEach(trNode)}}).observe(document.body,{childList:true,subtree:true,characterData:true})}
 function setLang(l){if(S.set.lang==l||(!S.set.lang&&l=="bn"))return;S.set.lang=l;save();location.reload()}
-initRBAC();migrateExams();autoFees();save();applyTheme();updateNet();render();trInit();lockCheck();setInterval(()=>{if(S.set.theme=="auto")applyTheme()},60000);
+initRBAC();migrateExams();autoFees();save();applyTheme();updateNet();render();trInit();lockCheck();setInterval(()=>{if(S.set.theme=="time"||S.set.theme=="auto")themeSync()},60000);
 if(navigator.onLine&&S.sync&&S.sync.apiUrl){setTimeout(syncNow,800);setInterval(()=>{if(navigator.onLine)syncNow()},60000)}
 let dip=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e});
