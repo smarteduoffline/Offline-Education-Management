@@ -460,7 +460,7 @@ function migrateState(raw){
 }
 let S;try{S=migrateState(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=D()}LANG=(S.set&&S.set.lang)||"bn";
 if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
-const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
+const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();if(typeof snapSoon==="function")snapSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
@@ -818,7 +818,7 @@ async function completeLogin(authUser,email){
     unlocked=true;
     try{await _wt(subFetchSrv(),8000)}catch(_){}
     render();
-    syncMySchool();
+    syncMySchool();snapSync();
 
   }catch(e){lerr("লগইন ব্যর্থ: "+e.message)}
 }
@@ -1143,7 +1143,7 @@ async function refreshRemembered(){
     applySessionSchool(access.school_id);
     await subFetchSrv();
     render();
-    syncMySchool();
+    syncMySchool();snapSync();
   }catch(e){}
 }
 try{const rm=JSON.parse(localStorage.getItem("smartEduRemember")||"null");if(rm&&activeUser&&rm.id===activeUser.id)applySessionSchool(rm.sid)}catch(e){}
@@ -2397,6 +2397,139 @@ async function pubParents(){
   }catch(e){console.warn("parent publish failed",e)}
 }
 addEventListener("online",pubParentSoon);setTimeout(pubParentSoon,5000);
+// ===== ☁️ Supabase ক্লাউড সিঙ্ক (স্ন্যাপশট) =====
+// অ্যাপ আগের মতোই লোকাল স্টোরেজে চলে। অনলাইনে এলে প্রতিষ্ঠানের ডেটা Supabase-এ জমা হয় এবং নতুন ফোনে লগইন করলে নেমে আসে।
+// একাধিক ডিভাইসের পরিবর্তন 3-way merge দিয়ে মেশানো হয় (রেকর্ড আইডি ধরে)।
+const SNAP_EXCL=["sync","syncQueue","audit","users","invUsers","schools","updatedAt","schemaVersion","smslog"];
+const SNAP_SET_EXCL=["pin","theme","lang","lastBk","bar"];
+let _snapBusy=false,_snapT=null;
+const _snapMetaKey=()=>KEY+":snapmeta",_snapBaseKey=()=>KEY+":snapbase";
+function snapStable(v){
+  if(v===null||v===undefined)return "null";
+  if(typeof v!=="object")return JSON.stringify(v);
+  if(Array.isArray(v))return "["+v.map(snapStable).join(",")+"]";
+  return "{"+Object.keys(v).sort().filter(k=>v[k]!==undefined).map(k=>JSON.stringify(k)+":"+snapStable(v[k])).join(",")+"}";
+}
+const snapEq=(a,b)=>snapStable(a)===snapStable(b);
+const _snIsObj=v=>!!v&&typeof v==="object"&&!Array.isArray(v);
+function _snIdArr(a){
+  if(!Array.isArray(a)||!a.every(x=>_snIsObj(x)&&x.id!==undefined&&x.id!==null))return false;
+  return new Set(a.map(x=>String(x.id))).size===a.length;
+}
+function snapM3(b,l,s){
+  if(snapEq(l,s))return l;
+  if(b!==undefined&&snapEq(b,l))return s;
+  if(b!==undefined&&snapEq(b,s))return l;
+  if(Array.isArray(l)&&Array.isArray(s)&&_snIdArr(l)&&_snIdArr(s)){
+    const bm=new Map((Array.isArray(b)?b:[]).filter(x=>_snIsObj(x)&&x.id!=null).map(x=>[String(x.id),x]));
+    const lm=new Map(l.map(x=>[String(x.id),x])),sm=new Map(s.map(x=>[String(x.id),x]));
+    const out=[],seen=new Set();
+    const take=id=>{
+      if(seen.has(id))return;seen.add(id);
+      const bi=bm.get(id),li=lm.get(id),si=sm.get(id);
+      if(li!==undefined&&si!==undefined)out.push(snapM3(bi,li,si));
+      else if(li!==undefined){if(bi!==undefined&&snapEq(bi,li))return;out.push(li)}
+      else if(si!==undefined){if(bi!==undefined&&snapEq(bi,si))return;out.push(si)}
+    };
+    l.forEach(x=>take(String(x.id)));s.forEach(x=>take(String(x.id)));
+    return out;
+  }
+  if(_snIsObj(l)&&_snIsObj(s)){
+    const bo=_snIsObj(b)?b:{},out={};
+    for(const k of new Set([...Object.keys(l),...Object.keys(s)])){
+      const lv=l[k],sv=s[k],bv=bo[k];
+      if(lv!==undefined&&sv!==undefined)out[k]=snapM3(bv,lv,sv);
+      else if(lv!==undefined){if(bv!==undefined&&snapEq(bv,lv))continue;out[k]=lv}
+      else if(sv!==undefined){if(bv!==undefined&&snapEq(bv,sv))continue;out[k]=sv}
+    }
+    return out;
+  }
+  return l; // দুই পক্ষ একই মান বদলালে এই ফোনের মানই থাকে
+}
+function snapPayload(){
+  const o={};
+  for(const k of Object.keys(S)){if(!SNAP_EXCL.includes(k))o[k]=S[k]}
+  o.set={};for(const k of Object.keys(S.set||{})){if(!SNAP_SET_EXCL.includes(k))o.set[k]=S.set[k]}
+  return JSON.parse(JSON.stringify(o));
+}
+function snapFresh(d){
+  return !(d.students&&d.students.length)&&!(d.teachers&&d.teachers.length)&&!(d.fees&&d.fees.length)&&!(d.txns&&d.txns.length)&&!Object.keys(d.att||{}).length;
+}
+function snapApply(m){
+  for(const k of Object.keys(m)){
+    if(k==="set"){for(const a of Object.keys(m.set||{}))S.set[a]=m.set[a]}
+    else S[k]=m[k];
+  }
+  Object.assign(S,migrateState(S));
+  S.updatedAt=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){console.warn("snap apply save",e)}
+}
+function snapStatusText(){
+  const st=window._snapStatus||{};let m={};try{m=JSON.parse(localStorage.getItem(_snapMetaKey())||"{}")}catch(e){}
+  if(st.busy)return "সিঙ্ক চলছে...";
+  if(st.err)return "⚠ "+esc(st.err)+(m.ts?" (সর্বশেষ সফল: "+new Date(m.ts).toLocaleString(LC())+")":"");
+  return m.ts?"সর্বশেষ সিঙ্ক: "+new Date(m.ts).toLocaleString(LC()):"এখনও সিঙ্ক হয়নি";
+}
+async function snapSync(manual){
+  if(_snapBusy)return;
+  try{
+    if(!sb||!activeUser||!unlocked||isParent())return;
+    if(!navigator.onLine){if(manual)toast("ইন্টারনেট সংযোগ নেই");return}
+    _snapBusy=true;window._snapStatus={busy:1};
+    const {data:{session}}=await sb.auth.getSession();if(!session){_snapBusy=false;window._snapStatus={};return}
+    const sid=String(ACT_SID||"main");
+    let meta={},base=null;
+    try{meta=JSON.parse(localStorage.getItem(_snapMetaKey())||"{}")}catch(e){}
+    try{base=JSON.parse(localStorage.getItem(_snapBaseKey())||"null")}catch(e){}
+    let changedLocal=false,done=false;
+    for(let attempt=0;attempt<4&&!done;attempt++){
+      const g=await _wt(sb.rpc("smartedu_snap_get",{p_school:sid}),25000);
+      if(g.error)throw g.error;
+      const info=g.data||{},local=snapPayload();
+      let merged,sdata=null,serverVer=0;
+      if(info.exists){
+        serverVer=+info.version;sdata=info.data||{};
+        if(meta.ver===serverVer)merged=local;
+        else if(!base&&snapFresh(local))merged=sdata;
+        else merged=snapM3(base||{},local,sdata);
+      }else{
+        if(snapFresh(local)){done=true;break}
+        merged=local;
+      }
+      if(!snapEq(merged,local)){snapApply(merged);changedLocal=true}
+      if(info.exists&&snapEq(merged,sdata)){
+        meta={ver:serverVer,ts:Date.now()};base=merged;done=true;
+      }else{
+        if(JSON.stringify(merged).length>8*1024*1024)throw new Error("ডেটা ৮ MB-এর বেশি; ছবি বা পুরোনো তথ্য কমান");
+        const r=await _wt(sb.rpc("smartedu_snap_put",{p_school:sid,p_data:merged,p_base:serverVer,p_device:String(S.sync&&S.sync.deviceId||"")}),40000);
+        if(r.error)throw r.error;
+        if(r.data&&r.data.ok){meta={ver:+r.data.version,ts:Date.now()};base=merged;done=true}
+        // ok=false: অন্য কেউ এর মধ্যে সিঙ্ক করেছে — আবার মিলিয়ে নেওয়া হবে
+      }
+    }
+    if(done){
+      try{localStorage.setItem(_snapMetaKey(),JSON.stringify(meta));if(base)localStorage.setItem(_snapBaseKey(),JSON.stringify(base))}catch(e){console.warn("snap base save",e)}
+      window._snapStatus={};
+      if(manual)toast("✅ ক্লাউডে সিঙ্ক সম্পন্ন");
+    }else window._snapStatus={err:"অন্যদের সাথে মেলানো যায়নি, একটু পরে আবার চেষ্টা হবে"};
+    if(changedLocal){
+      const ae=document.activeElement,tg=ae&&ae.tagName||"";
+      if(/INPUT|TEXTAREA|SELECT/.test(tg))toast("অন্য ডিভাইসের নতুন তথ্য এসেছে, ফর্ম শেষ করার পর দেখা যাবে");
+      else render();
+    }
+  }catch(e){
+    console.warn("snapshot sync failed",e);
+    const m=String(e&&e.message||e);
+    window._snapStatus={err:/PGRST202|could not find the function/i.test(m)?"সার্ভারে ক্লাউড সিঙ্ক সেটআপ হয়নি (SQL চালান)":/not allowed/i.test(m)?"এই প্রতিষ্ঠানে সিঙ্কের অনুমতি নেই":m.slice(0,120)};
+    if(manual)toast("সিঙ্ক ব্যর্থ: "+window._snapStatus.err);
+  }finally{_snapBusy=false}
+}
+function snapNow(){snapSync(true);setTimeout(()=>{try{render()}catch(e){}},400)}
+function snapSoon(){clearTimeout(_snapT);_snapT=setTimeout(()=>snapSync(),8000)}
+addEventListener("online",()=>setTimeout(()=>snapSync(),1500));
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>snapSync(),1200)});
+setInterval(()=>{if(document.visibilityState==="visible")snapSync()},120000);
+
 function pPick(id){pSelId=id;render()}
 function pBundle(s){
   const all=S.fees.filter(f=>f.sid==s.id).sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
@@ -3789,7 +3922,7 @@ async function renDecide(id,ok){
 }
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
- return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">সব তথ্য এই ফোনেই থাকে। ফোন বদলানোর বা অ্যাপ মোছার আগে ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div></div>
+ return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">তথ্য এই ফোনে থাকে এবং ইন্টারনেট থাকলে স্বয়ংক্রিয়ভাবে ক্লাউডেও জমা হয়। তবুও নিয়মিত ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div><div class="st-kv"><span>☁️</span><div><small>ক্লাউড সিঙ্ক (Supabase)</small>${snapStatusText()}</div></div><button class="btn g" style="width:100%;margin-top:8px" onclick="snapNow()">☁️ এখনই সিঙ্ক করুন</button></div>
 <div class="card"><button class="btn g" style="width:100%;margin-bottom:8px" onclick="exp();setTimeout(render,800)">⬇ ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="secureBackup()">🔒 Encrypted backup</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="pickRestore()">📂 ফাইল থেকে রিস্টোর</button><button class="btn o" style="width:100%" onclick="pasteImp()">📋 টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept=".json,application/json,text/plain" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"><div class="hint" style="margin-top:8px">রিস্টোর করলে বর্তমান সব তথ্য ব্যাকআপের তথ্য দিয়ে বদলে যাবে। ব্যাকআপে PIN সেটিংসও থাকে।</div></div>`}
 function stDng(){return `<div class="card st-rd"><h2 style="color:#dc2626">⚠️ বিপজ্জনক এলাকা</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 12px">এই কাজগুলো ফেরানো যায় না। আগে ব্যাকআপ নিয়ে নিন।</p><button class="btn o" style="width:100%;margin-bottom:8px" onclick="exp()">⬇ আগে ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px;color:#dc2626;border-color:#fca5a5" onclick="if(confirm('কার্যকলাপের লগ ও SMS ইতিহাস মুছবেন?')){S.log=[];S.smslog=[];save();alert('মুছে ফেলা হয়েছে')}">লগ ও SMS ইতিহাস মুছুন</button><button class="btn r" style="width:100%" onclick="resetAll()">🗑 সব তথ্য মুছে ফেলুন</button></div>`}
 function resetAll(){if(!confirm("সব তথ্য (শিক্ষার্থী, ফি, ফলাফল সব) চিরতরে মুছে যাবে। নিশ্চিত?"))return;if(prompt("নিশ্চিত করতে ইংরেজিতে DELETE লিখুন")!=="DELETE"){alert("বাতিল করা হয়েছে");return}S=D();save();applyTheme();stT=0;render();alert("সব তথ্য মুছে ফেলা হয়েছে")}
