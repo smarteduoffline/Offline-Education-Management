@@ -435,11 +435,26 @@ let LANG="bn";
 const LC=()=>LANG=="en"?"en-GB":"bn-BD";
 const SCHEMA_VERSION=2;
 const D=()=>({schemaVersion:SCHEMA_VERSION,school:{name:"আল-উম্মাহ মডেল মাদ্রাসা",addr:"স্টেশন বাজার, নেত্রকোনা"},students:[],teachers:[],att:{},fees:[],notices:[],exams:[],txns:[],books:[],hw:[],staff:[],log:[],smslog:[],sal:[],routine:[],events:[],tbooks:[],exg:{},certs:[],libSales:[],libGoods:[],schools:[],invUsers:[],users:[],sync:{apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0},syncQueue:[],audit:[],updatedAt:0,guides:[],feedback:[],attT:{},set:{theme:"auto",lang:"bn",dates:1,greet:1,bell:1,tbtn:1,bism:1,bar:"",pin:"",stype:"মাদ্রাসা"}});
+// SMS/WhatsApp লগ ছোট রাখা: শুধু t,sid,ch,ty,tx(প্রথম ১২০ অক্ষর); সর্বশেষ ৩০০টি
+const SMS_TX_MAX=120,SMS_KEEP=300;
+function smsTx(t){t=String(t==null?"":t);return t.length>SMS_TX_MAX?t.slice(0,SMS_TX_MAX)+"…":t}
+function smsSlim(l){
+  if(!l||typeof l!=="object")return null;
+  const full=String(l.tx!=null?l.tx:(l.message||""));
+  let t=+l.t;if(!t){t=Date.parse(l.created_date||l.updated_date||"")||0}
+  const sv=String(l.sent_via||"").toLowerCase();
+  return {t,sid:l.sid!=null?l.sid:(l.student_id||""),ch:l.ch||(sv.indexOf("whatsapp")>=0?"wa":"sms"),ty:l.ty||l.type||(/বকেয়া/.test(full)?"বকেয়া":""),tx:smsTx(full)};
+}
+function smsClean(arr){
+  return (Array.isArray(arr)?arr:[]).map(smsSlim).filter(Boolean).sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,SMS_KEEP);
+}
 function migrateState(raw){
   const base=D(), x=raw&&typeof raw==="object"?raw:{};
   const out={...base,...x,school:{...base.school,...(x.school||{})},set:{...base.set,...(x.set||{})},sync:{...base.sync,...(x.sync||{})}};
   for(const k of ["students","teachers","fees","notices","exams","txns","books","hw","staff","log","smslog","sal","routine","events","tbooks","certs","libSales","libGoods","schools","invUsers","users","syncQueue","audit","guides","feedback"]) if(!Array.isArray(out[k])) out[k]=[];
   if(!out.sync.deviceId) out.sync.deviceId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  out.smslog=smsClean(out.smslog);
+  delete out._source; // আমদানির পর থেকে যাওয়া ডুপ্লিকেট কপি
   out.schemaVersion=SCHEMA_VERSION;
   return out;
 }
@@ -1739,7 +1754,7 @@ const MT="প্রিয় অভিভাবক,\n\nআপনার সন্
 const GP=p=>p>=80?5:p>=70?4:p>=60?3.5:p>=50?3:p>=40?2:p>=33?1:0;
 const openExt=u=>{const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()};
 function waLink(ph,t){let d=String(ph||"").replace(/\D/g,"");if(d.startsWith("0"))d="88"+d;return "https://wa.me/"+d+"?text="+encodeURIComponent(t)}
-function sendTo(x,ch,tx,ty){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx,ty:ty||""});S.smslog=S.smslog.slice(0,300);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
+function sendTo(x,ch,tx,ty){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx:smsTx(tx),ty:ty||(/বকেয়া/.test(tx)?"বকেয়া":"")});S.smslog=S.smslog.slice(0,SMS_KEEP);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
 const fillT=(t,x)=>t.replace(/\{ফল:([^}]+)\}/g,(m,n)=>smRes(x,n)).replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"").replace(/\{বকেয়া\}/g,money(S.fees.filter(f=>f.sid==x.id).reduce((a,f)=>a+(f.amt-f.paid),0)));
 const pill=(t,k)=>`<span class="pl ${k||""}">${t}</span>`;
 
@@ -3396,7 +3411,7 @@ function nsTog(id){if(nsM.sel[id])delete nsM.sel[id];else nsM.sel[id]=1;nsDraw()
 function nsAll(on){nsM.sel=on?Object.fromEntries(nsM.ids.map(i=>[i,1])):{};nsDraw()}
 function nsWA(){if(!nsM.txt.trim()){alert("বার্তা লিখুন");return}const id=nsM.ids.find(i=>nsM.sel[i]&&!nsM.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}nsM.done[id]=1;const x=pOf(id);sendTo(x,"wa",fillT(nsM.txt,x),"নোটিশ");setTimeout(nsDraw,400)}
 function nsSMS(){const t=nsM.txt.replace(/\{[^}]+\}/g,"").trim();if(!t){alert("বার্তা লিখুন");return}const xs=nsM.ids.filter(i=>nsM.sel[i]).map(pOf).filter(Boolean);if(!xs.length){alert("কাউকে নির্বাচন করা হয়নি");return}
- xs.forEach(x=>S.smslog.unshift({t:Date.now(),sid:x.id,ch:"sms",tx:t,ty:"নোটিশ"}));S.smslog=S.smslog.slice(0,300);save();location.href="sms:"+xs.map(x=>x.phone).join(",")+"?body="+encodeURIComponent(t)}
+ xs.forEach(x=>S.smslog.unshift({t:Date.now(),sid:x.id,ch:"sms",tx:smsTx(t),ty:"নোটিশ"}));S.smslog=S.smslog.slice(0,SMS_KEEP);save();location.href="sms:"+xs.map(x=>x.phone).join(",")+"?body="+encodeURIComponent(t)}
 const APP_VER="v2.5.0",DEV_MAIL="tofsirahmedparvez@gmail.com",DEV_PH="01918427848",GH_URL="https://github.com/smarteduoffline/Offline-Education-Management",APP_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 const HTABS=[["ha","এপ সম্পর্কে"],["hg","ইউজার গাইডলাইন"],["hf","ফিডব্যাক"]];
 const GCATS=["পরিচিতি","ড্যাশবোর্ড","শিক্ষার্থী","উপস্থিতি","ফি","ফাইন্যান্স","পরীক্ষা","লাইব্রেরি","মাদ্রাসা","অন্যান্য"];
@@ -3883,7 +3898,7 @@ function smChat(){
  return `<input id="smq" placeholder="🔍 শিক্ষার্থী খুঁজুন..." value="${esc(smQ)}" oninput="smQ=this.value;smLst()"><div class="card" style="padding:0;margin-top:8px" id="sml">${smLstH()}</div>`;
 }
 const smAv=x=>x.gender=="মেয়ে"?"background:#fce7f3;color:#be185d":"background:#dbeafe;color:#1d4ed8";
-function smLstH(){const k=smQ.trim().toLowerCase();return smStu().filter(x=>!k||[x.name,x.cls,x.guardian,x.phone].join(" ").toLowerCase().includes(k)).map(x=>{const l=S.smslog.find(m=>m.sid==x.id);return `<div class="sx-p" onclick="smSid='${x.id}';render()"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div><div style="flex:1;min-width:0"><b style="font-weight:500">${esc(x.name)}</b> ${x.phone?"":'<span style="color:#d97706;font-size:12px">⚠</span>'}<small>${esc(x.cls||"")}</small>${l?`<small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.tx.replace(/\n/g," "))}</small>`:"<em>কোনো বার্তা নেই</em>"}</div></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}
+function smLstH(){const k=smQ.trim().toLowerCase();return smStu().filter(x=>!k||[x.name,x.cls,x.guardian,x.phone].join(" ").toLowerCase().includes(k)).map(x=>{const l=S.smslog.find(m=>m.sid==x.id);return `<div class="sx-p" onclick="smSid='${x.id}';render()"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div><div style="flex:1;min-width:0"><b style="font-weight:500">${esc(x.name)}</b> ${x.phone?"":'<span style="color:#d97706;font-size:12px">⚠</span>'}<small>${esc(x.cls||"")}</small>${l?`<small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((l.tx||"").replace(/\n/g," "))}</small>`:"<em>কোনো বার্তা নেই</em>"}</div></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}
 function smLst(){const e=$("sml");if(e)e.innerHTML=smLstH()}
 function smDirect(ch){const t=$("smx").value.trim(),x=sOf(smSid);if(!t){alert("বার্তা লিখুন");return}sendTo(x,ch,t,"বার্তা");setTimeout(render,500)}
 function smLog(){return `<input id="lgq" placeholder="🔍 নাম বা ফোন নম্বর খুঁজুন..." value="${esc(lgQ)}" oninput="lgQ=this.value;lgLst()"><div class="card ov" style="padding:0;margin-top:8px" id="lgl">${lgH()}</div>`}
