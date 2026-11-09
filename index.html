@@ -703,6 +703,13 @@ async function completeLogin(authUser,email){
     let u;
 
     if(SUPER_ADMIN_EMAILS.includes(email)){
+      // সুপার এডমিন সবসময় মূল (main) ডেটাসেটে ঢুকবে। আগে লগইন পেইজের প্রতিষ্ঠান-সিলেক্টর ঠিক করে দিত; এখন সেটি নেই,
+      // তাই এই ডিভাইসে শেষ ব্যবহৃত অন্য প্রতিষ্ঠানের ডেটা খুলে সুপার এডমিনের প্রতিষ্ঠান-তালিকা "হারিয়ে" যেত।
+      if(ACT_SID!=="main"){
+        localStorage.setItem("smartEduActiveSid","main");
+        location.reload();
+        return;
+      }
       u=S.users.find(
         x=>String(x.identifier).toLowerCase()===email
       );
@@ -760,13 +767,19 @@ async function completeLogin(authUser,email){
       }
 
       if(email===ADMIN_AUTH_EMAIL.trim().toLowerCase()){
-        u=S.users.find(
-          x=>x.role==="admin" && x.active!==false
-        );
+        // আগে "প্রথম যেকোনো অ্যাডমিন" ধরা হত — তাতে সুপার এডমিন বা অন্য ইউজারের পরিচয়ে লগইন হয়ে যেতে পারত।
+        // এখন প্রথমে নিজের ইমেইলের রেকর্ড, না থাকলে সুপার এডমিন নয় এমন পুরোনো লোকাল অ্যাডমিন, না থাকলে নতুন রেকর্ড।
+        u=S.users.find(x=>String(x.identifier).toLowerCase()===email)
+          || S.users.find(x=>x.role==="admin" && x.active!==false && !SUPER_ADMIN_EMAILS.includes(String(x.identifier).toLowerCase()));
 
         if(!u){
+          u={id:uid(),identifier:email,pin:uid()+uid(),role:"admin",active:true,permissions:[],createdAt:Date.now()};
+          S.users.push(u);
+          save();
+        }
+        if(u.active===false){
           await sb.auth.signOut();
-          return lerr("বিদ্যমান অ্যাডমিন অ্যাকাউন্ট পাওয়া যায়নি।");
+          return lerr("এই অ্যাকাউন্টটি নিষ্ক্রিয়।");
         }
       }else{
         u=S.users.find(
