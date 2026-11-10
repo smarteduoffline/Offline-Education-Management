@@ -311,6 +311,10 @@ body:has(#hdr) #net{display:none}
 input[type="date"][data-df]::-webkit-datetime-edit{display:none}
 input[type="date"][data-df]::before{content:attr(data-fmt);display:inline-block;flex:1 1 auto}
 input[type="date"][data-empty]::before{opacity:.55}
+/* hero: name stays on max 2 lines (auto-shrinks), logo smaller & further left, menu button further right */
+.hero .lg{width:46px;height:46px;font-size:22px;margin-left:-6px}
+.hero h1{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;word-break:break-word}
+.hmenu{top:10px;right:6px;width:40px;height:40px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -836,6 +840,7 @@ async function completeLogin(authUser,email){
 
     unlocked=true;
     try{await _wt(subFetchSrv(),8000)}catch(_){}
+    try{await _wt(pullMySchool(),9000)}catch(_){}
     render();
     syncMySchool();snapSync();try{if(isSuper()&&ACT_SID==="main"){loadRemSch().then(()=>{try{render()}catch(_){}})}}catch(_){}
 
@@ -845,7 +850,24 @@ async function completeLogin(authUser,email){
 window._remUsers=[];window._remSch={};
 function schNm(id){const r=window._remSch&&window._remSch[String(id)];if(r&&r.name)return r.name;const x=id?schOf(id):null;return x?x.name:""}
 function schAllR(){const a=schAll();return a.concat(Object.values(window._remSch||{}).filter(r=>!a.some(x=>String(x.id)===String(r.id))).map(r=>({id:r.id,name:r.name})))}
-async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})));try{if(typeof schReconcile==="function")schReconcile(b.data||[])}catch(_){}}}catch(e){}}
+async function loadSchExtra(){
+  try{
+    const r=await sb.rpc("smartedu_list_school_extra");
+    if(r.error)return;
+    const m={};(r.data||[]).forEach(x=>m[String(x.school_id)]=x);window._remStats=m;
+    (S.schools||[]).forEach(sc=>{const x=m[String(sc.id)];if(!x)return;if(x.logo&&!sc.logo)sc.logo=x.logo;if(x.director&&!(sc.admin&&sc.admin.name)){sc.admin=sc.admin||{};sc.admin.name=x.director}});
+    if(tab==="more"&&sub==="sat"&&satT===0)render();
+  }catch(e){}
+}
+function schBackfill(list){
+  try{
+    if(!isSuper()||ACT_SID!=="main"||window._bfDone||!Array.isArray(list))return;
+    window._bfDone=1;
+    const have=new Set(list.map(x=>String(x.id)));
+    (S.schools||[]).filter(x=>x&&x.id!=null&&!have.has(String(x.id))).forEach(sc=>pushSchoolToServer(sc.id,sc));
+  }catch(e){}
+}
+async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})));try{if(typeof schReconcile==="function")schReconcile(b.data||[])}catch(_){}try{schBackfill(b.data||[])}catch(_){}loadSchExtra()}}catch(e){}}
 // সুপার এডমিনের তালিকায় সার্ভারে নিবন্ধিত প্রতিষ্ঠান না থাকলে (লোকাল ডেটা হারালে/নতুন ডিভাইসে) তা ফিরিয়ে আনে
 function schReconcile(list){
   if(!activeUser||!isSuper()||ACT_SID!=="main"||!Array.isArray(list))return;
@@ -1055,45 +1077,62 @@ async function claimInvite(){
   }catch(e){lerr("ব্যর্থ: "+e.message)}
 }
 async function cancelSetup(){setupInfo=null;try{await sb.auth.signOut()}catch(_){}render()}
-// সুপার এডমিন/সার্ভারে প্রতিষ্ঠানের নাম বা তথ্য বদলালে তা এই ডিভাইসের লোকাল তথ্যে নামিয়ে আনে
-// সুপার এডমিন প্রতিষ্ঠানের তথ্য বদলালে সার্ভারেও পাঠানো হয় (সার্ভারে smartedu_update_school ফাংশন থাকলে)
+// ---- প্রতিষ্ঠানের প্রোফাইল: সার্ভার (smartedu_schools) থেকে প্রতিটি ডিভাইসে নামে; অ্যাডমিন বদলালে সার্ভারে যায় ----
+function schSig(o){o=o||{};return JSON.stringify([o.name||"",o.addr||"",o.phone||"",String(o.est||""),o.email||"",o.director||"",String(o.year!=null&&o.year!==""?o.year:(o.syear||"")),(o.logo||"").length])}
+function isSchoolAdmin(){return !!activeUser&&!isSuper()&&(activeUser.role==="admin"||myRoleList().some(r=>r==="অ্যাডমিন"||r==="সহ-অ্যাডমিন"))}
+// সুপার এডমিন: প্রতিষ্ঠানের তথ্য (লোগোসহ) ও মেয়াদ সার্ভারে নিবন্ধন/হালনাগাদ করে; ইউজাররা নতুন ডিভাইসে এটাই পাবে
 async function pushSchoolToServer(id,o){
   try{
     if(!sb||!navigator.onLine||!isSuper()||!id||id==="main")return;
-    const r=await _wt(sb.rpc("smartedu_update_school",{p_id:String(id),p_name:o.name||"",p_addr:o.addr||"",p_phone:o.phone||"",p_est:String(o.est||"")}),15000);
+    const sc=(S.schools||[]).find(x=>String(x.id)===String(id))||{},sub=sc.sub||{};
+    let r=await _wt(sb.rpc("smartedu_admin_upsert_school",{p_id:String(id),p_name:o.name||sc.name||"",p_addr:o.addr||sc.addr||"",p_phone:o.phone||sc.phone||"",p_est:String(o.est||sc.est||""),p_email:sc.email||"",p_logo:sc.logo||"",p_director:(sc.admin&&sc.admin.name)||"",p_syear:"",p_exp:sub.exp||"",p_inactive:sub.status==="inactive"}),25000);
     if(r.error){
-      if(!window._schPushWarned){window._schPushWarned=1;alert("প্রতিষ্ঠানের নাম এই ডিভাইসে বদলেছে, কিন্তু সার্ভারে আপডেট হয়নি: "+r.error.message+"\nতাই ওই প্রতিষ্ঠানের ইউজারের ফোনে পুরোনো নাম দেখাতে পারে। (Supabase-এ smartedu_update_school ফাংশন যোগ করুন)")}
+      const old=await _wt(sb.rpc("smartedu_update_school",{p_id:String(id),p_name:o.name||"",p_addr:o.addr||"",p_phone:o.phone||"",p_est:String(o.est||"")}),15000);
+      if(old.error&&!window._schPushWarned){window._schPushWarned=1;alert("প্রতিষ্ঠানের তথ্য সার্ভারে যায়নি: "+r.error.message+"\nতাই নতুন ডিভাইসে ইউজার এই প্রতিষ্ঠানের তথ্য পাবে না। Supabase-এ supabase_school_info_setup.sql চালান।")}
     }
   }catch(e){}
 }
 async function pullMySchool(){
   try{
     if(!sb||!navigator.onLine||!activeUser||isSuper()||ACT_SID==="main")return;
-    const b=await _wt(sb.rpc("smartedu_list_schools"),10000);
-    if(b.error||!Array.isArray(b.data))return;
-    const r=b.data.find(x=>String(x.id)===String(ACT_SID));
+    let r=null;
+    const a=await _wt(sb.rpc("smartedu_my_school_info"),10000);
+    if(!a.error)r=Array.isArray(a.data)?a.data[0]:a.data;
+    else{const b=await _wt(sb.rpc("smartedu_list_schools"),10000);if(!b.error&&Array.isArray(b.data))r=b.data.find(x=>String(x.id)===String(ACT_SID))}
     if(!r||!r.name)return;
-    const sc=S.school=S.school||{};
-    const srvSig=JSON.stringify([r.name,r.addr||"",r.phone||"",String(r.est||"")]);
+    const sc=S.school=S.school||{},srvSig=schSig(r);
     if(sc._srvSig===srvSig)return;
     sc.name=r.name;
-    if(r.addr!=null&&r.addr!=="")sc.addr=r.addr;
-    if(r.phone!=null&&r.phone!=="")sc.phone=r.phone;
-    if(r.est!=null&&String(r.est)!=="")sc.est=r.est;
-    sc._srvSig=srvSig;
+    [["addr","addr"],["phone","phone"],["est","est"],["email","email"],["director","director"],["year","syear"],["logo","logo"]].forEach(f=>{const v=r[f[1]];if(v!=null&&String(v)!=="")sc[f[0]]=v});
+    sc._srvSig=srvSig;sc._pushSig=schSig(sc);sc._init=1;
     save();
     if(unlocked)render();
   }catch(e){}
 }
+async function pushSchoolStats(){
+  try{
+    if(!sb||!navigator.onLine||!isSchoolAdmin()||ACT_SID==="main")return;
+    const t=schSt({main:1}),sig=JSON.stringify(t);
+    if(window._stSig===sig&&Date.now()-(window._stAt||0)<600000)return;
+    window._stSig=sig;window._stAt=Date.now();
+    await sb.rpc("smartedu_set_school_stats",{p_students:t.st,p_teachers:t.te,p_collect:t.col,p_due:t.dd});
+  }catch(e){}
+}
 async function syncMySchool(){
   try{
+    if(!sb||!navigator.onLine||!activeUser||isSuper()||ACT_SID==="main")return;
+    const sc=S.school=S.school||{};
+    // এই ডিভাইসে অ্যাডমিন প্রোফাইল বদলালে আগে সার্ভারে পাঠাও, তারপর সার্ভার থেকে নামাও
+    if(isSchoolAdmin()&&sc.name&&schSig(sc)!==sc._pushSig){
+      const r=await sb.rpc("smartedu_save_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||""),p_email:sc.email||"",p_logo:sc.logo||"",p_director:sc.director||"",p_syear:String(sc.year||"")});
+      if(!r.error&&r.data===true){sc._pushSig=sc._srvSig=schSig(sc)}
+      else if(r.error){
+        const up=await sb.rpc("smartedu_upsert_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||"")});
+        if(!up.error)sc._pushSig=schSig(sc);
+      }
+    }
     await pullMySchool();
-    if(!sb||!navigator.onLine||!activeUser||activeUser.role!=="admin"||isSuper()||ACT_SID==="main")return;
-    if(window._schSyncAt&&Date.now()-window._schSyncAt<600000)return;
-    const sc=S.school||{};if(!sc.name)return;
-    window._schSyncAt=Date.now();
-    const up=await sb.rpc("smartedu_upsert_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||"")});
-    if(!up.error)sc._srvSig=JSON.stringify([sc.name,sc.addr||"",sc.phone||"",String(sc.est||"")]);
+    pushSchoolStats();
   }catch(e){}
 }
 var recoveryMode=false;
@@ -1173,6 +1212,7 @@ async function refreshRemembered(){
     localStorage.setItem("smartEduRemember",JSON.stringify({id:u.id,identifier:u.identifier,role:u.role,sid:access.school_id||""}));
     applySessionSchool(access.school_id);
     await subFetchSrv();
+    try{await _wt(pullMySchool(),9000)}catch(_){}
     render();
     syncMySchool();snapSync();try{if(isSuper()&&ACT_SID==="main"){loadRemSch().then(()=>{try{render()}catch(_){}})}}catch(_){}
   }catch(e){}
@@ -1595,7 +1635,7 @@ function home(){
  const lg=S.log.slice(0,logAll?30:6),nt=S.notices.slice().reverse();
  const fl=(c,l,n,a)=>`<div class="lg2"><span><i style="background:${c}"></i>${l}</span><b style="${c=="#ef4444"?"color:var(--rd)":""}">${bn(n)} — ${money(a)}</b></div>`;
  return `
- <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">${ico("menu",24)}</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0;flex:1;text-align:center"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
+ <div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">${ico("menu",24)}</button><div style="display:flex;gap:8px;padding-right:34px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0;flex:1;text-align:center"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
  <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${clockHtml(d)}</div><small>📅 ${bn(fdt(d))} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d).split(", ")[0]}</small><small>${hijri(d).split(", ").slice(1).join(", ")}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>
  <div class="g2"><div class="st" style="background:linear-gradient(135deg,#3b82f6,#2563eb)"><span class="ic">👥</span><small>মোট শিক্ষার্থী</small><div>${bn(S.students.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#a855f7,#7c3aed)"><span class="ic">🎓</span><small>মোট শিক্ষক</small><div>${bn(S.teachers.length)}</div></div><div class="st" style="background:linear-gradient(135deg,#10b981,#059669)"><span class="ic">📅</span><small>আজ উপস্থিত</small><div>${bn(pr)}</div></div><div class="st" style="background:linear-gradient(135deg,#f43f5e,#e11d48)"><span class="ic">⚠️</span><small>আজ অনুপস্থিত</small><div>${bn(ab)}</div></div></div>
@@ -2356,7 +2396,7 @@ var pExAll=false,pNtAll=false,pNtOpen="",pq="",pSelId=null;
 try{pq=localStorage.getItem("smartEduPq")||""}catch(e){}
 function homeHero(){
   const sc=S.school,d=new Date(),nt=S.notices.slice().reverse();
-  return `<div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">${ico("menu",24)}</button><div style="display:flex;gap:12px;padding-right:56px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0;flex:1;text-align:center"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
+  return `<div class="hero"><button class="hmenu" onclick="go('more')" aria-label="আরও মেনু">${ico("menu",24)}</button><div style="display:flex;gap:8px;padding-right:34px"><div class="lg">${sc.logo?`<img src="${safeDataImage(sc.logo)}">`:"🕌"}</div><div style="min-width:0;flex:1;text-align:center"><h1>${esc(LANG=="en"&&sc.nameEn?sc.nameEn:sc.name)}</h1><small>📍 ${esc(sc.addr)}</small>${sc.est||sc.year?`<small>${sc.est?"স্থাপিত: "+esc(sc.est)+" ":""}${sc.year?" শিক্ষাবর্ষ: "+esc(sc.year):""}</small>`:""}${sc.director?`<small>পরিচালক: ${esc(sc.director)}</small>`:""}${sc.phone?`<small>ফোন: ${esc(sc.phone)}</small>`:""}</div></div>
  <div style="display:flex;justify-content:space-between;margin-top:12px;gap:8px"><div><small>এখন সময়</small><div class="clk" id="clk" style="margin-top:2px">${clockHtml(d)}</div><small>📅 ${bn(fdt(d))} ইং</small></div>${S.set.dates?`<div style="text-align:right"><small>🌙 ${hijri(d).split(", ")[0]}</small><small>${hijri(d).split(", ").slice(1).join(", ")}</small><small>প্রাঃ ${bnDate(d)}</small></div>`:""}</div>
  <div class="tick"><span class="live">● লাইভ</span><div style="flex:1;min-width:0;overflow:hidden">${(t=>`<span class="mq" style="animation-duration:${Math.max(8,Math.round(t.length*.15+6))}s">${esc(t)}</span>`)(S.set.bar||(nt.length?nt[0].title:"কোনো নোটিশ নেই!"))}</div></div></div>`;
 }
@@ -2561,7 +2601,7 @@ async function snapSync(manual){
       try{const r2=await snapRun(snapCfgSuper());changed=changed||r2.changedLocal;ok=ok&&r2.done}
       catch(e){console.warn("super registry sync failed",e)}
     }
-    if(ok){window._snapStatus={};if(manual)toast("✅ ক্লাউডে সিঙ্ক সম্পন্ন")}
+    if(ok){window._snapStatus={};if(manual)toast("✅ ক্লাউডে সিঙ্ক সম্পন্ন");try{syncMySchool()}catch(e){}}
     else window._snapStatus={err:"অন্যদের সাথে মেলানো যায়নি, একটু পরে আবার চেষ্টা হবে"};
     if(changed){
       const ae=document.activeElement,tg=ae&&ae.tagName||"";
@@ -2589,9 +2629,18 @@ function runGo(){
 setInterval(runGo,700);
 // তারিখের ঘর (input type=date) দিন/মাস/বছর ফরম্যাটে দেখানো
 function dfFmt(v){return v?bn(fdt(v)):(LANG=="en"?"dd/mm/yyyy":"দিন/মাস/বছর")}
+function fitHeroH(){
+  try{document.querySelectorAll(".hero h1").forEach(h=>{
+    h.style.fontSize="";let fs=19;
+    while(fs>11&&h.scrollHeight>h.clientHeight+1){fs-=.5;h.style.fontSize=fs+"px"}
+  })}catch(e){}
+}
+addEventListener("resize",()=>setTimeout(fitHeroH,60));
+addEventListener("load",()=>setTimeout(fitHeroH,200));
+try{if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>setTimeout(fitHeroH,50))}catch(e){}
 function dfEnh(){document.querySelectorAll('input[type="date"]').forEach(i=>{const t=dfFmt(i.value);if(i.getAttribute("data-fmt")!==t)i.setAttribute("data-fmt",t);if(i.hasAttribute("data-empty")===!!i.value){if(i.value)i.removeAttribute("data-empty");else i.setAttribute("data-empty","")}if(!i.hasAttribute("data-df"))i.setAttribute("data-df","1")})}
 ["input","change"].forEach(ev=>document.addEventListener(ev,e=>{if(e.target&&e.target.type==="date")dfEnh()},true));
-try{new MutationObserver(()=>{clearTimeout(window._dfT);window._dfT=setTimeout(dfEnh,30)}).observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
+try{new MutationObserver(()=>{clearTimeout(window._dfT);window._dfT=setTimeout(()=>{dfEnh();fitHeroH()},30)}).observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
 setInterval(dfEnh,1500);
 function snapNow(){snapSync(true);setTimeout(()=>{try{render()}catch(e){}},400)}
 function snapSoon(){clearTimeout(_snapT);_snapT=setTimeout(()=>snapSync(),8000)}
@@ -3794,8 +3843,27 @@ const schAll=()=>[{id:"main",main:1,name:S.school.name,logo:S.school.logo,email:
 const schOf=id=>schAll().find(x=>x.id==id);
 const kk=n=>n>=1000?"৳"+bn(+(n/1000).toFixed(n>=10000?0:1))+"k":money(n);
 const addMo=(b,m)=>{const d=new Date(b+"T00:00:00"),dy=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);d.setDate(Math.min(dy,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())};
-function schSt(sc){return sc.main?{st:S.students.length,te:S.teachers.length,col:S.fees.reduce((a,f)=>a+f.paid,0),dd:S.fees.reduce((a,f)=>a+due(f),0)}:{st:0,te:0,col:0,dd:0}}
-function schEx(sc){if(sc.main)return{t:"✓ অফলাইন (মেয়াদহীন)",ok:1};const b=sc.sub||{};if(b.status=="inactive")return{t:"নিষ্ক্রিয়",ok:0};return !b.exp||b.exp<today()?{t:"মেয়াদ শেষ",ok:0}:{t:"✓ মেয়াদ: "+bn(b.exp),ok:1}}
+function schSt(sc){
+  if(sc.main)return{st:S.students.length,te:S.teachers.length,col:S.fees.reduce((a,f)=>a+f.paid,0),dd:S.fees.reduce((a,f)=>a+due(f),0)};
+  const x=window._remStats&&window._remStats[String(sc.id)];
+  return x?{st:+x.st_students||0,te:+x.st_teachers||0,col:+x.st_collect||0,dd:+x.st_due||0}:{st:0,te:0,col:0,dd:0};
+}
+function schEx(sc){
+  if(sc.main)return{t:"✓ অফলাইন (মেয়াদহীন)",ok:1};
+  const r=window._remSch&&window._remSch[String(sc.id)];
+  if(r){
+    if(r.locked)return{t:"🔒 ব্লকড",ok:0};
+    const c=srvCalc(r);
+    if(c.k==="none")return{t:"মেয়াদ শেষ",ok:0};
+    return{t:(c.k==="trial"?"ফ্রি ট্রায়াল: ":"✓ মেয়াদ: ")+bn(c.end)+" ("+bn(subDays(c.end))+" দিন বাকি)",ok:1};
+  }
+  const b=sc.sub||{};if(b.status=="inactive")return{t:"নিষ্ক্রিয়",ok:0};
+  return !b.exp||b.exp<today()?{t:"মেয়াদ শেষ",ok:0}:{t:"✓ মেয়াদ: "+bn(b.exp),ok:1};
+}
+function schNoLocalH(sc){
+  const t=schSt(sc),has=window._remStats&&window._remStats[String(sc.id)];
+  return has?`<div class="hint">👥 শিক্ষার্থী ${bn(t.st)} জন · 🎓 শিক্ষক ${bn(t.te)} জন · 📈 সংগ্রহ ${money(t.col)}${t.dd>0?" · ⚠ বকেয়া "+money(t.dd):""}<br>নাম-পরিচয়ের বিস্তারিত তালিকা শুধু ওই প্রতিষ্ঠানের অ্যাডমিনের ডিভাইসে থাকে।</div>`:'<div class="hint">এই প্রতিষ্ঠানের শিক্ষক/শিক্ষার্থীর সংখ্যা এখনও আসেনি — প্রতিষ্ঠানের অ্যাডমিন অ্যাপে একবার লগইন করলে এখানে আসবে।</div>';
+}
 function stSch(){
  const all=schAll(),ss=all.map(schSt),act=all.filter(x=>schEx(x).ok).length,st=[["🏢","মোট স্কুল",all.length,"59,130,246","#2563eb"],["✔","সক্রিয়",act,"16,185,129","#059669"],["👥","মোট শিক্ষার্থী",ss.reduce((a,x)=>a+x.st,0),"99,102,241","#4f46e5"],["📈","মোট সংগ্রহ",kk(ss.reduce((a,x)=>a+x.col,0)),"16,185,129","#059669"]];
  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div><div style="font-size:20px;font-weight:700">সব স্কুল — Overview</div><div style="color:var(--mu);font-size:13px">Super Admin কেন্দ্রীয় ড্যাশবোর্ড</div></div></div><button class="btn" style="margin-bottom:12px" onclick="schForm()">＋ নতুন প্রতিষ্ঠান</button>
@@ -3803,7 +3871,7 @@ function stSch(){
 <input placeholder="🔍 স্কুলের নাম বা ইমেইল দিয়ে খুঁজুন..." value="${esc(scQ)}" oninput="scQ=this.value;scLst()" style="margin-top:12px"><select onchange="scSel=this.value;scLst()"><option value="">— স্কুল বাছাই করে শিক্ষক/শিক্ষার্থী দেখুন —</option>${all.map(x=>`<option value="${x.id}" ${scSel==x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select><div id="scl">${scLstH()}</div>`}
 function scLstH(){
  const k=scQ.trim().toLowerCase();let h="";
- if(scSel){const sc=schOf(scSel);if(sc){h+=`<div class="card"><h2>${esc(sc.name)}</h2>${sc.main?`<b style="font-size:13px">শিক্ষক (${bn(S.teachers.length)})</b><div style="font-size:13px;color:var(--mu);margin:4px 0 10px">${S.teachers.map(t=>esc(t.name)).join("، ")||"কেউ নেই"}</div><b style="font-size:13px">শিক্ষার্থী (${bn(S.students.length)})</b><div style="font-size:13px;color:var(--mu);margin-top:4px;max-height:160px;overflow:auto">${S.students.map(t=>esc(t.name)+" ("+esc(t.cls||"")+")").join("، ")||"কেউ নেই"}</div>`:'<div class="hint">এই প্রতিষ্ঠানের শিক্ষক/শিক্ষার্থীর তথ্য এই ডিভাইসে নেই। এখানে শুধু প্রোফাইল ও সাবস্ক্রিপশন রেকর্ড রাখা হয়।</div>'}</div>`}}
+ if(scSel){const sc=schOf(scSel);if(sc){h+=`<div class="card"><h2>${esc(sc.name)}</h2>${sc.main?`<b style="font-size:13px">শিক্ষক (${bn(S.teachers.length)})</b><div style="font-size:13px;color:var(--mu);margin:4px 0 10px">${S.teachers.map(t=>esc(t.name)).join("، ")||"কেউ নেই"}</div><b style="font-size:13px">শিক্ষার্থী (${bn(S.students.length)})</b><div style="font-size:13px;color:var(--mu);margin-top:4px;max-height:160px;overflow:auto">${S.students.map(t=>esc(t.name)+" ("+esc(t.cls||"")+")").join("، ")||"কেউ নেই"}</div>`:schNoLocalH(sc)}</div>`}}
  h+=schAll().filter(x=>!k||(x.name+(x.email||"")).toLowerCase().includes(k)).map(sc=>{const t=schSt(sc),e=schEx(sc);
   return `<div class="card" style="border-width:2px"><div style="display:flex;gap:10px;align-items:center"><div class="av" style="width:44px;height:44px;border-radius:10px;background:#4f6df5;color:#fff;font-size:22px">${sc.logo?`<img style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:10px" src="${safeDataImage(sc.logo)}">`:"🏢"}</div><div style="min-width:0"><b>${esc(sc.name)}</b><div style="font-size:12px;color:var(--mu);word-break:break-all">${esc(sc.email||"")}</div><div style="font-size:12px;color:var(--mu)">${esc(sc.addr||"")}</div></div></div>
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0"><div class="st-cn" style="padding:8px"><b style="font-size:18px">${bn(t.st)}</b><small>শিক্ষার্থী</small></div><div class="st-cn" style="padding:8px"><b style="font-size:18px">${bn(t.te)}</b><small>শিক্ষক</small></div><div class="st-cn" style="padding:8px"><b style="font-size:18px;color:#059669">${kk(t.col)}</b><small>সংগ্রহ</small></div></div>
@@ -3829,8 +3897,8 @@ function schSave(id){const g=i=>$(i).value.trim(),n=g("sf_n");if(!n){alert("প�
  const ad={name:g("sf_an"),email:g("sf_ae"),phone:g("sf_ap")},m=+$("sf_m").value||0;let sc=id?S.schools.find(x=>x.id==id):null;
  if(!sc){sc={id:uid(),sub:{}};S.schools.push(sc);if(ad.name||ad.email)S.invUsers.push({id:uid(),name:ad.name,email:ad.email,phone:ad.phone,roles:["অ্যাডমিন"],sid:sc.id,blocked:0,perms:defPerm("অ্যাডমিন"),inv:today()})}
  Object.assign(sc,{name:n,addr:g("sf_a"),phone:g("sf_p"),est:g("sf_e"),logo:schLg,admin:ad,email:ad.email||sc.email||""});
- pushSchoolToServer(sc.id,{name:sc.name,addr:sc.addr,phone:sc.phone,est:sc.est});
  sc.sub={plan:$("sf_pl").value,status:$("sf_s").value,exp:m?addMo(sc.sub.exp&&sc.sub.exp>today()?sc.sub.exp:today(),m):(sc.sub.exp||"")};
+ pushSchoolToServer(sc.id,{name:sc.name,addr:sc.addr,phone:sc.phone,est:sc.est});
  save();closeM();render()}
 function schDel(id){if(!confirm("এই প্রতিষ্ঠানের রেকর্ড মুছবেন?"))return;S.schools=S.schools.filter(x=>x.id!=id);rmSchIdx(id);S.invUsers.forEach(u=>{if(u.sid==id)u.sid=""});save();closeM();render()}
 function schSub(id){if(id=="main"){tab="more";sub="set";stT=5;render();return}schForm(id)}
