@@ -1,5 +1,5 @@
 // অফলাইন সাপোর্ট: আগে ইন্টারনেট থেকে নতুন ফাইল নেয়, না পেলে সেভ করা কপি দেখায়
-const CACHE = "smart-edu-v4";
+const CACHE = "smart-edu-v5";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -15,14 +15,18 @@ self.addEventListener("fetch", e => {
   if (r.method !== "GET") return;
   // Supabase API-র অনুরোধ (auth/সেশন) ক্যাশ বা হস্তক্ষেপ না করে সরাসরি যেতে দেওয়া হয়
   if (new URL(r.url).hostname.endsWith(".supabase.co")) return;
+  // পেইজ খোলার অনুরোধ (শর্টকাটের ?go=... সহ) সব একই কপি (index.html) হিসেবে সংরক্ষিত ও পরিবেশিত হয়,
+  // তাই অফলাইনেও শর্টকাট কাজ করে এবং আলাদা আলাদা URL-এর বাড়তি কপি জমে না
+  const nav = r.mode === "navigate";
+  const key = nav ? "./index.html" : r;
   e.respondWith(
     fetch(r).then(res => {
       if (res && (res.ok || res.type === "opaque")) {
         const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(r, copy)).catch(() => {});
+        caches.open(CACHE).then(c => c.put(key, copy)).catch(() => {});
       }
       return res;
-    }).catch(() => caches.match(r).then(m => m || (r.mode === "navigate" ? caches.match("./index.html") : Response.error())))
+    }).catch(() => caches.match(key).then(m => m || (nav ? caches.match("./") : Response.error())))
   );
 });
 
