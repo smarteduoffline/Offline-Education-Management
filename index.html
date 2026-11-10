@@ -2569,6 +2569,18 @@ async function snapSync(manual){
     if(manual)toast("সিঙ্ক ব্যর্থ: "+window._snapStatus.err);
   }finally{_snapBusy=false}
 }
+// ম্যানিফেস্ট শর্টকাট: অ্যাপ আইকন চেপে ধরলে সরাসরি অংশ খোলে (?go=att | stu | fee | dues)
+let _go="";
+try{const _u=new URL(location.href);_go=_u.searchParams.get("go")||"";if(_go){_u.searchParams.delete("go");history.replaceState(null,"",_u.pathname+_u.search+_u.hash)}}catch(e){}
+function runGo(){
+  if(!_go||!unlocked||!activeUser)return;
+  const g=_go;_go="";
+  try{
+    if(g==="dues"){nav("fee");setTimeout(()=>{try{fbOpen()}catch(e){}},200)}
+    else if(g==="att"||g==="stu"||g==="fee")nav(g);
+  }catch(e){}
+}
+setInterval(runGo,700);
 function snapNow(){snapSync(true);setTimeout(()=>{try{render()}catch(e){}},400)}
 function snapSoon(){clearTimeout(_snapT);_snapT=setTimeout(()=>snapSync(),8000)}
 addEventListener("online",()=>setTimeout(()=>snapSync(),1500));
