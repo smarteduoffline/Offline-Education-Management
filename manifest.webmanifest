@@ -2,39 +2,22 @@
   "id": "./",
   "name": "স্মার্ট এডুকেশন ম্যানেজমেন্ট",
   "short_name": "স্মার্ট এডু",
-  "description": "অফলাইন স্মার্ট প্রতিষ্ঠান পরিচালনা অ্যাপ",
+  "description": "অফলাইন স্মার্ট প্রতিষ্ঠান পরিচালনা অ্যাপ — শিক্ষার্থী, উপস্থিতি, ফি, ফলাফল ও হিসাব এক জায়গায়",
   "lang": "bn",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#3b5bdb",
+  "theme_color": "#d9f3e4",
+  "categories": ["education", "productivity", "business"],
+  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
