@@ -1775,16 +1775,15 @@ const LIBS={};
 function loadLib(u){return LIBS[u]||(LIBS[u]=new Promise((ok,no)=>{const e=document.createElement("script");e.src=u;e.onload=ok;e.onerror=()=>{delete LIBS[u];no(new Error("load"))};document.head.appendChild(e);setTimeout(()=>{delete LIBS[u];no(new Error("timeout"))},15000)}))}
 function toast(m,keep){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.style.cssText="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:85%;text-align:center";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._h);if(!keep)t._h=setTimeout(()=>{t.style.display="none"},3500)}
 function toastOff(){const t=$("toast");if(t)t.style.display="none"}
-async function printDoc(name,body){if(LANG=="en")body=trS(body);
- if(!navigator.onLine){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
- const fn=name+"-"+today()+".pdf";let wrap=null;window._pdfBusy=true;document.documentElement.style.zoom="";
- toast("⏳ PDF তৈরি হচ্ছে…",1);
+async function pdfRender(body,bw){
+ let wrap=null;window._pdfBusy=true;document.documentElement.style.zoom="";
  try{
-  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
-  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
   wrap=document.createElement("div");
   wrap.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#111;padding:28px;box-sizing:border-box;font-family:sans-serif;--bg:#e2f6eb;--card:#fff;--tx:#111;--mu:#555;--ln:#ddd;--pri:#16a34a";
-  wrap.innerHTML='<style>table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left;color:#111}.np{display:none}</style>'+body;
+  /* সাদা-কালো: ডিজাইন একই, শুধু গাঢ় ব্যাকগ্রাউন্ড সরে কাগজের রঙ (সাদা) ও লেখা কালো হয় */
+  const bwCss=bw?'.bwm,.bwm *{background:#fff!important;background-image:none!important;color:#111!important;-webkit-text-fill-color:#111!important;border-color:#555!important;box-shadow:none!important;text-shadow:none!important}.bwm img{filter:grayscale(1)!important}':'';
+  if(bw)wrap.className="bwm";
+  wrap.innerHTML='<style>table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left;color:#111}.np{display:none}'+bwCss+'</style>'+body;
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,400));
   await Promise.all([...wrap.querySelectorAll("img")].map(i=>(i.decode?i.decode():Promise.resolve()).catch(()=>{})));
@@ -1802,17 +1801,29 @@ async function printDoc(name,body){if(LANG=="en")body=trS(body);
    const tg=tc.getContext("2d");tg.fillStyle="#fff";tg.fillRect(0,0,tc.width,tc.height);tg.drawImage(cv,0,y,cv.width,end-y,0,0,tw,(end-y)*tw/cv.width);
    pages.push({y,end,th:tc.toDataURL("image/jpeg",.7)});y=end;
   }
+  return {cv,pages,PW,PH};
+ }finally{window._pdfBusy=false;if(wrap){wrap.remove();fitMobileZoom()}}
+}
+async function printDoc(name,body){if(LANG=="en")body=trS(body);
+ if(!navigator.onLine){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
+ const fn=name+"-"+today()+".pdf";
+ toast("⏳ PDF তৈরি হচ্ছে…",1);
+ try{
+  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const col=await pdfRender(body,false);
   toastOff();
-  window._pdfJob={fn,cv,pages,PW,PH,gray:false,sel:pages.map(()=>true)};
+  window._pdfJob={fn,body,col,bw:null,gray:false,busy:false,sel:col.pages.map(()=>true)};
   pdfOpts();
- }catch(e){window._pdfBusy=false;fitMobileZoom();if(wrap)wrap.remove();toast("PDF তৈরি করা যায়নি — প্রিন্টযোগ্য ফাইল শেয়ার হচ্ছে");htmlShare(name,body)}
+ }catch(e){window._pdfBusy=false;fitMobileZoom();toast("PDF তৈরি করা যায়নি — প্রিন্টযোগ্য ফাইল শেয়ার হচ্ছে");htmlShare(name,body)}
 }
 /* ---- PDF অপশন: রঙিন / সাদা-কালো + পেইজ নির্বাচন ---- */
+const pdfSet=J=>J.gray&&J.bw?J.bw:J.col;
 function pdfOpts(){
  const J=window._pdfJob;if(!J)return;
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:10px">PDF অপশন</h2>
  <label class="lb">রঙ</label><div class="seg"><button id="pdfC0" onclick="pdfGray(0)">🎨 রঙিন</button><button id="pdfC1" onclick="pdfGray(1)">⚫ সাদা-কালো</button></div>
- <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label class="lb" style="margin:0">পেইজ — মোট ${bn(J.pages.length)} টি</label><span style="display:flex;gap:6px"><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(1)">সব</button><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(0)">কিছুই না</button></span></div>
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label class="lb" style="margin:0">পেইজ — মোট ${bn(J.col.pages.length)} টি</label><span style="display:flex;gap:6px"><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(1)">সব</button><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(0)">কিছুই না</button></span></div>
  <div id="pdfPg" style="display:flex;gap:8px;overflow-x:auto;padding:10px 2px"></div>
  <div class="bt"><button class="btn o" onclick="pdfCancel()">বাতিল</button><button class="btn" id="pdfGo" onclick="pdfGo()">⬇ PDF তৈরি করুন</button></div>`);
  $("mt").onclick=null;pdfDraw();
@@ -1820,28 +1831,39 @@ function pdfOpts(){
 function pdfDraw(){
  const J=window._pdfJob;if(!J)return;
  const c0=$("pdfC0"),c1=$("pdfC1");if(c0)c0.className=J.gray?"":"on";if(c1)c1.className=J.gray?"on":"";
- const box=$("pdfPg");
- if(box)box.innerHTML=J.pages.map((p,i)=>`<div class="pgc ${J.sel[i]?"on":""}" onclick="pdfTog(${i})">${J.sel[i]?"<i>✓</i>":""}<img src="${p.th}" style="filter:${J.gray?"grayscale(1)":"none"}"><b>${bn(i+1)}</b></div>`).join("");
+ const A=pdfSet(J),box=$("pdfPg");
+ if(box)box.innerHTML=A.pages.map((p,i)=>`<div class="pgc ${J.sel[i]?"on":""}" onclick="pdfTog(${i})">${J.sel[i]?"<i>✓</i>":""}<img src="${p.th}"><b>${bn(i+1)}</b></div>`).join("");
  const n=J.sel.filter(Boolean).length,go=$("pdfGo");
- if(go){go.disabled=!n;go.style.opacity=n?"1":".5";go.textContent="⬇ PDF তৈরি করুন ("+bn(n)+" পেইজ)"}
+ if(go){go.disabled=!n||J.busy;go.style.opacity=(n&&!J.busy)?"1":".5";go.textContent=J.busy?"⏳ অপেক্ষা করুন…":"⬇ PDF তৈরি করুন ("+bn(n)+" পেইজ)"}
 }
-function pdfGray(g){const J=window._pdfJob;if(!J)return;J.gray=!!g;pdfDraw()}
+async function pdfGray(g){
+ const J=window._pdfJob;if(!J||J.busy)return;
+ if(!g){J.gray=false;pdfDraw();return}
+ if(!J.bw){
+  J.busy=true;J.gray=true;pdfDraw();
+  try{J.bw=await pdfRender(J.body,true);if(J.bw.pages.length!=J.sel.length)J.sel=J.bw.pages.map(()=>true)}
+  catch(e){J.gray=false;toast("সাদা-কালো তৈরি করা যায়নি")}
+  J.busy=false;
+  if(window._pdfJob!==J)return;
+ }else J.gray=true;
+ pdfDraw();
+}
 function pdfTog(i){const J=window._pdfJob;if(!J)return;J.sel[i]=!J.sel[i];pdfDraw()}
-function pdfAll(on){const J=window._pdfJob;if(!J)return;J.sel=J.pages.map(()=>!!on);pdfDraw()}
+function pdfAll(on){const J=window._pdfJob;if(!J)return;J.sel=J.sel.map(()=>!!on);pdfDraw()}
 function pdfCancel(){window._pdfJob=null;closeM()}
 async function pdfGo(){
- const J=window._pdfJob;if(!J||!J.sel.some(Boolean))return;
+ const J=window._pdfJob;if(!J||J.busy||!J.sel.some(Boolean))return;
+ const A=pdfSet(J);
  closeM();toast("⏳ PDF তৈরি হচ্ছে…",1);
  try{
   await new Promise(r=>setTimeout(r,60));
   const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:"a4"});let first=true;
-  for(let i=0;i<J.pages.length;i++){
+  for(let i=0;i<A.pages.length;i++){
    if(!J.sel[i])continue;
-   const {y,end}=J.pages[i],cv=J.cv,pc=document.createElement("canvas");pc.width=cv.width;pc.height=Math.ceil(end-y);
+   const {y,end}=A.pages[i],cv=A.cv,pc=document.createElement("canvas");pc.width=cv.width;pc.height=Math.ceil(end-y);
    const g=pc.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,pc.width,pc.height);g.drawImage(cv,0,y,cv.width,end-y,0,0,cv.width,end-y);
-   if(J.gray){const d=g.getImageData(0,0,pc.width,pc.height),a=d.data;for(let k=0;k<a.length;k+=4){const l=.299*a[k]+.587*a[k+1]+.114*a[k+2];a[k]=a[k+1]=a[k+2]=l}g.putImageData(d,0,0)}
    if(!first)pdf.addPage();first=false;
-   pdf.addImage(pc.toDataURL("image/jpeg",.92),"JPEG",0,0,J.PW,(end-y)*J.PW/cv.width);
+   pdf.addImage(pc.toDataURL("image/jpeg",.92),"JPEG",0,0,A.PW,(end-y)*A.PW/cv.width);
    await new Promise(r=>setTimeout(r,0));
   }
   const fn=J.fn;window._pdfJob=null;toastOff();await savePdf(pdf,fn);
@@ -1871,9 +1893,12 @@ async function savePdf(pdf,fn){
 }
 async function shareBlob(){const f=new File([window._pdfBlob],window._pdfName,{type:"application/pdf"});try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:window._pdfName});return}alert("এই ডিভাইসে শেয়ার সমর্থিত নয়। ডাউনলোড বাটন ব্যবহার করুন।")}catch(e){if(e&&e.name!="AbortError")alert("শেয়ার করা যায়নি: "+e.message)}}
 async function sharePdf(){try{await Capacitor.Plugins.Share.share({url:window._pdfUri,dialogTitle:"PDF খুলুন / শেয়ার করুন"})}catch(e){if(!(e&&/cancel/i.test(e.message||"")))alert("ফাইলটি Files অ্যাপের Documents/MadrasaApp ফোল্ডারে আছে")}}
+const schHdr=t=>{
+ const sc=S.school,G="#1b6b34",lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:52px;height:52px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:24px">🕌</div>`;
+ return `<div style="border:2px solid ${G};border-radius:10px;overflow:hidden;margin-bottom:10px"><div style="background:${G};color:#fff;text-align:center;padding:10px 12px 12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px">${lg}<div><div style="font-size:19px;font-weight:700">${esc(sc.name)}</div><div style="font-size:12px;color:#ffd54a;font-weight:700">${esc(sc.nameEn||"")}</div></div>${lg}</div><div style="font-size:11px;margin-top:4px">${esc(sc.addr||"")}</div><div style="display:inline-block;margin-top:8px;background:#fff7cc;color:${G};border:1px solid #f5c518;border-radius:20px;padding:3px 14px;font-size:12px;font-weight:700">${t}</div></div><div style="height:4px;background:#f5c518"></div></div>`};
 function stuPdf(){
  const l=targets().slice().sort(byRollCls),d=new Date();
- printDoc("students-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}.ptb th{color:#666;font-weight:500}</style><h2 style="text-align:center;color:#1d4ed8;margin:6px 0">শিক্ষার্থী ব্যবস্থাপনা</h2><div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · ${esc(S.school.name)} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","রোল","শ্রেণি","শাখা","লিঙ্গ","অভিভাবক","মোবাইল","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.roll)}</td><td>${esc(s.cls)}</td><td>${esc(s.branch||"")}</td><td>${esc(s.gender||"")}</td><td>${esc(s.guardian||"")}</td><td>${esc(s.phone||"")}</td><td>${esc(s.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
+ printDoc("students-list",`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:11px;padding:5px 5px}.ptb th{color:#666;font-weight:500}</style>${schHdr("শিক্ষার্থী ব্যবস্থাপনা")}<div style="text-align:center;font-size:11px;color:#555;margin-bottom:10px">তারিখ: ${bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear())} · মোট ${bn(l.length)} জন</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${["নাম","রোল","শ্রেণি","শাখা","লিঙ্গ","অভিভাবক","মোবাইল","ঠিকানা","অবস্থা"].map(h=>`<th>${h}</th>`).join("")}</tr>${l.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.roll)}</td><td>${esc(s.cls)}</td><td>${esc(s.branch||"")}</td><td>${esc(s.gender||"")}</td><td>${esc(s.guardian||"")}</td><td>${esc(s.phone||"")}</td><td>${esc(s.addr||"")}</td><td>${esc(s.status||"সক্রিয়")}</td></tr>`).join("")}</table>`);
 }
 let profId="",profTab="info",txY=new Date().getFullYear(),txP=1,txM=true,arS={},cardCtx={},mctx={ids:[],sel:{},done:{},txt:""};
 const MT="প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর বিষয়ে একটি গুরুত্বপূর্ণ তথ্য জানাতে চাই।\n\nধন্যবাদ\n";
