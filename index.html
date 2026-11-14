@@ -376,79 +376,6 @@ try {
   console.error("Supabase initialization failed:", e);
 }
   
-async function testSupabaseSignup() {
-  if (!sb) {
-    alert("Supabase সংযোগ তৈরি হয়নি। URL ও Publishable Key পরীক্ষা করুন।");
-    return;
-  }
-
-  const email = prompt("আপনার ইমেইল ঠিকানা দিন:");
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-    alert("সঠিক ইমেইল ঠিকানা দিন।");
-    return;
-  }
-
-  const password = prompt("পরীক্ষার জন্য নতুন পাসওয়ার্ড দিন (কমপক্ষে ৬ অক্ষর):");
-  if (!password || password.length < 6) {
-    alert("কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড দিন।");
-    return;
-  }
-
-  const password2 = prompt("পাসওয়ার্ডটি আবার লিখুন (নিশ্চিত করতে):");
-  if (password2 !== password) {
-    alert("দুইবারের পাসওয়ার্ড মেলেনি। আবার চেষ্টা করুন।");
-    return;
-  }
-
-  try {
-    const { data, error } = await sb.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        emailRedirectTo:
-          "https://smarteduoffline.github.io/Offline-Education-Management/"
-      }
-    });
-
-    if (error) throw error;
-
-    if (data.session) {
-      alert("Supabase অ্যাকাউন্ট তৈরি হয়েছে এবং লগইন সম্পন্ন হয়েছে।");
-    } else {
-      alert("নিবন্ধনের অনুরোধ সফল। ইমেইল Inbox ও Spam ফোল্ডার পরীক্ষা করুন।");
-    }
-  } catch (e) {
-    alert("নিবন্ধন ব্যর্থ: " + e.message);
-  }
-}
-
-async function testSupabaseLogin() {
-  const email = prompt("নিবন্ধিত ইমেইল লিখুন:");
-  if (!email) return;
-
-  const password = prompt("Supabase পাসওয়ার্ড লিখুন:");
-  if (!password) return;
-
-  if (!sb) {
-    alert("Supabase সংযোগ তৈরি হয়নি।");
-    return;
-  }
-
-  try {
-    const { data, error } = await sb.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password: password
-    });
-
-    if (error) throw error;
-
-    if (data.user) {
-      alert("Supabase লগইন সফল! এখন অ্যাপের ডেটা নিরাপদভাবে যুক্ত করার পরের ধাপ করতে হবে।");
-    }
-  } catch (error) {
-    alert("লগইন ব্যর্থ: " + error.message);
-  }
-}
   
 const MAIN_KEY="smart-edu-v1";
 const ACT_SID=localStorage.getItem("smartEduActiveSid")||"main";
@@ -534,6 +461,7 @@ const fdt=d=>{if(!d)return "";if(d instanceof Date)return String(d.getDate()).pa
 const bn=n=>{let t=String(n);if(/^\d{4}-\d{2}-\d{2}$/.test(t))t=fdt(t);return LANG=="en"?t:t.replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d])};
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const jsq=s=>esc(String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r?\n/g,"\\n"));
 const safeUrl=(v,types=["http:","https:","mailto:","tel:","sms:","data:"])=>{try{const u=new URL(String(v||""),location.href);return types.includes(u.protocol)?u.href:""}catch(_){return ""}};
 const safeDataImage=v=>{const x=String(v||"");return /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/i.test(x)&&x.length<=8*1024*1024?x:""};
 const safeImageSrc=v=>safeDataImage(v);
@@ -2027,9 +1955,9 @@ function resultsM(id,key){
  modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">🎖 ${esc(x.name)} — ফলাফল প্রোফাইল</h2><div class="card" style="background:#e6f7ee;display:flex;gap:12px;align-items:center;padding:12px">${avt(x,48)}<div><b style="color:#1d2433">${esc(x.name)}</b><small style="color:#6b7385">${esc(x.cls)} | রোল: ${esc(x.roll)}</small></div></div>`
  +(g?`<select onchange="resultsM('${id}',this.value)">${gs.map(v=>`<option value="${esc(v.key)}" ${v.key==g.key?"selected":""}>${esc(v.name)} — ${esc(v.cls)}</option>`).join("")}</select>
  <div class="card ov" style="padding:0"><table class="tb"><tr><th ${th}>বিষয়</th><th ${th}>পূর্ণমান</th><th ${th}>প্রাপ্ত</th><th ${th}>%</th><th ${th}>গ্রেড</th><th ${th}>GPA</th><th ${th}></th></tr>
- ${r.rows.map(q=>`<tr><td>${esc(q.p.subject)}</td><td>${bn(q.f)}</td><td style="${q.fail?"color:var(--rd)":""}">${bn(q.g)}</td><td>${bn(q.pc.toFixed(0))}%</td><td>${q.gr}</td><td>${bn(q.gp.toFixed(2))}</td><td onclick="delMark('${id}','${q.p.id}','${esc(g.key)}')" style="color:var(--rd)">✕</td></tr>`).join("")||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:18px">কোনো ফলাফল নেই</td></tr>'}
+ ${r.rows.map(q=>`<tr><td>${esc(q.p.subject)}</td><td>${bn(q.f)}</td><td style="${q.fail?"color:var(--rd)":""}">${bn(q.g)}</td><td>${bn(q.pc.toFixed(0))}%</td><td>${q.gr}</td><td>${bn(q.gp.toFixed(2))}</td><td onclick="delMark('${id}','${q.p.id}','${jsq(g.key)}')" style="color:var(--rd)">✕</td></tr>`).join("")||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:18px">কোনো ফলাফল নেই</td></tr>'}
  ${r.n?`<tr style="font-weight:700"><td>মোট</td><td>${bn(r.F)}</td><td>${bn(r.T)}</td><td>${bn(r.pc.toFixed(0))}%</td><td>${r.gr}</td><td>${bn(r.gpa.toFixed(2))}</td><td></td></tr>`:""}</table></div>
- <button class="btn o" style="width:100%" onclick="markAdd('${id}','${esc(g.key)}')">＋ নতুন নম্বর যুক্ত করুন</button>`:'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই। আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।</div>')
+ <button class="btn o" style="width:100%" onclick="markAdd('${id}','${jsq(g.key)}')">＋ নতুন নম্বর যুক্ত করুন</button>`:'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই। আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।</div>')
  +`<button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
 }
 function markAdd(id,key){
@@ -2178,14 +2106,14 @@ function profilePage(){
  const TB=[["info","ব্যক্তিগত তথ্য"],["res","ফলাফল"],["att","উপস্থিতি"],["log","যোগাযোগ লগ"],["txn","লেনদেন"]];
  let c="";
  if(profTab=="info")c=`<div class="card"><h2>👤 ব্যক্তিগত তথ্য</h2>${kv("পূর্ণ নাম (বাংলা)",x.name)}${kv("পূর্ণ নাম (ইংরেজি)",x.nameEn)}${kv("লিঙ্গ",x.gender)}${kv("জন্ম তারিখ",x.dob?bn(fdt(x.dob)):"")}${kv("রক্তের গ্রুপ",x.blood)}${kv("ভর্তির তারিখ",x.admDate?bn(fdt(x.admDate)):"")}${kv("মাসিক বেতন",x.monthlyFee?money(x.monthlyFee):"")}</div><div class="card"><h2>📞 অভিভাবক ও যোগাযোগ</h2>${kv("অভিভাবকের নাম",x.guardian)}${kv("মোবাইল নম্বর",x.phone)}${kv("ঠিকানা",x.addr)}${kv("শ্রেণি",x.cls)}${kv("শাখা",x.branch)}${kv("রোল নম্বর",x.roll)}<div class="top" style="margin:10px 0 0"><button class="btn g s" onclick="msgM(['${x.id}'])">💬 অভিভাবককে বার্তা</button><button class="btn o s" onclick="stuForm('${x.id}')">✏️ সম্পাদনা</button></div></div>`;
- else if(profTab=="res")c=`<div class="card"><h2>ফলাফল</h2>${exGroups(e=>e.cls==x.cls).map(g=>{const r=stuRes(x,g.papers);return `<div class="row" onclick="resultsM('${x.id}','${esc(g.key)}')"><div class="f"><b>${esc(g.name)}</b><small>${r.n?bn(r.n)+" বিষয় · মোট "+bn(r.T)+"/"+bn(r.F)+" · GPA "+bn(r.gpa.toFixed(2)):"কোনো ফলাফল নেই"}</small></div><span class="lk">খুলুন ›</span></div>`}).join("")||'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই</div>'}</div>`;
+ else if(profTab=="res")c=`<div class="card"><h2>ফলাফল</h2>${exGroups(e=>e.cls==x.cls).map(g=>{const r=stuRes(x,g.papers);return `<div class="row" onclick="resultsM('${x.id}','${jsq(g.key)}')"><div class="f"><b>${esc(g.name)}</b><small>${r.n?bn(r.n)+" বিষয় · মোট "+bn(r.T)+"/"+bn(r.F)+" · GPA "+bn(r.gpa.toFixed(2)):"কোনো ফলাফল নেই"}</small></div><span class="lk">খুলুন ›</span></div>`}).join("")||'<div class="em">এই শ্রেণির কোনো পরীক্ষা নেই</div>'}</div>`;
  else if(profTab=="att")c=`<div class="card ov" style="padding:6px"><table class="tb"><tr><th>মাস</th><th>উপ.</th><th>অনু.</th><th>বিল.</th><th>ছুটি</th><th>%</th></tr>${MN.map((m,i)=>{const k=cnt(x.id,mk(Y,i)),p=pctOf([x.id],mk(Y,i));return `<tr><td>${m}</td><td>${bn(k.p)}</td><td>${bn(k.a)}</td><td>${bn(k.l)}</td><td>${bn(k.h)}</td><td>${p==null?"—":bn(p)+"%"}</td></tr>`}).join("")}</table></div>`;
  else if(profTab=="log")c=`<div class="card"><h2>যোগাযোগ লগ</h2>${logs.map(l=>{const t=new Date(l.t);return `<div class="row" style="align-items:flex-start"><span class="pl ${l.ch=="wa"?"g":"b"}">${l.ch=="wa"?"WhatsApp":"SMS"}</span><div class="f" style="font-size:13px;white-space:pre-wrap">${esc(l.tx)}<small>${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div></div>`}).join("")||'<div class="em">কোনো বার্তা পাঠানো হয়নি</div>'}</div>`;
  else{txM=false;c=txnBody(x.id,"render()")}
  return `<div class="lk" style="margin-bottom:10px" onclick="profId='';render()">← শিক্ষার্থী তালিকায় ফিরুন</div>
  <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${S.school.logo?`<img class="av" style="width:30px;height:30px" src="${safeImageSrc(S.school.logo)}">`:"🕌"}</span>${esc(S.school.name)}</div>
  <div style="padding:0 14px 14px"><div style="margin-top:-30px;display:inline-block;border:3px solid var(--card);border-radius:50%;line-height:0">${avt(x,64)}</div><div style="margin-top:6px"><b style="font-size:20px">${esc(x.name)}</b> ${pill(esc(x.status||"সক্রিয়"),(x.status||"সক্রিয়")=="সক্রিয়"?"g":"r")}</div><small style="color:var(--mu)">${esc(x.cls)} শ্রেণি${x.branch?" · "+esc(x.branch)+" শাখা":""} · রোল: ${esc(x.roll)}</small>
- <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},S.school.name)">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
+ <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},'${jsq(S.school.name)}')">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
  <div class="g2">${stat(bn(pr)+"%","উপস্থিতির হার",bn(pcn)+"/"+bn(ad.length)+" দিন","#16a34a")}${stat(bn(ab),"অনুপস্থিত দিন","মোট দিন থেকে","#e11d48")}${stat(bn(subj),"মোট বিষয়","ফলাফল প্রবেশিত","#16a34a")}${stat(bn(logs.length),"SMS লগ","পাঠানো বার্তা","#7c3aed")}</div>
  <div class="sub">${TB.map(t=>`<button class="${profTab==t[0]?"on":""}" onclick="profTab='${t[0]}';render()">${t[1]}</button>`).join("")}</div>${c}`;
 }
@@ -2402,7 +2330,7 @@ function rtOpen(c){const ex=S.routine.find(r=>r.cls==c);rtE=ex?JSON.parse(JSON.s
 function rtNew(){const cl=allCls();if(!cl.length){alert("আগে শিক্ষার্থী যোগ করুন");return}rtOpen(cl.find(c=>!S.routine.some(r=>r.cls==c))||cl[0])}
 const rtFilled=r=>Object.keys(r.cells).filter(k=>{const a=k.split("|");return r.days.includes(+a[0])&&+a[1]<=r.periods&&r.cells[k].s}).length;
 function rt(){
- return phdr("সাপ্তাহিক ক্লাস রুটিন","প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল তৈরি করুন")+(rtE?rtEditor():`<button class="btn" style="margin:12px 0" onclick="rtNew()">✎ নতুন / সম্পাদনা</button>`+(S.routine.map(r=>`<div class="hb"><div class="ic2">📅</div><div class="f"><b>${esc(r.cls)}</b><div style="margin-top:4px"><span class="pl b">${bn(r.periods)} পিরিয়ড</span><span class="pl g">${bn(r.days.length)} দিন</span><span class="pl">${bn(rtFilled(r))} টি</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><div class="rtm"><button class="ob" style="padding:8px 10px" onclick="event.stopPropagation();rtMn=rtMn=='${esc(r.cls)}'?'':'${esc(r.cls)}';render()">🗎 PDF ${rtMn==r.cls?"▴":"▾"}</button>${rtMn==r.cls?`<div class="mn"><button onclick="rtMn='';rtView('${esc(r.cls)}')">👁 ভিউ রুটিন</button><button onclick="rtMn='';rtPdf('${esc(r.cls)}')">⬇ ডাউনলোড PDF</button></div>`:""}</div><button class="ob" style="padding:8px 10px" onclick="rtOpen('${esc(r.cls)}')">✎ সম্পাদনা</button></div></div>`).join("")||'<div class="em">কোনো রুটিন নেই। "নতুন / সম্পাদনা" চাপুন।</div>'));
+ return phdr("সাপ্তাহিক ক্লাস রুটিন","প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল তৈরি করুন")+(rtE?rtEditor():`<button class="btn" style="margin:12px 0" onclick="rtNew()">✎ নতুন / সম্পাদনা</button>`+(S.routine.map(r=>`<div class="hb"><div class="ic2">📅</div><div class="f"><b>${esc(r.cls)}</b><div style="margin-top:4px"><span class="pl b">${bn(r.periods)} পিরিয়ড</span><span class="pl g">${bn(r.days.length)} দিন</span><span class="pl">${bn(rtFilled(r))} টি</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><div class="rtm"><button class="ob" style="padding:8px 10px" onclick="event.stopPropagation();rtMn=rtMn=='${jsq(r.cls)}'?'':'${jsq(r.cls)}';render()">🗎 PDF ${rtMn==r.cls?"▴":"▾"}</button>${rtMn==r.cls?`<div class="mn"><button onclick="rtMn='';rtView('${jsq(r.cls)}')">👁 ভিউ রুটিন</button><button onclick="rtMn='';rtPdf('${jsq(r.cls)}')">⬇ ডাউনলোড PDF</button></div>`:""}</div><button class="ob" style="padding:8px 10px" onclick="rtOpen('${jsq(r.cls)}')">✎ সম্পাদনা</button></div></div>`).join("")||'<div class="em">কোনো রুটিন নেই। "নতুন / সম্পাদনা" চাপুন।</div>'));
 }
 function rtEditor(){
  const e=rtE,tn=S.teachers.map(t=>t.name);
@@ -2426,7 +2354,7 @@ function rtPdf(c){
 }
 function rtView(c){
  const r=(rtE&&rtE.cls==c)?rtE:S.routine.find(x=>x.cls==c);if(!r){alert("রুটিন পাওয়া যায়নি");return}
- modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:4px">সাপ্তাহিক ক্লাস রুটিন</h2><div style="text-align:center;font-size:13px;color:var(--mu);margin-bottom:10px">শ্রেণি: <b style="color:var(--tx)">${esc(c)}</b></div><div class="ov" style="background:#fff;color:#111;border-radius:10px;padding:6px;border:1px solid var(--ln)"><style>.rtv td,.rtv th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px;text-align:center;color:#111}</style><div class="rtv">${rtTbl(r)}</div></div><div class="g2" style="margin:10px 0 0"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="closeM();rtPdf('${esc(c)}')">⬇ ডাউনলোড PDF</button></div>`);
+ modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:4px">সাপ্তাহিক ক্লাস রুটিন</h2><div style="text-align:center;font-size:13px;color:var(--mu);margin-bottom:10px">শ্রেণি: <b style="color:var(--tx)">${esc(c)}</b></div><div class="ov" style="background:#fff;color:#111;border-radius:10px;padding:6px;border:1px solid var(--ln)"><style>.rtv td,.rtv th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px;text-align:center;color:#111}</style><div class="rtv">${rtTbl(r)}</div></div><div class="g2" style="margin:10px 0 0"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="closeM();rtPdf('${jsq(c)}')">⬇ ডাউনলোড PDF</button></div>`);
 }
 
 /* ---- events ---- */
@@ -2512,7 +2440,7 @@ function pdfFile(f){if(!f)return;if(f.size>1048576){alert("PDF ১ MB-এর ব
 function bk(){
  const cl=[...new Set(S.tbooks.map(b=>b.cls).concat(tbf().map(f=>f.cls)))].filter(Boolean),l=S.tbooks.filter(b=>!bkCls||b.cls==bkCls);
  return phdr("শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" onclick="bkForm()">＋ নতুন পাঠ্যবই</button><button class="ob" onclick="tbfForm()">📎 তালিকা আপলোড</button><button class="ob" onclick="bkPdf()">🗎 PDF</button></div>
- <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px"><button class="chip ${bkCls?"":"on"}" onclick="bkCls='';render()">সব (${bn(S.tbooks.length)})</button>${cl.map(c=>`<button class="chip ${bkCls==c?"on":""}" onclick="bkCls='${esc(c)}';render()">${esc(c)} (${bn(S.tbooks.filter(b=>b.cls==c).length)})</button>`).join("")}</div>`
+ <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px"><button class="chip ${bkCls?"":"on"}" onclick="bkCls='';render()">সব (${bn(S.tbooks.length)})</button>${cl.map(c=>`<button class="chip ${bkCls==c?"on":""}" onclick="bkCls='${jsq(c)}';render()">${esc(c)} (${bn(S.tbooks.filter(b=>b.cls==c).length)})</button>`).join("")}</div>`
  +tbfSec()
  +(l.map(b=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(b.name)}</b> <span class="pl b">${esc(b.cls)}</span></div><span onclick="bkForm('${b.id}')" style="padding:0 6px">✏️</span></div><div style="font-size:12px;color:var(--mu);line-height:1.7;margin-top:4px">${b.subject?"বিষয়: "+esc(b.subject)+"<br>":""}${b.author?"✍ "+esc(b.author)+"<br>":""}${b.code?"বই নম্বর: "+esc(b.code):""}${b.shelf?" · তাক: "+esc(b.shelf):""}${b.copies?"<br>সংখ্যা: "+bn(b.copies):""}${b.price?" · মূল্য: "+money(b.price):""}</div>${b.syllabus?`<div style="font-size:12px;margin-top:4px">${esc(b.syllabus)}</div>`:""}${b.pdf?`<button class="btn o s" style="margin-top:8px" onclick="bkOpen('${b.id}')">📄 PDF খুলুন</button>`:""}</div>`).join("")||'<div class="em">কোনো পাঠ্যবই নেই। "নতুন পাঠ্যবই" চাপুন।</div>');
 }
@@ -3115,7 +3043,7 @@ function xt(){
  const cl=xClsList(),gs=exGroups(e=>!xtCls||e.cls==xtCls),g=gs.find(v=>v.key==xtKey)||gs[0],dy=d=>{try{return new Date(d+"T00:00:00").toLocaleDateString(LC(),{weekday:"long"})}catch(z){return ""}};
  const ps=g?g.papers:[];
  return phdr("পরীক্ষার রুটিন","পরীক্ষার সময়সূচি (রুটিন) তৈরি ও প্রিন্ট করুন")
- +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" onclick="calForm(null,${g?`{name:'${esc(g.name)}',cls:'${esc(g.cls)}',type:'${esc(g.type||"")}'}`:"null"})">＋ বিষয় যোগ</button><button class="ob" onclick="xtPdf()">🗎 PDF</button></div>
+ +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" onclick="calForm(null,${g?`{name:'${jsq(g.name)}',cls:'${jsq(g.cls)}',type:'${jsq(g.type||"")}'}`:"null"})">＋ বিষয় যোগ</button><button class="ob" onclick="xtPdf()">🗎 PDF</button></div>
  <div class="card"><div class="g2" style="margin:0"><select onchange="xtCls=this.value;xtKey='';render()" style="margin:0"><option value="">সব শ্রেণি</option>${cl.map(c=>`<option ${xtCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><select onchange="xtKey=this.value;render()" style="margin:0">${gs.map(v=>`<option value="${esc(v.key)}" ${g&&v.key==g.key?"selected":""}>${esc(v.name)}${xtCls?"":" ("+esc(v.cls)+")"}</option>`).join("")||"<option>কোনো পরীক্ষা নেই</option>"}</select></div></div>`
  +(g?`<div class="card ov" style="padding:6px"><div style="text-align:center;font-weight:700;padding:6px">${esc(g.name)} — ${esc(g.cls)}</div><table class="tb rtt"><tr><th>ক্রম</th><th>তারিখ</th><th>বার</th><th>বিষয়</th><th>সময়</th><th>কক্ষ</th></tr>${ps.map((e,i)=>`<tr onclick="calForm('${e.id}')"><td>${bn(i+1)}</td><td>${bn(e.date||"")}</td><td>${e.date?dy(e.date):""}</td><td><b>${esc(e.subject)}</b></td><td>${esc((e.start||"")+(e.end?" - "+e.end:""))}</td><td>${esc(e.room||"")}</td></tr>`).join("")}</table></div>`:'<div class="em">কোনো পরীক্ষা নেই। "＋ বিষয় যোগ" বা পরীক্ষা ও ফলাফল থেকে পরীক্ষা তৈরি করুন।</div>');
 }
