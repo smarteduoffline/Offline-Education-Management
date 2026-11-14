@@ -482,7 +482,47 @@ function migrateState(raw){
 }
 let S;try{S=migrateState(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=D()}LANG=(S.set&&S.set.lang)||"bn";
 if(ACT_SID!=="main"&&!(S.school&&S.school._init)){try{const r=JSON.parse(localStorage.getItem("smartEduSchIdx")||"[]").find(x=>String(x.id)===ACT_SID);if(r)S.school={name:r.name,addr:r.addr,phone:r.phone,email:r.email,est:r.est,_init:1}}catch(e){}}
-const save=()=>{S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{const serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();if(typeof snapSoon==="function")snapSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
+/* ---- রিসাইকেল বিন: মুছে যাওয়া রেকর্ড ৩০ দিন জমা থাকে ---- */
+const TRC={students:"শিক্ষার্থী",fees:"ফি",staff:"কর্মী",teachers:"শিক্ষক",events:"ইভেন্ট",hw:"বাড়ির কাজ",tbFiles:"পাঠ্য ফাইল",tbooks:"পাঠ্যবই",exams:"পরীক্ষা",certs:"নথি",txns:"আয়-ব্যয়",sal:"বেতন",notices:"নোটিশ",books:"লাইব্রেরি বই",routine:"রুটিন"};
+const trKey=(c,x)=>String(c=="routine"?x.cls:x.id);
+let _trOwn=null,_trPrev={};
+function trMaps(){const m={};for(const c in TRC){const a=Array.isArray(S[c])?S[c]:[];m[c]=new Map(a.filter(x=>x&&trKey(c,x)!="undefined").map(x=>[trKey(c,x),x]))}return m}
+function trLabel(c,x){
+ if(c=="fees"){const st=(_trPrev.students&&_trPrev.students.get(String(x.sid)))||{};return "ফি"+(st.name?" — "+st.name:"")+(x.amt?" ৳"+x.amt:"")}
+ if(c=="routine")return "রুটিন — "+x.cls;
+ if(c=="students")return (x.name||"")+(x.cls?" ("+x.cls+(x.roll?", রোল "+x.roll:"")+")":"");
+ return x.name||x.title||x.subject||x.cls||String(x.id||"");
+}
+function trashScan(){
+ if(_trOwn!==S){_trOwn=S;_trPrev=trMaps();return}
+ const now=Date.now(),cur=trMaps();let add=[];
+ for(const c in TRC){_trPrev[c]&&_trPrev[c].forEach((x,k)=>{if(!cur[c].has(k))add.push({tid:uid(),c,item:x,label:trLabel(c,x),at:now})})}
+ _trPrev=cur;
+ if(!Array.isArray(S.trash))S.trash=[];
+ if(add.length){S.trash=S.trash.filter(t=>!add.some(a=>a.c==t.c&&trKey(a.c,a.item)==trKey(t.c,t.item))).concat(add)}
+ const lim=now-30*864e5;S.trash=S.trash.filter(t=>t.at>lim).slice(-300);
+}
+function trRestore(tid){
+ if(!isAdm())return;const t=(S.trash||[]).find(x=>x.tid==tid);if(!t)return;
+ if(t.c=="fees"&&!S.students.some(x=>String(x.id)==String(t.item.sid))){alert("আগে এই ফি-এর শিক্ষার্থীকে ফেরত আনুন");return}
+ const arr=S[t.c]=Array.isArray(S[t.c])?S[t.c]:[];
+ if(!arr.some(x=>trKey(t.c,x)==trKey(t.c,t.item)))arr.push(t.item);
+ let extra=0;
+ if(t.c=="students")S.trash.forEach(f=>{if(f.c=="fees"&&String(f.item.sid)==String(t.item.id)&&Math.abs(f.at-t.at)<5000){if(!S.fees.some(z=>z.id==f.item.id)){S.fees.push(f.item);extra++}f.rm=1}});
+ S.trash=S.trash.filter(x=>x.tid!=tid&&!x.rm);
+ logA("edit",TRC[t.c]||"রিসাইকেল বিন","ফেরত আনা হয়েছে: "+t.label);
+ save();render();toast("↩ ফেরত আনা হয়েছে"+(extra?" ("+bn(extra)+"টি ফি রেকর্ডসহ)":""));
+}
+function trPurge(tid){if(!isAdm()||!confirm("স্থায়ীভাবে মুছবেন? এটি আর ফেরত আনা যাবে না।"))return;S.trash=(S.trash||[]).filter(x=>x.tid!=tid);save();render()}
+function trEmpty(){if(!isAdm()||!confirm("রিসাইকেল বিনের সব তথ্য স্থায়ীভাবে মুছবেন?"))return;S.trash=[];save();render()}
+function stBin(){
+ if(!isAdm())return `<div class="card"><div class="em">শুধু অ্যাডমিন রিসাইকেল বিন দেখতে পারবেন</div></div>`;
+ const l=(S.trash||[]).slice().sort((a,b)=>b.at-a.at),now=Date.now();
+ const dt=t=>{const d=new Date(t);return bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear()+" "+p2(d.getHours())+":"+p2(d.getMinutes()))};
+ return `<div class="card"><h2>🗑 রিসাইকেল বিন</h2><p class="hint">মুছে ফেলা তথ্য ৩০ দিন পর্যন্ত এখানে থাকে। ফেরত আনলে আগের মতো ফিরে আসবে। শিক্ষার্থী ফেরত আনলে তার ফি রেকর্ডও ফেরত আসে।</p>${l.length?`<button class="ob" style="width:100%;margin-top:6px" onclick="trEmpty()">সব স্থায়ীভাবে মুছুন (${bn(l.length)}টি)</button>`:""}</div>`+
+ (l.length?l.map(t=>`<div class="card"><b>${esc(t.label)}</b><div style="font-size:12px;color:var(--mu);margin:2px 0 8px">${esc(TRC[t.c]||t.c)} · মোছা হয়েছে ${dt(t.at)} · ${bn(Math.max(0,30-Math.floor((now-t.at)/864e5)))} দিন বাকি</div><div class="g2" style="margin:0"><button class="btn" onclick="trRestore('${t.tid}')">↩ ফেরত আনুন</button><button class="btn o" onclick="trPurge('${t.tid}')">স্থায়ী মুছুন</button></div></div>`).join(""):`<div class="card"><div class="em">রিসাইকেল বিন খালি</div></div>`);
+}
+const save=()=>{try{trashScan()}catch(e){console.error("trash",e)}S.updatedAt=Date.now();S.schemaVersion=SCHEMA_VERSION;if(ACT_SID==="main")writeSchIdx();try{let serialized=JSON.stringify(S);if(serialized.length>4.5*1024*1024&&S.trash&&S.trash.length){S.trash=[];serialized=JSON.stringify(S)}if(serialized.length>4.5*1024*1024)throw new Error("storage quota risk");localStorage.setItem(KEY,serialized);if(typeof queueSync==="function")queueSync();if(typeof pubParentSoon==="function")pubParentSoon();if(typeof snapSoon==="function")snapSoon();}catch(e){console.error("Save failed",e);if(typeof toast==="function")toast("ডেটা সংরক্ষণ করা যায়নি—ব্যাকআপ নিন বা ছবির আকার কমান");}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 S.sync={apiUrl:"",apiKey:"",deviceId:"",backoffMs:0,nextRetryAt:0,...(S.sync||{})};if(S.sync.apiKey){sessionStorage.setItem("smartEduApiKey",S.sync.apiKey);S.sync.apiKey=""}S.syncQueue=S.syncQueue||[];S.audit=S.audit||[];
 if(!S.sync.deviceId)S.sync.deviceId=uid();
@@ -1772,7 +1812,19 @@ function htmlShare(name,body){if(LANG=="en")body=trS(body);
  shareFile(name+".html",`<!DOCTYPE html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)}</title><style>body{font-family:sans-serif;padding:14px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 7px;font-size:13px;text-align:left}@media print{.np{display:none}}</style></head><body>${body}<p class="np"><button onclick="window.print()">প্রিন্ট / PDF সেভ করুন</button></p></body></html>`,"ব্রাউজারে খুলে প্রিন্ট → PDF সেভ করুন");
 }
 const LIBS={};
-function loadLib(u){return LIBS[u]||(LIBS[u]=new Promise((ok,no)=>{const e=document.createElement("script");e.src=u;e.onload=ok;e.onerror=()=>{delete LIBS[u];no(new Error("load"))};document.head.appendChild(e);setTimeout(()=>{delete LIBS[u];no(new Error("timeout"))},15000)}))}
+const LIB_CACHE="smartedu-libs-v1",PDF_LIBS=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"];
+function runLibCode(code){const e=document.createElement("script");e.textContent=code;document.head.appendChild(e)}
+function loadLib(u){return LIBS[u]||(LIBS[u]=(async()=>{
+ /* ১) ক্যাশে থাকলে ইন্টারনেট ছাড়াই চলবে */
+ try{if(window.caches){const c=await caches.open(LIB_CACHE),r=await c.match(u);if(r){runLibCode(await r.text());return}}}catch(e){}
+ /* ২) অনলাইনে নামিয়ে ক্যাশে রাখা */
+ try{const r=await fetch(u,{mode:"cors"});if(r.ok){const t=await r.clone().text();try{if(window.caches){const c=await caches.open(LIB_CACHE);await c.put(u,r)}}catch(e){}runLibCode(t);return}}catch(e){}
+ /* ৩) শেষ ভরসা: সাধারণ script tag */
+ await new Promise((ok,no)=>{const e=document.createElement("script");e.src=u;e.onload=ok;e.onerror=()=>no(new Error("load"));document.head.appendChild(e);setTimeout(()=>no(new Error("timeout")),15000)});
+})().catch(err=>{delete LIBS[u];throw err}))}
+async function libsReady(){try{if(!window.caches)return false;const c=await caches.open(LIB_CACHE);for(const u of PDF_LIBS)if(!(await c.match(u)))return false;return true}catch(e){return false}}
+async function prefetchPdfLibs(){try{if(!navigator.onLine||!window.caches)return;const c=await caches.open(LIB_CACHE);for(const u of PDF_LIBS){if(await c.match(u))continue;const r=await fetch(u,{mode:"cors"});if(r.ok)await c.put(u,r)}}catch(e){}}
+window.addEventListener("online",()=>setTimeout(prefetchPdfLibs,2000));setTimeout(prefetchPdfLibs,6000);
 function toast(m,keep){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.style.cssText="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:85%;text-align:center";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._h);if(!keep)t._h=setTimeout(()=>{t.style.display="none"},3500)}
 function toastOff(){const t=$("toast");if(t)t.style.display="none"}
 async function pdfRender(body,bw){
@@ -1787,7 +1839,7 @@ async function pdfRender(body,bw){
   document.body.appendChild(wrap);
   await new Promise(r=>setTimeout(r,400));
   await Promise.all([...wrap.querySelectorAll("img")].map(i=>(i.decode?i.decode():Promise.resolve()).catch(()=>{})));
-  const sc=Math.min(2,14000/Math.max(1,wrap.scrollHeight));
+  const sh=Math.max(1,wrap.scrollHeight),sc=sh<=3400?2.5:Math.min(2,14000/sh);
   const cv=await html2canvas(wrap,{scale:sc,backgroundColor:"#fff",useCORS:true});
   const wr=wrap.getBoundingClientRect(),cuts=[...wrap.querySelectorAll("tr,.pgb")].map(e=>(e.getBoundingClientRect().bottom-wr.top)*sc);
   wrap.remove();wrap=null;window._pdfBusy=false;fitMobileZoom();
@@ -1801,11 +1853,11 @@ async function pdfRender(body,bw){
    const tg=tc.getContext("2d");tg.fillStyle="#fff";tg.fillRect(0,0,tc.width,tc.height);tg.drawImage(cv,0,y,cv.width,end-y,0,0,tw,(end-y)*tw/cv.width);
    pages.push({y,end,th:tc.toDataURL("image/jpeg",.7)});y=end;
   }
-  return {cv,pages,PW,PH};
+  return {cv,pages,PW,PH,sc};
  }finally{window._pdfBusy=false;if(wrap){wrap.remove();fitMobileZoom()}}
 }
 async function printDoc(name,body){if(LANG=="en")body=trS(body);
- if(!navigator.onLine){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
+ if(!navigator.onLine&&!(await libsReady())){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
  const fn=name+"-"+today()+".pdf";
  toast("⏳ PDF তৈরি হচ্ছে…",1);
  try{
@@ -1825,6 +1877,7 @@ function pdfOpts(){
  <label class="lb">রঙ</label><div class="seg"><button id="pdfC0" onclick="pdfGray(0)">🎨 রঙিন</button><button id="pdfC1" onclick="pdfGray(1)">⚫ সাদা-কালো</button></div>
  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label class="lb" style="margin:0">পেইজ — মোট ${bn(J.col.pages.length)} টি</label><span style="display:flex;gap:6px"><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(1)">সব</button><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(0)">কিছুই না</button></span></div>
  <div id="pdfPg" style="display:flex;gap:8px;overflow-x:auto;padding:10px 2px"></div>
+ ${J.col.sc<1.6?`<div class="hint" style="margin:0 0 6px">⚠ বড় ডকুমেন্ট — লেখা কিছুটা ঝাপসা হতে পারে। তীক্ষ্ণ লেখার জন্য নিচের সিস্টেম প্রিন্ট ব্যবহার করুন।</div>`:""}<button class="ob" style="width:100%;margin:0 0 8px" onclick="pdfVector()">🖨 সিস্টেম প্রিন্ট (তীক্ষ্ণ টেক্সট PDF)</button>
  <div class="bt"><button class="btn o" onclick="pdfCancel()">বাতিল</button><button class="btn" id="pdfGo" onclick="pdfGo()">⬇ PDF তৈরি করুন</button></div>`);
  $("mt").onclick=null;pdfDraw();
 }
@@ -1848,6 +1901,16 @@ async function pdfGray(g){
  }else J.gray=true;
  pdfDraw();
 }
+function pdfVector(){
+ const J=window._pdfJob;if(!J)return;const bw=J.gray,body=J.body;
+ window._pdfJob=null;closeM();
+ ["printRoot","printRootCss"].forEach(i=>{const o=document.getElementById(i);if(o)o.remove()});
+ const r=document.createElement("div");r.id="printRoot";r.innerHTML=body;
+ const st=document.createElement("style");st.id="printRootCss";
+ st.textContent='#printRoot{display:none}@media print{@page{size:A4;margin:10mm}html,body{background:#fff!important;height:auto!important;overflow:visible!important}body>*:not(#printRoot){display:none!important}#printRoot{display:block!important;width:100%;color:#111;font-family:sans-serif}#printRoot table{border-collapse:collapse;width:100%}#printRoot tr{page-break-inside:avoid}#printRoot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}'+(bw?'#printRoot,#printRoot *{background-color:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;border-color:#555!important;box-shadow:none!important;text-shadow:none!important}#printRoot [style*="gradient"]{background-image:none!important}#printRoot img{filter:grayscale(1)!important}':'')+'}';
+ document.head.appendChild(st);document.body.appendChild(r);
+ setTimeout(()=>{try{window.print()}catch(e){toast("এই ডিভাইসে সিস্টেম প্রিন্ট চালু করা যায়নি")}},200);
+}
 function pdfTog(i){const J=window._pdfJob;if(!J)return;J.sel[i]=!J.sel[i];pdfDraw()}
 function pdfAll(on){const J=window._pdfJob;if(!J)return;J.sel=J.sel.map(()=>!!on);pdfDraw()}
 function pdfCancel(){window._pdfJob=null;closeM()}
@@ -1857,14 +1920,14 @@ async function pdfGo(){
  closeM();toast("⏳ PDF তৈরি হচ্ছে…",1);
  try{
   await new Promise(r=>setTimeout(r,60));
-  const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:"a4"});let first=true;
+  const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:"a4",compress:true});let first=true;
   for(let i=0;i<A.pages.length;i++){
    if(!J.sel[i])continue;
    const {y,end}=A.pages[i],cv=A.cv,pc=document.createElement("canvas");pc.width=cv.width;pc.height=Math.ceil(end-y);
    const g=pc.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,pc.width,pc.height);g.drawImage(cv,0,y,cv.width,end-y,0,0,cv.width,end-y);
    if(J.gray){const d=g.getImageData(0,0,pc.width,pc.height),a=d.data;for(let k=0;k<a.length;k+=4){const l=.299*a[k]+.587*a[k+1]+.114*a[k+2];a[k]=a[k+1]=a[k+2]=l}g.putImageData(d,0,0)}
    if(!first)pdf.addPage();first=false;
-   pdf.addImage(pc.toDataURL("image/jpeg",.92),"JPEG",0,0,A.PW,(end-y)*A.PW/cv.width);
+   pdf.addImage(pc.toDataURL("image/jpeg",.9),"JPEG",0,0,A.PW,(end-y)*A.PW/cv.width);
    await new Promise(r=>setTimeout(r,0));
   }
   const fn=J.fn;window._pdfJob=null;toastOff();await savePdf(pdf,fn);
@@ -2596,17 +2659,18 @@ function snapStable(v){
 }
 const snapEq=(a,b)=>snapStable(a)===snapStable(b);
 const _snIsObj=v=>!!v&&typeof v==="object"&&!Array.isArray(v);
+const _snId=x=>x.id!==undefined&&x.id!==null?x.id:x.tid; // রিসাইকেল বিনের এন্ট্রির আইডি tid
 function _snIdArr(a){
-  if(!Array.isArray(a)||!a.every(x=>_snIsObj(x)&&x.id!==undefined&&x.id!==null))return false;
-  return new Set(a.map(x=>String(x.id))).size===a.length;
+  if(!Array.isArray(a)||!a.every(x=>_snIsObj(x)&&_snId(x)!==undefined&&_snId(x)!==null))return false;
+  return new Set(a.map(x=>String(_snId(x)))).size===a.length;
 }
 function snapM3(b,l,s){
   if(snapEq(l,s))return l;
   if(b!==undefined&&snapEq(b,l))return s;
   if(b!==undefined&&snapEq(b,s))return l;
   if(Array.isArray(l)&&Array.isArray(s)&&_snIdArr(l)&&_snIdArr(s)){
-    const bm=new Map((Array.isArray(b)?b:[]).filter(x=>_snIsObj(x)&&x.id!=null).map(x=>[String(x.id),x]));
-    const lm=new Map(l.map(x=>[String(x.id),x])),sm=new Map(s.map(x=>[String(x.id),x]));
+    const bm=new Map((Array.isArray(b)?b:[]).filter(x=>_snIsObj(x)&&_snId(x)!=null).map(x=>[String(_snId(x)),x]));
+    const lm=new Map(l.map(x=>[String(_snId(x)),x])),sm=new Map(s.map(x=>[String(_snId(x)),x]));
     const out=[],seen=new Set();
     const take=id=>{
       if(seen.has(id))return;seen.add(id);
@@ -2615,7 +2679,7 @@ function snapM3(b,l,s){
       else if(li!==undefined){if(bi!==undefined&&snapEq(bi,li))return;out.push(li)}
       else if(si!==undefined){if(bi!==undefined&&snapEq(bi,si))return;out.push(si)}
     };
-    l.forEach(x=>take(String(x.id)));s.forEach(x=>take(String(x.id)));
+    l.forEach(x=>take(String(_snId(x))));s.forEach(x=>take(String(_snId(x))));
     return out;
   }
   if(_snIsObj(l)&&_snIsObj(s)){
@@ -3875,7 +3939,7 @@ function fbSend(id,ch){const f=S.feedback.find(x=>x.id==id);if(!f)return;const m
 function fbDel(id){if(confirm("ফিডব্যাক মুছবেন?")){S.feedback=S.feedback.filter(x=>x.id!=id);save();render()}}
 
 let stT=0,stEd=false,usQ="",usR="";
-const ST_T=[["সাধারণ","⚙️"],["স্ক্রল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["ব্যাকআপ","🗄"],["সাবস্ক্রিপশন","💳"],["বিপজ্জনক","⚠️"]];
+const ST_T=[["সাধারণ","⚙️"],["স্ক্রল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["ব্যাকআপ","🗄"],["সাবস্ক্রিপশন","💳"],["বিপজ্জনক","⚠️"],["রিসাইকেল বিন","🗑"]];
 const isDark=()=>document.documentElement.dataset.theme=="dark";
 function sysDark(){try{return !!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)}catch(e){return false}}
 function applyTheme(){const t=S.set.theme||"auto",h=new Date().getHours(),night=h<6||h>=18;
@@ -3916,7 +3980,7 @@ const stTg=(l,d,k)=>`<div class="st-tg" onclick="stSet('${k}',${S.set[k]?0:1})">
 const stF=(l,id,v,t)=>`<label class="lb">${l}</label><input id="${id}" type="${t||"text"}" value="${esc(v)}">`;
 function setng(){
  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">⚙️</div><div><div style="font-size:20px;font-weight:700">সেটিংস</div><div style="color:var(--mu);font-size:13px">অ্যাপের পছন্দ ও নিরাপত্তা নিয়ন্ত্রণ করুন</div></div></div>
-<div class="st-tabs">${ST_T.map((t,i)=>`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng][stT]||stGen)()}
+<div class="st-tabs">${ST_T.map((t,i)=>`<button class="${i==stT?"on":""}" onclick="stT=${i};stEd=false;render()">${t[1]} ${t[0]}</button>`).join("")}</div>`+([stGen,stBar,stCfg,stSec,stBk,stSub,stDng,stBin][stT]||stGen)()}
 function stGen(){
  const th=S.set.theme,M=[["auto","🔄","অটো (ফোনের সেটিং)"],["time","🕕","সময় অনুযায়ী"],["light","☀️","ডে মোড"],["dark","🌙","নাইট মোড"]];
  return `<div class="card"><h2>☀️ ডিসপ্লে মোড</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px">অটো: ফোনের ডার্ক/লাইট সেটিং অনুসরণ করবে। সময় অনুযায়ী: সকাল ৬টা–বিকাল ৬টা ডে, তারপর নাইট।</div><div class="st-md">${M.map(m=>`<div class="${th==m[0]?"on":""}" onclick="stSet('theme','${m[0]}')"><em>${m[1]}</em>${m[2]}${th==m[0]?"<br><u>সক্রিয়</u>":""}</div>`).join("")}</div></div>
@@ -4234,8 +4298,42 @@ async function renDecide(id,ok){
 }
 function stBk(){
  const n=S.students.length+S.teachers.length+S.staff.length+S.fees.length+S.books.length+S.exams.length,kb=Math.round(JSON.stringify(S).length/1024),lb=S.set.lastBk?new Date(S.set.lastBk).toLocaleString(LC()):"এখনও নেওয়া হয়নি";
- return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">তথ্য এই ফোনে থাকে এবং ইন্টারনেট থাকলে স্বয়ংক্রিয়ভাবে ক্লাউডেও জমা হয়। তবুও নিয়মিত ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div><div class="st-kv"><span>☁️</span><div><small>ক্লাউড সিঙ্ক (Supabase)</small>${snapStatusText()}</div></div><button class="btn g" style="width:100%;margin-top:8px" onclick="snapNow()">☁️ এখনই সিঙ্ক করুন</button></div>
+ return `<div class="card"><h2>🗄 ব্যাকআপ ও রিস্টোর</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 10px">তথ্য এই ফোনে থাকে এবং ইন্টারনেট থাকলে স্বয়ংক্রিয়ভাবে ক্লাউডেও জমা হয়। তবুও নিয়মিত ব্যাকআপ নিন।</p><div class="st-kv"><span>🕒</span><div><small>সর্বশেষ ব্যাকআপ</small>${lb}</div></div><div class="st-kv"><span>📦</span><div><small>মোট রেকর্ড / আকার</small>${bn(n)} টি · প্রায় ${bn(kb)} KB</div></div><div class="st-kv"><span>☁️</span><div><small>ক্লাউড সিঙ্ক (Supabase)</small>${snapStatusText()}</div></div><button class="btn g" style="width:100%;margin-top:8px" onclick="snapNow()">☁️ এখনই সিঙ্ক করুন</button>${isAdm()?`<button class="btn o" style="width:100%;margin-top:8px" onclick="histOpen()">🕘 ক্লাউড ইতিহাস থেকে ফেরান</button>`:""}</div>
 <div class="card"><button class="btn g" style="width:100%;margin-bottom:8px" onclick="exp();setTimeout(render,800)">⬇ ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="secureBackup()">🔒 Encrypted backup</button><button class="btn o" style="width:100%;margin-bottom:8px" onclick="pickRestore()">📂 ফাইল থেকে রিস্টোর</button><button class="btn o" style="width:100%" onclick="pasteImp()">📋 টেক্সট পেস্ট করে রিস্টোর</button><input id="rf" type="file" accept=".json,application/json,text/plain" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="imp(this.files[0]);this.value=''"><div class="hint" style="margin-top:8px">রিস্টোর করলে বর্তমান সব তথ্য ব্যাকআপের তথ্য দিয়ে বদলে যাবে। ব্যাকআপে PIN সেটিংসও থাকে।</div></div>`}
+/* ---- ক্লাউড ইতিহাস: সার্ভারের আগের অবস্থায় ফেরা ---- */
+async function histOpen(){
+ if(!isAdm()){alert("শুধু অ্যাডমিন এটি করতে পারবেন");return}
+ if(!sb||!navigator.onLine){alert("ইন্টারনেট সংযোগ লাগবে");return}
+ toast("⏳ ইতিহাস আনা হচ্ছে…",1);
+ try{
+  const r=await _wt(sb.rpc("smartedu_snap_history",{p_school:String(ACT_SID||"main")}),25000);
+  if(r.error)throw r.error;
+  toastOff();
+  const l=Array.isArray(r.data)?r.data:[];
+  const dt=t=>{const d=new Date(t);return bn(p2(d.getDate())+"/"+p2(d.getMonth()+1)+"/"+d.getFullYear()+" "+p2(d.getHours())+":"+p2(d.getMinutes()))};
+  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:4px">🕘 ক্লাউড ইতিহাস</h2><p class="hint" style="text-align:center;margin:0 0 8px">যে সময়ের অবস্থায় ফিরতে চান সেটি বেছে নিন। ফেরার আগের অবস্থাও ইতিহাসে থেকে যায়।</p><div style="max-height:55vh;overflow:auto">${l.length?l.map(h=>`<div class="card" style="margin:8px 0;padding:10px"><b>${dt(h.saved_at)}</b><div style="font-size:12px;color:var(--mu);margin:2px 0 6px">${esc(h.saved_email||"—")} · ${bn(Math.max(1,Math.round((h.bytes||0)/1024)))} KB${h.device=="before-restore"?" · ফেরার আগের অবস্থা":""}</div><button class="btn o" style="width:100%;margin:0" onclick="histRestore(${+h.id},'${dt(h.saved_at)}')">↩ এই অবস্থায় ফেরান</button></div>`).join(""):'<div class="em">এখনো কোনো ইতিহাস জমেনি। ডেটা বদলালে ধীরে ধীরে জমবে।</div>'}</div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
+ }catch(e){toastOff();alert("ইতিহাস আনা যায়নি: "+String(e&&e.message||e).slice(0,160))}
+}
+async function histRestore(id,when){
+ if(!isAdm()||!sb)return;
+ if(!confirm("প্রতিষ্ঠানের ক্লাউড ডেটা "+when+"-এর অবস্থায় ফিরে যাবে। এর পরের সব নতুন তথ্য বদলে যাবে (তবে ইতিহাসে থাকবে)। নিশ্চিত?"))return;
+ toast("⏳ ফেরানো হচ্ছে…",1);
+ try{
+  const sid=String(ACT_SID||"main");
+  const r=await _wt(sb.rpc("smartedu_snap_restore",{p_school:sid,p_id:id}),40000);
+  if(r.error)throw r.error;
+  const g=await _wt(sb.rpc("smartedu_snap_get",{p_school:sid}),25000);
+  if(g.error)throw g.error;
+  const info=g.data||{};
+  if(info.exists){
+   const cfg=snapCfgMain();
+   cfg.apply(info.data||{});
+   try{localStorage.setItem(cfg.mk,JSON.stringify({ver:+info.version,ts:Date.now()}));localStorage.setItem(cfg.bk,JSON.stringify(info.data||{}))}catch(e){}
+  }
+  toastOff();closeM();render();
+  toast("✅ ফেরানো হয়েছে। অন্য ডিভাইসে একবার সিঙ্ক করে নিন");
+ }catch(e){toastOff();alert("ফেরানো যায়নি: "+String(e&&e.message||e).slice(0,160))}
+}
 function stDng(){return `<div class="card st-rd"><h2 style="color:#dc2626">⚠️ বিপজ্জনক এলাকা</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 12px">এই কাজগুলো ফেরানো যায় না। আগে ব্যাকআপ নিয়ে নিন।</p><button class="btn o" style="width:100%;margin-bottom:8px" onclick="exp()">⬇ আগে ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px;color:#dc2626;border-color:#fca5a5" onclick="if(confirm('কার্যকলাপের লগ ও SMS ইতিহাস মুছবেন?')){S.log=[];S.smslog=[];save();alert('মুছে ফেলা হয়েছে')}">লগ ও SMS ইতিহাস মুছুন</button><button class="btn r" style="width:100%" onclick="resetAll()">🗑 সব তথ্য মুছে ফেলুন</button></div>`}
 function resetAll(){if(!confirm("সব তথ্য (শিক্ষার্থী, ফি, ফলাফল সব) চিরতরে মুছে যাবে। নিশ্চিত?"))return;if(prompt("নিশ্চিত করতে ইংরেজিতে DELETE লিখুন")!=="DELETE"){alert("বাতিল করা হয়েছে");return}S=D();save();applyTheme();stT=0;render();alert("সব তথ্য মুছে ফেলা হয়েছে")}
 let lt=0,lq="",lflt=0,lrb=0,lrm=new Date().getMonth(),lry=new Date().getFullYear();
@@ -4391,7 +4489,7 @@ Object.assign(EN,{"এই পেইজ শুধু Super Admin-এর জন্
 Object.assign(EN,{"বাদ":"Skipped","এবং":"and","হয়েছে":"done","অনলাইন":"Online","অফলাইন":"Offline","সংরক্ষিত":"Saved","বন্ধ করা হয়েছে":"Turned off","সফল":"Success","ব্যর্থ":"Failed","সম্পন্ন":"Complete","কমপক্ষে ৮ অক্ষর":"At least 8 characters","কমপক্ষে ৮ অক্ষরের password দিন":"Enter a password of at least 8 characters","তৈরি করা যায়নি":"Could not be created","বা login প্রয়োজন":"or login required","সার্ভারের নতুন data নেওয়া হয়েছে":"New data taken from the server","সিঙ্ক সম্পন্ন":"Sync complete","সিঙ্ক ব্যর্থ":"Sync failed","সেকেন্ড পর আবার চেষ্টা হবে":"seconds until retry","কর্মী ব্যবস্থাপনা":"Staff Management","এই কাজের জন্য আপনার permission নেই":"You do not have permission for this action","লগইন করুন":"Log in","প্রথম অ্যাডমিন তৈরি করুন":"Create the first admin","ইউজারনেম/ইমেইল ও PIN দিন":"Enter username/email and PIN","অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন":"Create the first admin account to manage the app","ইউজারনেম অথবা ইমেইল":"Username or email","৪–৬ সংখ্যার PIN":"4–6 digit PIN","লগইন":"Login","অ্যাডমিন তৈরি করুন":"Create Admin","ভুলে গেছেন?":"Forgot?","সঠিক ইউজারনেম/ইমেইল দিন":"Enter a valid username/email","৪–৬ সংখ্যার হতে হবে":"Must be 4–6 digits","ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়":"Username/email or PIN is incorrect","ইউজারনেম/ইমেইল লিখুন":"Enter username/email","নতুন ৪–৬ সংখ্যার PIN লিখুন":"Enter a new 4–6 digit PIN","সঠিক নয়":"is incorrect","পরিবর্তন হয়েছে":"has been changed","ইউজারনেম/ইমেইল":"Username/email","নতুন PIN (খালি রাখলে অপরিবর্তিত":"New PIN (unchanged if left blank","সঠিক ও unique ইউজারনেম/ইমেইল দিন":"Enter a valid and unique username/email","আপডেট":"Update","এই account মুছবেন?":"Delete this account?","চালু":"Enabled","মূল অ্যাডমিন":"Main Admin","কোনো user নেই":"No users","এই অংশটি আপনার role-এর জন্য অনুমোদিত নয়":"This section is not allowed for your role","ফাইল ৫ MB-এর বেশি হতে পারবে না":"File cannot be larger than 5 MB","এই কাজের জন্য permission নেই":"No permission for this action","একই শ্রেণিতে রোল duplicate":"Duplicate roll in the same class","মাসিক ফি ভুল":"Monthly fee invalid","পড়া যায়নি। প্রথম row-তে header দিন, যেমন: name, class, roll":"Could not read. Put a header in the first row, e.g.: name, class, roll","বাদ যাবে":"will be skipped","মাসিক ফি":"Monthly Fee","কোনো valid row নেই":"No valid rows","ভুল row (প্রথম ১২টি":"Invalid rows (first 12","কারণ":"Reason","জন Import করুন":"Import","পড়া যায়নি। header দিন: name,class,roll,date,attendance,exam,subject,marks":"Could not read. Provide a header: name,class,roll,date,attendance,exam,subject,marks","শিক্ষার্থী পাওয়া যায়নি (studentId বা name+class+roll দিন":"Student not found (give studentId or name+class+roll","একই row-এর duplicate":"Duplicate of the same row","খালি attendance date হলে":"If attendance date is blank","খালি exam হলে নাম":"If exam is blank, name","যেমন: অর্ধবার্ষিক":"e.g. Half-yearly","খালি subject হলে":"If subject is blank","যেমন: বাংলা":"e.g. Bangla","পাশ নম্বর":"Pass Marks","প্রথমে manual default পূরণ করে যাচাই করুন":"First fill in the manual defaults, then verify","কোনো row নেই":"No rows","জন/row Import করুন":"Import rows","যাচাই ও preview":"Verify & Preview","জন CSV থেকে import":"imported from CSV","জন শিক্ষার্থী সফলভাবে import হয়েছে":"students imported successfully","রিপোর্ট ও বিশ্লেষণ":"Reports & Analysis","মাসিক আয়-ব্যয়, বেতন/ফি, উপস্থিতি ও ফলাফল":"Monthly income-expense, salary/fees, attendance and results","মাসিক আয়-ব্যয়":"Monthly Income-Expense","শ্রেণিভিত্তিক উপস্থিতি":"Class-wise Attendance","গড় উপস্থিতি":"Average Attendance","শিক্ষার্থীভিত্তিক বকেয়া ফি":"Dues by Student","বকেয়া":"Due","বকেয়া নেই":"No dues","শিক্ষার্থীভিত্তিক ফি রিপোর্ট":"Student-wise Fee Report","শ্রেণিভিত্তিক উপস্থিতি রিপোর্ট":"Class-wise Attendance Report","কোনো শ্রেণির data নেই":"No class data","ফি আদায়":"Fee Collection","অন্যান্য আয়":"Other Income","মোট আয়":"Total Income","মোট ব্যয়":"Total Expense","বেতন হিসেবে চিহ্নিত ব্যয়":"Expense marked as salary","অন্যান্য ব্যয়":"Other Expense","বেতন বাজেট":"Salary Budget","বাস্তব ব্যালেন্স":"Actual Balance","বেতন বাজেটের পর ব্যালেন্স":"Balance after Salary Budget","মাসিক আয়-ব্যয় রিপোর্ট":"Monthly Income-Expense Report","নির্ধারিত বেতন":"Set Salary","নির্ধারিত":"Set","কোনো সক্রিয় শিক্ষক নেই":"No active teachers","পরিশোধিত বেতন নির্ভুলভাবে দেখাতে transaction-এ":"To show paid salaries accurately, in the transaction","হিসেবে শিক্ষকের ID সংরক্ষণ করুন। পুরনো সাধারণ “বেতন” expense মোট আয়-ব্যয় রিপোর্টে ধরা হবে, তবে নির্দিষ্ট শিক্ষকের টেবিলে নয়।":"save the teacher ID as the category. Old general “Salary” expenses are counted in the total income-expense report, but not in a specific teacher's table.","সক্রিয় শিক্ষকদের মাসিক বেতন বাজেট":"Monthly salary budget of active teachers","বেতন বাজেট বাদে সম্ভাব্য ব্যালেন্স":"Estimated balance after salary budget","মাসভিত্তিক শিক্ষার্থী উপস্থিতি ও ফি রিপোর্ট":"Month-wise Student Attendance & Fee Report","মাসভিত্তিক শিক্ষার্থী রিপোর্ট":"Month-wise Student Report","কলামে: উপস্থিত / অনুপস্থিত / বিলম্বিত। ছুটির হিসাব টেবিলের বিস্তারিত report-এ থাকে।":"Columns: Present / Absent / Late. Leave counts are in the detailed report.","প্রয়োজন":"Required","লোড হয়নি":"Not loaded","অনুমতি নেই":"No permission","এই dashboard শুধু Super Admin-এর জন্য।":"This dashboard is for Super Admin only.","মোট প্রতিষ্ঠান":"Total Institutions","প্রতিষ্ঠান, user, subscription এবং tenant isolation এখান থেকে পরিচালনা করুন।":"Manage institutions, users, subscriptions and tenant isolation from here.","প্রতিষ্ঠান পরিচালনা করুন":"Manage Institutions","সব প্রতিষ্ঠানের platform-level control":"Platform-level control of all institutions","প্রতিষ্ঠানসমূহ":"Institutions","প্রতিষ্ঠান":"Institution","কোনো প্রতিষ্ঠান নেই":"No institutions","যেমন alpha-school":"e.g. alpha-school","যেমন trial/monthly":"e.g. trial/monthly","তৈরি করুন":"Create","কমপক্ষে ৮ অক্ষরের password":"Password of at least 8 characters","এ redirect হবে। Price ID সেট না থাকলে manual amount থেকে recurring price তৈরি হবে।":"will redirect. If no Price ID is set, a recurring price is created from the manual amount.","মাসিক":"Monthly","যেমন 1500":"e.g. 1500","যেমন usd বা bdt":"e.g. usd or bdt","এ payment complete করুন। Callback ও server-side query-এর পর tenant active হবে।":"complete the payment. The tenant becomes active after the callback and server-side query.","তৈরি হয়নি":"Not created","নগদ বা offline payment-এর reference manually লিখুন।":"Enter the reference of cash or offline payment manually.","ঐচ্ছিক":"Optional","সংরক্ষিত হয়েছে":"Saved","সংরক্ষণ হয়নি":"Not saved","কোনো payment নেই":"No payments","বর্তমান লগইন":"Current Login","বর্তমান role":"Current role","লগআউট":"Logout","অনলাইন সিঙ্ক":"Online Sync","না দিলে অ্যাপ সম্পূর্ণ offline থাকবে। API URL দিলে অনলাইন হলে queue সিঙ্ক হবে।":"If left blank the app stays fully offline. If you give an API URL, the queue syncs when online.","ঐচ্ছিক legacy API key":"Optional legacy API key","এখন সিঙ্ক করুন":"Sync Now","সংরক্ষণ হবে না":"Will not be saved","শুধু এই session-এ থাকবে":"Will stay in this session only","অ্যাকাউন্ট":"Account","সিঙ্ক":"Sync","৳/month":"৳/month","মাসভিত্তিক":"Month-wise","শ্রেণিভিত্তিক":"Class-wise","শিক্ষার্থীভিত্তিক":"Student-wise"});
 Object.assign(EN,{"বোর্ডিং খরচ (৳/মাস)":"Boarding Cost (৳/month)","বোর্ডিং খরচ":"Boarding Cost","আবাসিক শিক্ষার্থীর বোর্ডিং খরচ":"Boarding cost of the residential student","বেতন হিসাব":"Salary Calculation","শিক্ষক উপস্থিতি":"Teacher Attendance","কর্মী উপস্থিতি":"Staff Attendance","দৈনিক উপস্থিতি ও মাসিক বেতন রিপোর্ট":"Daily attendance & monthly salary report","মোট মূল বেতন":"Total Base Salary","প্রযোজ্য বেতন":"Payable Salary","কর্তন":"Deduction","কর্মদিন":"Working Days","কর্মদিন:":"Working days:","হাজিরা %":"Attendance %","বেতন বিবরণী":"Salary Statement","উপস্থিত দিন":"present days","কর্মদিবস":"working days","বেতন নির্ধারণের নিয়ম":"Salary Rules","কর্মদিন (খালি রাখলে নিজে হিসাব হবে:":"Working days (if blank it is calculated automatically:","সাপ্তাহিক ছুটির দিন":"Weekly Off Day","কোনো সাপ্তাহিক ছুটি নেই":"No weekly off day","ছুটিকে বেতনসহ গণ্য করুন":"Count leave as paid","'ছুটি' চিহ্নিত দিনও উপস্থিত দিন হিসেবে ধরা হবে":"Days marked 'Leave' are counted as present days","উপস্থিতির ভিত্তিতে বেতন নির্ধারণ":"Set salary based on attendance","বন্ধ থাকলে বেতন তালিকায় পুরো মূল বেতন বসবে":"If off, the full base salary goes into the salary list","বেতন তালিকায় প্রয়োগ করুন":"Apply to Salary List","ঘোষিত ইভেন্ট ক্যালেন্ডারের \"ছুটি\" ধরনের দিনগুলো কর্মদিন থেকে বাদ যায়।":"Days of type \"Holiday\" in the event calendar are excluded from working days.","মোট উপস্থিত":"Total Present","মোট অনুপস্থিত":"Total Absent","বিলম্বে":"Late","ছুটিতে":"On Leave","মূল বেতন নির্ধারিত কেউ নেই":"Nobody has a base salary set","জনের বেতন উপস্থিতি অনুযায়ী হালনাগাদ হয়েছে":"people's salaries updated according to attendance","উপস্থিতি অনুযায়ী বেতন প্রয়োগ":"attendance-based salary applied","দিন":"days","ফি পেজে দেখুন →":"See on Fees page →"});
 Object.assign(EN,{"বাল্ক এন্ট্রি":"Bulk Entry","নতুন এন্ট্রি":"New Entry","এন্ট্রি সম্পাদনা":"Edit Entry","বাল্ক এন্ট্রি —":"Bulk Entry —","ইন টাইম":"In Time","আউট টাইম":"Out Time","ইন":"In","আউট":"Out","ঘণ্টা":"Hours","ঘ":"h","মি":"m","সবাইকে উপস্থিত":"Mark All Present","সবার জন্য সময় প্রয়োগ":"Apply Time to All","অফিস শুরুর সময়":"Office Start Time","অফিস শেষের সময়":"Office End Time","দেরিতে এলে স্বয়ংক্রিয় 'বিলম্ব'":"Auto 'Late' if arriving late","ইন টাইম অফিস শুরুর সময়ের পরে হলে বিলম্ব চিহ্নিত হবে":"Marked as late if the in time is after the office start time","দৈনিক ইন/আউট টাইম ও মাসিক বেতন রিপোর্ট":"Daily in/out time & monthly salary report","আউট টাইম ইন টাইমের পরে হতে হবে":"Out time must be after in time","নাম ও তারিখ দিন":"Enter the name and date","এই দিনের এন্ট্রি মুছবেন?":"Delete this day's entry?","উপস্থিত বাছা অবস্থায় ইন টাইম অফিস শুরুর সময়ের পরে হলে নিজে থেকে \"বিলম্ব\" হবে।":"If Present is selected and the in time is after the office start time, it automatically becomes \"Late\".","জনের হাজিরা সংরক্ষিত হয়েছে":"attendance records saved","ইন/আউট এন্ট্রি":"In/out entry","ফিডব্যাক":"Feedback"});
-Object.assign(EN,{"ভিউ রুটিন":"View Routine","ডাউনলোড PDF":"Download PDF","PDF অপশন":"PDF Options","রঙ":"Color","রঙিন":"Color","সাদা-কালো":"Black & White","পেইজ":"Pages","কিছুই না":"None","PDF তৈরি করুন":"Create PDF","পেইজ —":"Pages —"});
+Object.assign(EN,{"রিসাইকেল বিন":"Recycle Bin","ফেরত আনুন":"Restore","স্থায়ী মুছুন":"Delete forever","সিস্টেম প্রিন্ট (তীক্ষ্ণ টেক্সট PDF)":"System print (sharp text PDF)","ভিউ রুটিন":"View Routine","ডাউনলোড PDF":"Download PDF","PDF অপশন":"PDF Options","রঙ":"Color","রঙিন":"Color","সাদা-কালো":"Black & White","পেইজ":"Pages","কিছুই না":"None","PDF তৈরি করুন":"Create PDF","পেইজ —":"Pages —"});
 let EN_RE=null;const trCache=new Map(),BN_RE=/[\u0980-\u09FF]/,NT_SKIP=/^(SCRIPT|STYLE|TEXTAREA|NOSCRIPT)$/,TR_ATTR=["placeholder","title","aria-label","alt"];
 const ENN={};
 function trS(t){
