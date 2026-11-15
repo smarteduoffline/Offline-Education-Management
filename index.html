@@ -3107,6 +3107,7 @@ function csWa(){const c=window._cs,x=c.sid?sOf(c.sid):null;if(!x||!x.phone){aler
 const FT=["মাসিক বেতন","ভর্তি ফি","বই ফি","বিদ্যুৎ বিল","পরীক্ষা ফি","অন্যান্য ফি"],PM=["নগদ","bKash","Nagad","ব্যাংক"],INC=["দান","অনুদান","বই/সামগ্রী বিক্রয়","ভাড়া আয়","অন্যান্য"],EXC=["বেতন","বিদ্যুৎ বিল","ভাড়া","খাদ্য/রান্না","মেরামত","স্টেশনারি","যাতায়াত","অন্যান্য"],MS=["জানু","ফেব্রু","মার্চ","এপ্রি","মে","জুন","জুলা","আগ","সেপ্টে","অক্টো","নভে","ডিসে"];
 let pdYm="",pyYm="",fTab="list",fQ="",fCls="",fMon="",fStat="due",trCls="",trY=new Date().getFullYear(),ieTab="sum",ieM=new Date().getMonth(),ieY=new Date().getFullYear(),slM=new Date().getMonth(),slY=new Date().getFullYear(),slTab="pay",pdTab="stu",pdQ="",pdCls="",pdType="",pdSel={},pdBulk=false,pyQ="",pySid="",pyM="নগদ",fbD={},payC={ids:[],m:"নগদ"},slC={},txD={},txId=null,txT="in",fD={};
 const fym=f=>f.ym||f.auto||(f.date||"").slice(0,7),ftype=f=>f.type||String(f.title||"").split(" — ")[0],fmon=f=>MN[(+fym(f).slice(5,7)||1)-1]||"";
+const fmy=f=>fmon(f)+" "+bn(fym(f).slice(0,4));
 const fchip=f=>due(f)<=0?'<span class="pl g" style="margin:0">পরিশোধিত</span>':f.paid>0?'<span class="pl" style="margin:0;background:#fef3c7;color:#b45309">আংশিক</span>':'<span class="pl r" style="margin:0">বকেয়া</span>';
 const rcpNo=()=>"RCP-"+Date.now()+"-"+Math.random().toString(16).slice(2,6);
 function payFee(f,amt,m,d){amt=Math.min(+amt||0,due(f));if(amt<=0)return false;f.paid+=amt;f.pdate=d||today();f.method=m||f.method||"নগদ";if(!f.rcp)f.rcp=rcpNo();return true}
@@ -3128,7 +3129,7 @@ function fHub(){
 }
 /* ---- fee management (bottom tab) ---- */
 function fList(){const q=fQ.toLowerCase();return S.fees.filter(f=>{const x=sOf(f.sid);return x&&(!fCls||x.cls==fCls)&&(!fMon||fym(f).slice(5,7)==fMon)&&(!q||(x.name+" "+ftype(f)).toLowerCase().includes(q))&&(fStat=="all"||(fStat=="due"?due(f)>0:due(f)<=0))}).sort((a,b)=>(b.pdate||b.date||"")>(a.pdate||a.date||"")?1:-1)}
-const fcard=f=>{const x=sOf(f.sid);return `<div class="card" style="padding:12px;margin-bottom:8px"><div class="ch" style="margin:0"><div><b>${esc(x.name)}</b> ${fchip(f)}</div><span onclick="fMenu('${f.id}')" style="font-size:22px;color:var(--mu);padding:0 6px">⋯</span></div><small style="color:var(--mu)">${esc(x.cls)} · ${esc(ftype(f))} · ${fmon(f)}</small><div style="color:#16a34a;font-weight:700;margin-top:2px">${money(f.amt)}${f.paid&&due(f)>0?` <small style="color:var(--gr)">(পরিশোধ ${money(f.paid)})</small>`:""}</div></div>`};
+const fcard=f=>{const x=sOf(f.sid);return `<div class="card" style="padding:12px;margin-bottom:8px"><div class="ch" style="margin:0"><div><b>${esc(x.name)}</b> ${fchip(f)}</div><span onclick="fMenu('${f.id}')" style="font-size:22px;color:var(--mu);padding:0 6px">⋯</span></div><small style="color:var(--mu)">${esc(x.cls)} · ${esc(ftype(f))} · ${fmy(f)}</small><div style="color:#16a34a;font-weight:700;margin-top:2px">${money(f.amt)}${f.paid&&due(f)>0?` <small style="color:var(--gr)">(পরিশোধ ${money(f.paid)})</small>`:""}</div></div>`};
 function fee(){
  const all=S.fees.filter(f=>sOf(f.sid)),tp=S.fees.reduce((a,f)=>a+f.paid,0),td=S.fees.reduce((a,f)=>a+due(f),0),nd=all.filter(f=>due(f)>0).length;
  return phdr("ফি ব্যবস্থাপনা","বেতন ও পেমেন্ট ট্র্যাক করুন")
@@ -3142,7 +3143,7 @@ function fListView(nd,np){
  <div style="display:flex;gap:6px;margin-bottom:10px">${[["due","বকেয়া",nd],["paid","পরিশোধিত",np],["all","সকল",""]].map(c=>`<button class="chip ${fStat==c[0]?"on":""}" onclick="fStat='${c[0]}';render()">${c[1]}${c[2]!==""?" "+bn(c[2]):""}</button>`).join("")}</div><div id="flst">${fList().map(fcard).join("")||'<div class="em">কোনো রেকর্ড নেই</div>'}</div>`;
 }
 function fKeep(){const e=$("flst");if(e)e.innerHTML=fList().map(fcard).join("")||'<div class="em">কোনো রেকর্ড নেই</div>'}
-function fRows(){return fList().map(f=>{const x=sOf(f.sid);return [x.name,x.cls,ftype(f),fmon(f),f.amt,f.paid,due(f)<=0?"পরিশোধিত":f.paid>0?"আংশিক":"বকেয়া"]})}
+function fRows(){return fList().map(f=>{const x=sOf(f.sid);return [x.name,x.cls,ftype(f),fmy(f),f.amt,f.paid,due(f)<=0?"পরিশোধিত":f.paid>0?"আংশিক":"বকেয়া"]})}
 const fHead=["শিক্ষার্থী","শ্রেণি","ফি ধরন","মাস","পরিমাণ","পরিশোধিত","অবস্থা"];
 function fExcel(){csvOut("fees-"+today()+".csv",fHead,fRows(),"ফি তালিকা")}
 function fPdf(){tblPdf("fee-list","ফি ব্যবস্থাপনা — "+(fStat=="due"?"বকেয়া":fStat=="paid"?"পরিশোধিত":"সকল"),fHead,fRows())}
@@ -3224,28 +3225,48 @@ function feeDupGroups(){
   S.fees.forEach(f=>{const t=ftype(f);if(t==="অন্যান্য ফি"||!fym(f))return;const k=f.sid+"|"+t+"|"+fym(f);(m[k]=m[k]||[]).push(f)});
   return Object.values(m).filter(g=>g.length>1);
 }
+function feeDupKeep(g){return g.slice().sort((a,b)=>(+b.paid||0)-(+a.paid||0))[0]}
 function feeDupInfo(){
-  let del=0,manual=0;const gs=feeDupGroups();
+  let del=0,manual=0,mer=0,stuck=0;const gs=feeDupGroups();
   gs.forEach(g=>{
-    const keep=g.slice().sort((a,b)=>b.paid-a.paid)[0];
-    g.forEach(f=>{if(f===keep)return;if(f.paid>0)manual++;else del++});
+    const keep=feeDupKeep(g);let sum=+keep.paid||0,hp=false;
+    g.forEach(f=>{if(f===keep)return;if(f.paid>0){manual++;sum+=+f.paid;hp=true}else del++});
+    if(hp){if(sum<=keep.amt)mer++;else stuck++}
   });
-  return {del,manual,groups:gs.length};
+  return {del,manual,groups:gs.length,mer,stuck};
+}
+function feeDupList(){
+  return feeDupGroups().map(g=>{
+    const keep=feeDupKeep(g),f0=g[0],x=sOf(f0.sid);
+    return `<div style="border:1px solid var(--ln);border-radius:10px;padding:8px;margin-bottom:6px;font-size:12px"><b>${esc(x?x.name:"?")}</b> · ${esc(ftype(f0))} · ${fmy(f0)}`+g.map(f=>{
+      const st=f===keep?'<span class="pl g">রাখা হবে</span>':f.paid>0?'<span class="pl b">আদায়সহ</span>':'<span class="pl r">মুছবে</span>';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px"><span>ধার্য ${money(f.amt)} · আদায় ${money(f.paid)}${f.pdate?" · "+esc(f.pdate):""}</span>${st}</div>`}).join("")+`</div>`}).join("");
 }
 function feeDupOpen(){
   const i=feeDupInfo();
   if(!i.groups){alert("কোনো ডুপ্লিকেট বকেয়া পাওয়া যায়নি ✅");return}
-  modal(HND+`<h2 style="font-size:16px">🧹 ডুপ্লিকেট বকেয়া মেলান</h2><div style="font-size:13px;line-height:1.7">একই শিক্ষার্থীর একই ধরনের ফি একই মাসে একাধিকবার পাওয়া গেছে।<br><b>${bn(i.groups)}টি</b> ক্ষেত্রে ডুপ্লিকেট আছে।<br>• যে বাড়তি রেকর্ডে <b>কোনো টাকা আদায় হয়নি</b>: <b style="color:#dc2626">${bn(i.del)}টি মুছে যাবে</b><br>• যেগুলোতে আদায় হয়ে গেছে: <b>${bn(i.manual)}টি অক্ষত থাকবে</b> (হিসাব নষ্ট হবে না, আপনি নিজে দেখে নেবেন)</div><div class="card" style="font-size:12px;margin:8px 0;background:#fffbeb;color:#78350f">মুছে ফেলার আগে ব্যাকআপ নিয়ে রাখা ভালো।</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" style="background:#dc2626" onclick="feeDupClean()">মুছে পরিষ্কার করুন</button></div>`);$("mt").onclick=null;
+  modal(HND+`<h2 style="font-size:16px">🧹 ডুপ্লিকেট বকেয়া মেলান</h2><div style="font-size:13px;line-height:1.7">একই শিক্ষার্থীর একই ধরনের ফি একই বছর-মাসে একাধিকবার পাওয়া গেছে।<br><b>${bn(i.groups)}টি</b> ক্ষেত্রে ডুপ্লিকেট আছে।<br>• যে বাড়তি রেকর্ডে <b>কোনো টাকা আদায় হয়নি</b>: <b style="color:#dc2626">${bn(i.del)}টি মুছে যাবে</b><br>• যেগুলোতে আদায় হয়ে গেছে: <b>${bn(i.manual)}টি</b> — এগুলো "মুছে পরিষ্কার" এ অক্ষত থাকে।<br>• "আদায়সহ একত্র" করলে আদায়ের টাকা সবচেয়ে বেশি আদায়ওয়ালা রেকর্ডে যোগ হয়ে বাড়তি রেকর্ড মুছে যায়: <b style="color:#16a34a">${bn(i.mer)}টি গ্রুপে সম্ভব</b>${i.stuck?`, <b>${bn(i.stuck)}টি গ্রুপে সম্ভব নয়</b> (মোট আদায় ধার্যের বেশি হয়ে যায়, হাতে দেখতে হবে)`:""}</div><div style="max-height:36vh;overflow:auto;margin:10px 0">${feeDupList()}</div><div class="card" style="font-size:12px;margin:8px 0;background:#fffbeb;color:#78350f">মুছে ফেলার আগে ব্যাকআপ নিয়ে রাখা ভালো। একত্র করলে বাড়তি রেকর্ডের আলাদা রসিদ নম্বর আর থাকবে না।</div><div class="bt" style="flex-wrap:wrap"><button class="btn o" onclick="closeM()">বাতিল</button>${i.del?`<button class="btn" style="background:#dc2626" onclick="feeDupClean()">মুছে পরিষ্কার</button>`:""}${i.mer?`<button class="btn g" onclick="feeDupClean(true)">আদায়সহ একত্র করুন</button>`:""}</div>`);$("mt").onclick=null;
 }
-function feeDupClean(){
-  let n=0;const rm=new Set();
+function feeDupClean(merge){
+  let n=0,mg=0;const rm=new Set();
   feeDupGroups().forEach(g=>{
-    const keep=g.slice().sort((a,b)=>b.paid-a.paid)[0];
-    g.forEach(f=>{if(f!==keep&&!(f.paid>0)){rm.add(f.id);n++}});
+    const keep=feeDupKeep(g),pe=g.filter(f=>f!==keep&&f.paid>0);
+    let sum=+keep.paid||0;pe.forEach(f=>sum+=+f.paid);
+    const can=merge&&pe.length>0&&sum<=keep.amt;
+    g.forEach(f=>{
+      if(f===keep)return;
+      if(!(f.paid>0)){rm.add(f.id);n++}
+      else if(can){rm.add(f.id);mg++}
+    });
+    if(can){
+      if(!keep.rcp){const r=pe.find(f=>f.rcp);if(r){keep.rcp=r.rcp;keep.method=keep.method||r.method}}
+      const lp=pe.concat([keep]).filter(f=>f.pdate).sort((a,b)=>a.pdate<b.pdate?1:-1)[0];
+      keep.paid=sum;if(lp)keep.pdate=lp.pdate;
+    }
   });
   S.fees=S.fees.filter(f=>!rm.has(f.id));
-  logA("edit","ফি","ডুপ্লিকেট বকেয়া পরিষ্কার: "+bn(n)+"টি");
-  save();closeM();render();toast("✅ "+bn(n)+"টি ডুপ্লিকেট বকেয়া মুছে ফেলা হয়েছে");
+  logA("edit","ফি","ডুপ্লিকেট বকেয়া পরিষ্কার: "+bn(n)+"টি মুছা"+(mg?", "+bn(mg)+"টি আদায়সহ একত্র":""));
+  save();closeM();render();toast("✅ "+bn(n)+"টি মুছা"+(mg?", "+bn(mg)+"টি একত্র":"")+" হয়েছে");
 }
 /* receipt */
 function rcpHtml(f){
@@ -3257,7 +3278,7 @@ function rcptM(id){
  modal(HND+`<h2 style="font-size:16px">✓ ফি রসিদ</h2><label class="lb">বিদ্যালয়ের নাম (কাস্টমাইজ করুন)</label><input value="${esc(S.school.rcptName||S.school.name)}" oninput="S.school.rcptName=this.value;save();$('rcv').innerHTML=rcpHtml(S.fees.find(x=>x.id=='${id}'))"><div id="rcv">${rcpHtml(f)}</div><div class="g2" style="margin:8px 0 0"><button class="btn" onclick="printDoc('fee-receipt',rcpHtml(S.fees.find(x=>x.id=='${id}')))">🖨 প্রিন্ট</button><button class="btn o" onclick="rcpShare('${id}')">⇪ শেয়ার</button></div><button class="btn o" style="width:100%;margin-top:8px" onclick="closeM()">বন্ধ</button>`);
 }
 function rcpShare(id){
- const f=S.fees.find(x=>x.id==id),x=sOf(f.sid),t=(S.school.rcptName||S.school.name)+"\nফি রসিদ: "+(f.rcp||"")+"\nশিক্ষার্থী: "+x.name+" ("+x.cls+")\n"+ftype(f)+" — "+fmon(f)+"\nপরিশোধিত: "+money(f.paid)+"\nতারিখ: "+(f.pdate||f.date);
+ const f=S.fees.find(x=>x.id==id),x=sOf(f.sid),t=(S.school.rcptName||S.school.name)+"\nফি রসিদ: "+(f.rcp||"")+"\nশিক্ষার্থী: "+x.name+" ("+x.cls+")\n"+ftype(f)+" — "+fmy(f)+"\nপরিশোধিত: "+money(f.paid)+"\nতারিখ: "+(f.pdate||f.date);
  if(navigator.share){navigator.share({text:t}).catch(()=>{});return}
  if(x.phone){sendTo(x,"wa",t);return}
  try{navigator.clipboard.writeText(t);toast("রসিদের লেখা কপি হয়েছে")}catch(e){alert(t)}
@@ -3267,7 +3288,7 @@ function payM(ids){payC={ids,m:"নগদ"};drawPay()}
 function drawPay(){
  const fs=payC.ids.map(id=>S.fees.find(f=>f.id==id)).filter(f=>f&&due(f)>0);
  if(!fs.length){alert("কোনো বকেয়া নেই");return}
- modal(HND+`<h2 style="font-size:16px;margin-bottom:6px">💰 পেমেন্ট আদায়</h2>${fs.map(f=>`<div class="row"><div class="f">${esc(stuName(f.sid))}<small>${esc(ftype(f))} · ${fmon(f)} · বাকি ${money(due(f))}</small></div><input id="pa_${f.id}" type="number" value="${due(f)}" style="width:90px;margin:0"></div>`).join("")}${fi("তারিখ","pa_d",today(),"date")}<label class="lb">মাধ্যম</label><div style="display:flex;gap:6px;flex-wrap:wrap">${pChips(payC.m,"payC.m=this.dataset.m")}</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn g" onclick="paySave()">আদায় করুন</button></div>`);$("mt").onclick=null;
+ modal(HND+`<h2 style="font-size:16px;margin-bottom:6px">💰 পেমেন্ট আদায়</h2>${fs.map(f=>`<div class="row"><div class="f">${esc(stuName(f.sid))}<small>${esc(ftype(f))} · ${fmy(f)} · বাকি ${money(due(f))}</small></div><input id="pa_${f.id}" type="number" value="${due(f)}" style="width:90px;margin:0"></div>`).join("")}${fi("তারিখ","pa_d",today(),"date")}<label class="lb">মাধ্যম</label><div style="display:flex;gap:6px;flex-wrap:wrap">${pChips(payC.m,"payC.m=this.dataset.m")}</div><div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn g" onclick="paySave()">আদায় করুন</button></div>`);$("mt").onclick=null;
 }
 function paySave(){
  const d=gv("pa_d")||today(),done=[];
@@ -3295,7 +3316,7 @@ function duesBy(raw){
 }
 function stuDueCard(g,bulk){
  const tot=g.fs.reduce((a,f)=>a+due(f),0),x=g.x;
- return `<div class="card" style="padding:12px"><div style="display:flex;gap:8px;align-items:flex-start">${bulk?`<input type="checkbox" class="cb" ${pdSel[x.id]?"checked":""} onchange="pdTog('${x.id}')">`:""}<div class="f"><b>${esc(x.name)}</b> <span class="pl b" style="margin:0">${esc(x.cls)}</span> <span class="pl r" style="margin:0;background:#fff;border:1px solid #fca5a5">${bn(g.fs.length)}টি বকেয়া</span><div style="font-size:12px;color:var(--mu);margin:4px 0">${x.guardian?"অভিভাবক: "+esc(x.guardian)+" ":""}${x.phone?"📞 "+esc(x.phone):""}</div><div>${g.fs.map(f=>`<span class="pl r" style="margin:0 4px 4px 0;font-size:10px;background:#fff1f2">${esc(ftype(f))} (${fmon(f)}) — ${money(due(f))}</span>`).join("")}</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><b style="color:var(--rd);font-size:18px">${money(tot)}</b><div style="display:flex;gap:6px"><button class="ob g" style="padding:7px 10px" onclick="pdWa('${x.id}')">💬 WhatsApp</button><button class="ob" style="padding:7px 10px" onclick="payM([${g.fs.map(f=>`'${f.id}'`).join(",")}])">✓ পরিশোধ</button></div></div></div>`;
+ return `<div class="card" style="padding:12px"><div style="display:flex;gap:8px;align-items:flex-start">${bulk?`<input type="checkbox" class="cb" ${pdSel[x.id]?"checked":""} onchange="pdTog('${x.id}')">`:""}<div class="f"><b>${esc(x.name)}</b> <span class="pl b" style="margin:0">${esc(x.cls)}</span> <span class="pl r" style="margin:0;background:#fff;border:1px solid #fca5a5">${bn(g.fs.length)}টি বকেয়া</span><div style="font-size:12px;color:var(--mu);margin:4px 0">${x.guardian?"অভিভাবক: "+esc(x.guardian)+" ":""}${x.phone?"📞 "+esc(x.phone):""}</div><div>${g.fs.map(f=>`<span class="pl r" style="margin:0 4px 4px 0;font-size:10px;background:#fff1f2">${esc(ftype(f))} (${fmy(f)}) — ${money(due(f))}</span>`).join("")}</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><b style="color:var(--rd);font-size:18px">${money(tot)}</b><div style="display:flex;gap:6px"><button class="ob g" style="padding:7px 10px" onclick="pdWa('${x.id}')">💬 WhatsApp</button><button class="ob" style="padding:7px 10px" onclick="payM([${g.fs.map(f=>`'${f.id}'`).join(",")}])">✓ পরিশোধ</button></div></div></div>`;
 }
 function pdWa(sid){const x=sOf(sid);if(!x.phone){alert("অভিভাবকের মোবাইল নম্বর নেই");return}msgM([sid],"প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর মোট বকেয়া ফি {বকেয়া}। অনুগ্রহ করে দ্রুত পরিশোধ করুন।\n\nধন্যবাদ\n"+S.school.name)}
 function pdTog(id){if(pdSel[id])delete pdSel[id];else pdSel[id]=1;const y=$("v").scrollTop;render();$("v").scrollTop=y}
@@ -3313,7 +3334,7 @@ function pdash(){
 }
 function pdBody(g){
  if(pdTab=="stu")return g.map(r=>stuDueCard(r,pdBulk)).join("")||'<div class="em">কোনো বকেয়া নেই</div>';
- return `<div class="card ov" style="padding:6px"><table class="tb wr"><tr><th>শিক্ষার্থী</th><th>শ্রেণি</th><th>ফি ধরন</th><th>মাস</th><th>পরিমাণ</th><th>অবস্থা</th><th>মোবাইল</th><th>অ্যাকশন</th></tr>${g.flatMap(r=>r.fs.map(f=>`<tr><td><b>${esc(r.x.name)}</b></td><td>${esc(r.x.cls)}</td><td>${esc(ftype(f))}</td><td>${fmon(f)}</td><td style="color:var(--rd)"><b>${money(due(f))}</b></td><td>${fchip(f)}</td><td>${esc(r.x.phone||"—")}</td><td style="white-space:nowrap"><span onclick="pdWa('${r.x.id}')" style="color:var(--gr);font-size:16px;padding:4px">💬</span><span onclick="payM(['${f.id}'])" style="color:var(--gr);font-size:16px;padding:4px">✓</span></td></tr>`)).join("")}</table>${g.length?"":'<div class="em">কোনো বকেয়া নেই</div>'}</div>`;
+ return `<div class="card ov" style="padding:6px"><table class="tb wr"><tr><th>শিক্ষার্থী</th><th>শ্রেণি</th><th>ফি ধরন</th><th>মাস</th><th>পরিমাণ</th><th>অবস্থা</th><th>মোবাইল</th><th>অ্যাকশন</th></tr>${g.flatMap(r=>r.fs.map(f=>`<tr><td><b>${esc(r.x.name)}</b></td><td>${esc(r.x.cls)}</td><td>${esc(ftype(f))}</td><td>${fmy(f)}</td><td style="color:var(--rd)"><b>${money(due(f))}</b></td><td>${fchip(f)}</td><td>${esc(r.x.phone||"—")}</td><td style="white-space:nowrap"><span onclick="pdWa('${r.x.id}')" style="color:var(--gr);font-size:16px;padding:4px">💬</span><span onclick="payM(['${f.id}'])" style="color:var(--gr);font-size:16px;padding:4px">✓</span></td></tr>`)).join("")}</table>${g.length?"":'<div class="em">কোনো বকেয়া নেই</div>'}</div>`;
 }
 function pdKeep(){const e=$("pdl");if(e)e.innerHTML=pdBody(duesBy())}
 function pdBulkWa(){const ids=Object.keys(pdSel).filter(id=>sOf(id)&&sOf(id).phone);if(!ids.length){alert("নির্বাচিতদের কারো মোবাইল নম্বর নেই");return}msgM(ids,"প্রিয় অভিভাবক,\n\nআপনার সন্তান {নাম} (শ্রেণি: {শ্রেণি})-এর মোট বকেয়া ফি {বকেয়া}। অনুগ্রহ করে দ্রুত পরিশোধ করুন।\n\nধন্যবাদ\n"+S.school.name)}
@@ -3327,11 +3348,11 @@ function py(){
  if(x){
   const dsAll=S.fees.filter(f=>f.sid==x.id&&due(f)>0),yms=[...new Set(dsAll.map(f=>fym(f)).filter(Boolean))].sort(),ds=dsAll.filter(f=>!pyYm||fym(f)==pyYm);
   body=`<div class="card" style="border-color:#16a34a"><div style="display:flex;gap:10px;align-items:center">${avt(x,44)}<div class="f"><b>${esc(x.name)}</b><small>${esc(x.cls)} · রোল ${esc(x.roll)}${x.guardian?" · "+esc(x.guardian):""}</small></div><span onclick="pySid='';render()" style="padding:6px">✕</span></div>
-  ${yms.length>1?`<select onchange="pyYm=this.value;render()" style="margin:8px 0"><option value="">সব মাসের বকেয়া (${bn(dsAll.length)}টি)</option>${yms.map(y=>`<option value="${y}" ${pyYm==y?"selected":""}>${MN[+y.slice(5,7)-1]} ${bn(y.slice(0,4))}</option>`).join("")}</select>`:""}${ds.map(f=>`<div class="row"><input type="checkbox" class="cb" id="pc_${f.id}" checked onchange="pyTot()"><div class="f">${esc(ftype(f))}<small>${fmon(f)} · বাকি ${money(due(f))}</small></div><input id="pm_${f.id}" type="number" value="${due(f)}" oninput="pyTot()" style="width:90px;margin:0"></div>`).join("")||'<div class="em">কোনো বকেয়া নেই 🎉</div>'}
+  ${yms.length>1?`<select onchange="pyYm=this.value;render()" style="margin:8px 0"><option value="">সব মাসের বকেয়া (${bn(dsAll.length)}টি)</option>${yms.map(y=>`<option value="${y}" ${pyYm==y?"selected":""}>${MN[+y.slice(5,7)-1]} ${bn(y.slice(0,4))}</option>`).join("")}</select>`:""}${ds.map(f=>`<div class="row"><input type="checkbox" class="cb" id="pc_${f.id}" checked onchange="pyTot()"><div class="f">${esc(ftype(f))}<small>${fmy(f)} · বাকি ${money(due(f))}</small></div><input id="pm_${f.id}" type="number" value="${due(f)}" oninput="pyTot()" style="width:90px;margin:0"></div>`).join("")||'<div class="em">কোনো বকেয়া নেই 🎉</div>'}
   ${ds.length?`${fi("তারিখ","py_d",today(),"date")}<label class="lb">মাধ্যম</label><div style="display:flex;gap:6px;flex-wrap:wrap">${pChips(pyM,"pyM=this.dataset.m")}</div><button class="btn g" style="width:100%;margin-top:10px" onclick="pySave()">✓ আদায় করুন (<span id="pyt">${money(ds.reduce((a,f)=>a+due(f),0))}</span>)</button>`:""}</div>`;
  }else body=`<div class="card" style="padding:6px">${l.map(s=>{const d=S.fees.filter(f=>f.sid==s.id).reduce((a,f)=>a+due(f),0);return `<div class="row" onclick="pySid='${s.id}';pyYm='';render()">${avt(s,34)}<div class="f"><b>${esc(s.name)}</b><small>${esc(s.cls)} · রোল ${esc(s.roll)}</small></div><b style="color:${d?"var(--rd)":"var(--gr)"}">${d?money(d):"✓"}</b></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}</div>`;
  return phdr("পেমেন্ট","ফি আদায় ও রসিদ ইস্যু")+`<input placeholder="🔍 শিক্ষার্থীর নাম, রোল বা মোবাইল..." value="${esc(pyQ)}" oninput="pyQ=this.value;pySid='';render()" style="margin-top:12px">${body}
- <div class="card"><b style="font-size:14px">🕘 সাম্প্রতিক পেমেন্ট</b>${recent.map(f=>`<div class="row"><div class="f"><b>${esc(stuName(f.sid))}</b><small>${esc(ftype(f))} · ${fmon(f)} · ${esc(f.method||"নগদ")} · ${bn(f.pdate||"")}</small></div><b style="color:var(--gr)">${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾</button></div>`).join("")||'<div class="em">কোনো পেমেন্ট নেই</div>'}</div>`;
+ <div class="card"><b style="font-size:14px">🕘 সাম্প্রতিক পেমেন্ট</b>${recent.map(f=>`<div class="row"><div class="f"><b>${esc(stuName(f.sid))}</b><small>${esc(ftype(f))} · ${fmy(f)} · ${esc(f.method||"নগদ")} · ${bn(f.pdate||"")}</small></div><b style="color:var(--gr)">${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾</button></div>`).join("")||'<div class="em">কোনো পেমেন্ট নেই</div>'}</div>`;
 }
 function pyTot(){const ds=S.fees.filter(f=>f.sid==pySid&&due(f)>0&&(!pyYm||fym(f)==pyYm));let t=0;ds.forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m)t+=Math.min(+m.value||0,due(f))});const e=$("pyt");if(e)e.textContent=money(t)}
 function pySave(){
@@ -3339,7 +3360,7 @@ function pySave(){
  S.fees.filter(f=>f.sid==pySid&&due(f)>0&&(!pyYm||fym(f)==pyYm)).forEach(f=>{const c=$("pc_"+f.id),m=$("pm_"+f.id);if(c&&c.checked&&m&&payFee(f,+m.value,pyM,d))done.push(f)});
  if(!done.length){alert("অন্তত একটি ফি বেছে পরিমাণ দিন");return}
  logA("add","পেমেন্ট",stuName(pySid)+" — "+bn(done.length)+"টি ফি আদায়");save();render();
- if(done.length==1)rcptM(done[0].id);else modal(HND+`<div style="text-align:center"><div style="font-size:40px">✅</div><h2>পেমেন্ট সম্পন্ন</h2></div>`+done.map(f=>`<div class="row"><div class="f">${esc(ftype(f))}<small>${fmon(f)}</small></div><b>${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾 রসিদ</button></div>`).join("")+`<button class="btn o" style="width:100%;margin-top:10px" onclick="closeM()">বন্ধ</button>`);
+ if(done.length==1)rcptM(done[0].id);else modal(HND+`<div style="text-align:center"><div style="font-size:40px">✅</div><h2>পেমেন্ট সম্পন্ন</h2></div>`+done.map(f=>`<div class="row"><div class="f">${esc(ftype(f))}<small>${fmy(f)}</small></div><b>${money(f.paid)}</b><button class="ob" style="padding:5px 9px" onclick="rcptM('${f.id}')">🧾 রসিদ</button></div>`).join("")+`<button class="btn o" style="width:100%;margin-top:10px" onclick="closeM()">বন্ধ</button>`);
 }
 /* ---- income & expense ---- */
 function incOf(ym){
