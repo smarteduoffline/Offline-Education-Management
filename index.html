@@ -591,7 +591,7 @@ const RBAC={
  admin:{label:"অ্যাডমিন",all:true},
  teacher:{label:"শিক্ষক",permissions:["dashboard","attendance","students","classes","exams","reports","messages","notices"]}
 };
-const PERM_LABEL={dashboard:"ড্যাশবোর্ড",attendance:"উপস্থিতি",students:"শিক্ষার্থী",fees:"ফি",reports:"রিপোর্ট",exams:"পরীক্ষা ও ফলাফল",accounting:"আয় ও ব্যয়",classes:"শ্রেণী ও পাঠ্য/বাড়ির কাজ",library:"লাইব্রেরি",messages:"SMS/WhatsApp",teachers:"শিক্ষক ব্যবস্থাপনা",staff:"কর্মী ব্যবস্থাপনা",notices:"নোটিশ",settings:"সেটিংস ও backup"};
+const PERM_LABEL={dashboard:"ড্যাশবোর্ড",attendance:"উপস্থিতি",students:"শিক্ষার্থী",fees:"ফি",reports:"রিপোর্ট",exams:"পরীক্ষা ও ফলাফল",accounting:"আয় ও ব্যয়",classes:"শ্রেণী ও পাঠ্য/বাড়ির কাজ",library:"লাইব্রেরি",messages:"SMS/WhatsApp",teachers:"শিক্ষক ব্যবস্থাপনা",staff:"কর্মী ব্যবস্থাপনা",notices:"নোটিশ",settings:"সেটিংস",backup:"ব্যাকআপ ও রিসাইকেল বিন"};
 function initRBAC(){
  S.users=Array.isArray(S.users)?S.users:[];
  if(!S.users.length&&ACT_SID==="main"){
@@ -614,7 +614,7 @@ function myRoleList(){const u=S.users.find(v=>v.id===activeUser?.id||v.identifie
 function isParent(){if(!activeUser||isSuper()||activeUser.role==="admin")return false;const r=myRoleList();return r.includes("অভিভাবক")&&!r.some(x=>["অ্যাডমিন","সহ-অ্যাডমিন","শিক্ষক","হিসাবরক্ষক"].includes(x))}
 const PTABS=[["home",ico("home"),"হোম"],["portal",ico("stu"),"অভিভাবক পোর্টাল"],["back","←","ফিরে যান"]];
 function canTab(t){if(isParent())return t==="home"||t==="portal"||t==="more"||t==="back";return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
-const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"settings"};
+const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"backup"};
 function canMenu(k){if(isParent())return k==="cp";if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
 function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(setupInfo)return setupView();if(loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:`<button class="ob" style="width:100%;margin-top:10px" onclick="window._authMode='signup';setLoginTab('email')">📧 আমন্ত্রণ পেয়েছেন? ইমেইল দিয়ে অ্যাকাউন্ট খুলুন</button>`}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const ph=await hashPin(pin);const u={id:uid(),identifier:id,pinHash:ph,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];try{localStorage.setItem(AUTH_KEY,JSON.stringify(u))}catch(_){}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
@@ -973,7 +973,7 @@ async function changeApprovalStatus(userId,status){
     alert("পরিবর্তন ব্যর্থ: "+e.message);
   }
 }
-const PM_TO_PERM={stu:"students",att:"attendance",exam:"exams",res:"exams",card:"reports",cal:"exams",qb:"classes",lib:"library",not:"notices",msg:"messages",slog:"messages",sdash:"messages",fee:"fees",fin:"accounting",pay:"fees",tch:"teachers",stf:"staff",set:"settings",bk:"settings"};
+const PM_TO_PERM={stu:"students",att:"attendance",exam:"exams",res:"exams",card:"reports",cal:"exams",qb:"classes",lib:"library",not:"notices",msg:"messages",slog:"messages",sdash:"messages",fee:"fees",fin:"accounting",pay:"fees",tch:"teachers",stf:"staff",set:"settings",bk:"backup"};
 function pmDefault(roles){
   const o={};PMK.forEach(k=>o[k]=false);
   (roles&&roles.length?roles:[UROLES[2]]).forEach(r=>{const d=defPerm(r);PMK.forEach(k=>{if(d[k])o[k]=true})});
@@ -1314,7 +1314,7 @@ function notifItems(){
   if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')","ex|"+T+"|"+ex.map(e=>e.id).join(","));
   if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')","ux|"+ux.map(e=>e.id+e.date).join(","));
   const lb=S.set&&S.set.lastBk;
-  if(set&&S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","bkT=0;nav('more','bkp')","bk|"+(lb||"none"));
+  if(hasPerm("backup")&&S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","bkT=0;nav('more','bkp')","bk|"+(lb||"none"));
   const cs=dayOff(-14);
   S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')","nt|"+n.id));
   return L.sort((a,b)=>b.sev-a.sev);
