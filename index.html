@@ -615,7 +615,7 @@ function isParent(){if(!activeUser||isSuper()||activeUser.role==="admin")return 
 const PTABS=[["home",ico("home"),"হোম"],["portal",ico("stu"),"অভিভাবক পোর্টাল"],["back","←","ফিরে যান"]];
 function canTab(t){if(isParent())return t==="home"||t==="portal"||t==="more"||t==="back";return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
 const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"backup"};
-function canMenu(k){if(isParent())return k==="cp";if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
+function canMenu(k){if(isParent())return k==="cp";if(k==="bkp")return !!activeUser;if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
 function loginView(){const has=S.users.length>0||ACT_SID!=="main";if(recoveryMode)return recoveryView();if(setupInfo)return setupView();if(loginTab==="email")return emailLoginView();return `<div class="login-box"><div class="login-card"><div style="font-size:42px">🔐</div><h1>${has?"লগইন করুন":"প্রথম অ্যাডমিন তৈরি করুন"}</h1><p>${has?"ইউজারনেম/ইমেইল ও PIN দিন":"অ্যাপ পরিচালনার জন্য প্রথম অ্যাডমিন account তৈরি করুন"}</p>${schSel()}${has?loginTabs():""}<input id="loginIdentifier" autocomplete="username" placeholder="ইউজারনেম অথবা ইমেইল"><input id="loginPin" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যার PIN" onkeydown="if(event.key==='Enter')${has?"login()":"createAccount()"}"><button class="btn" style="width:100%" onclick="${has?"login()":"createAccount()"}">${has?"লগইন":"অ্যাডমিন তৈরি করুন"}</button>${has?`<button class="ob" style="width:100%;margin-top:10px" onclick="forgotLocal()">PIN ভুলে গেছেন?</button>`:`<button class="ob" style="width:100%;margin-top:10px" onclick="window._authMode='signup';setLoginTab('email')">📧 আমন্ত্রণ পেয়েছেন? ইমেইল দিয়ে অ্যাকাউন্ট খুলুন</button>`}<div id="loginError" style="color:var(--rd);font-size:12px;margin-top:10px"></div></div></div>`}
 async function createAccount(){const id=loginId(),pin=String($("loginPin")?.value||"");if(S.users.length)return login();if(!validId(id)){return $("loginError").textContent="সঠিক ইউজারনেম/ইমেইল দিন"}if(!/^\d{4,6}$/.test(pin)){return $("loginError").textContent="PIN ৪–৬ সংখ্যার হতে হবে"}const ph=await hashPin(pin);const u={id:uid(),identifier:id,pinHash:ph,role:"admin",active:true,permissions:[],createdAt:Date.now()};S.users=[u];try{localStorage.setItem(AUTH_KEY,JSON.stringify(u))}catch(_){}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;save();render()}
 async function login(){const id=loginId(),pin=String($("loginPin")?.value||""),u=S.users.find(x=>x.identifier===id&&x.active!==false);if(u&&await verifyPin(pin,u.pinHash||u.pin)){if(u.pin&&!u.pinHash){u.pinHash=await hashPin(pin);delete u.pin;save()}activeUser={id:u.id,identifier:u.identifier,role:u.role};sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));unlocked=true;render()}else{$("loginError").textContent="ইউজারনেম/ইমেইল অথবা PIN সঠিক নয়";$('loginPin').value=""}}
@@ -3942,9 +3942,31 @@ function fbDel(id){if(confirm("ফিডব্যাক মুছবেন?")){S
 let stT=0,stEd=false,usQ="",usR="";
 let bkT=0;
 function bkPage(){
-  const n=(S.trash||[]).length;
-  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">🗄</div><div><div style="font-size:20px;font-weight:700">ব্যাকআপ ও রিসাইকেল বিন</div><div style="color:var(--mu);font-size:13px">তথ্য সুরক্ষিত রাখুন ও মুছে যাওয়া তথ্য ফেরত আনুন</div></div></div>
-<div class="seg"><button class="${bkT==0?"on":""}" onclick="bkT=0;render()">🗄 ব্যাকআপ</button><button class="${bkT==1?"on":""}" onclick="bkT=1;render()">🗑 রিসাইকেল বিন${n?" ("+bn(n)+")":""}</button></div>`+(bkT==1?stBin():stBk());
+  const cb=hasPerm("backup"),n=(S.trash||[]).length;
+  if(!cb)bkT=2;
+  const head=cb?["ব্যাকআপ ও রিসাইকেল বিন","তথ্য সুরক্ষিত রাখুন ও মুছে যাওয়া তথ্য ফেরত আনুন","🗄"]:["অফলাইন লগইন PIN","ইন্টারনেট ছাড়া লগইনের জন্য নিজের PIN সেট করুন","🔢"];
+  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><div class="st-ic">${head[2]}</div><div><div style="font-size:20px;font-weight:700">${head[0]}</div><div style="color:var(--mu);font-size:13px">${head[1]}</div></div></div>
+<div class="seg">${cb?`<button class="${bkT==0?"on":""}" onclick="bkT=0;render()">🗄 ব্যাকআপ</button><button class="${bkT==1?"on":""}" onclick="bkT=1;render()">🗑 বিন${n?" ("+bn(n)+")":""}</button>`:""}<button class="${bkT==2?"on":""}" onclick="bkT=2;render()">🔢 অফলাইন PIN</button></div>`+(bkT==2?pinSec():bkT==1?stBin():stBk());
+}
+function myUser(){return activeUser?S.users.find(x=>x.id===activeUser.id||x.identifier===activeUser.identifier):null}
+function pinSec(){
+  const u=myUser();
+  if(!u)return '<div class="card"><div class="em">এই ডিভাইসে আপনার অ্যাকাউন্ট পাওয়া যায়নি। ইমেইল দিয়ে অনলাইনে লগইন করে আবার চেষ্টা করুন।</div></div>';
+  return `<div class="card"><h2>🔢 অফলাইন লগইন PIN</h2><div style="font-size:13px;color:var(--mu);margin-bottom:10px;line-height:1.7">ইন্টারনেট না থাকলে লগইন পেইজের <b>"PIN দিয়ে লগইন (অফলাইন)"</b> থেকে নিচের ইউজারনেম ও এই PIN দিয়ে ঢুকতে পারবেন। এই PIN শুধু <b>এই ডিভাইসে</b> কাজ করবে।</div><div class="st-kv"><div><small>লগইন ইউজারনেম</small><b>${esc(u.identifier)}</b></div></div><div style="margin:8px 0 10px">${u.pinHash?'<span class="tag g">✔ PIN সেট আছে</span>':'<span class="tag r">PIN সেট করা হয়নি</span>'}</div>${u.pinHash?'<label class="lb">বর্তমান PIN <span style="color:var(--mu);font-weight:400">(ইমেইল দিয়ে অনলাইনে লগইন থাকলে লাগবে না)</span></label><input id="mp0" type="password" inputmode="numeric" maxlength="6" autocomplete="off">':""}<label class="lb">${u.pinHash?"নতুন PIN":"PIN সেট করুন"}</label><input id="mp1" type="password" inputmode="numeric" maxlength="6" placeholder="৪–৬ সংখ্যা (ইংরেজি)" autocomplete="off"><label class="lb">PIN আবার দিন</label><input id="mp2" type="password" inputmode="numeric" maxlength="6" autocomplete="off"><button class="btn" style="width:100%;margin-top:8px" onclick="myPinSave()">💾 PIN সংরক্ষণ করুন</button></div>`;
+}
+async function myPinSave(){
+  const u=myUser();if(!u)return;
+  const a=($("mp1").value||"").trim(),b=($("mp2").value||"").trim(),cur=$("mp0")?$("mp0").value.trim():"";
+  if(!/^\d{4,6}$/.test(a)){alert("PIN ৪–৬ সংখ্যার হতে হবে (শুধু ইংরেজি সংখ্যা)");return}
+  if(a!==b){alert("দুটি PIN মেলেনি");return}
+  let online=false;try{if(sb){const {data:{session}}=await sb.auth.getSession();online=!!session}}catch(e){}
+  if(!online){
+    if(!u.pinHash){alert("প্রথমবার PIN সেট করতে ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করা থাকতে হবে। লগআউট করে ইমেইল দিয়ে ঢুকুন।");return}
+    if(!cur||!await verifyPin(cur,u.pinHash)){alert("বর্তমান PIN ভুল");return}
+  }
+  u.pinHash=await hashPin(a);delete u.pin;
+  logA("edit","ব্যবহারকারী","অফলাইন PIN সেট: "+u.identifier);
+  save();alert("✅ PIN সংরক্ষিত হয়েছে। এখন ইন্টারনেট ছাড়াও এই ডিভাইসে PIN দিয়ে লগইন করতে পারবেন।");render();
 }
 const ST_T=[["সাধারণ","⚙️"],["স্ক্রল বার","📢"],["কনফিগারেশন","🛡"],["নিরাপত্তা","🔒"],["সাবস্ক্রিপশন","💳"],["বিপজ্জনক","⚠️"]];
 const isDark=()=>document.documentElement.dataset.theme=="dark";
