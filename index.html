@@ -2917,7 +2917,7 @@ function xr(){
  <div class="card"><div class="g2" style="margin:0"><select onchange="xCls=this.value;render()" style="margin:0"><option value="">শ্রেণি (সব)</option>${xClsList().map(c=>`<option ${xCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select><select onchange="xType=this.value;render()" style="margin:0"><option value="">পরীক্ষার ধরন (সব)</option>${XT.map(c=>`<option ${xType==c?"selected":""}>${c}</option>`).join("")}</select></div>${xTab=="rep"?`<input placeholder="🔍 নাম বা রোল নম্বর..." value="${esc(xQ)}" oninput="xQ=this.value;render()" style="margin:8px 0 0">`:""}</div>`
  +(xTab=="list"?xList():xTab=="res"?xRes():xRep());
 }
-function paperCard(e){return `<div class="card" style="padding:12px;margin-bottom:8px"><div class="ch" style="margin:0"><b>${esc(e.name)}</b><span onclick="exMenu('${e.id}')" style="font-size:22px;color:var(--mu);padding:0 6px">⋯</span></div><div style="margin:4px 0"><span class="pl" style="background:${xcol(e.type)}22;color:${xcol(e.type)}">${esc(e.type||"অন্যান্য")}</span><span class="pl">${esc(e.subject)}</span></div><small style="color:var(--mu)">${e.date?"তারিখ: "+bn(e.date)+" · ":""}মোট: ${bn(e.total||100)}</small><div style="margin-top:8px"><button class="ob" onclick="peOpen('${e.id}')">📋 ফলাফল প্রবেশ</button></div></div>`}
+function paperCard(e){return `<div class="card" style="padding:12px;margin-bottom:8px"><div class="ch" style="margin:0"><b>${esc(e.name)}</b><span onclick="exMenu('${e.id}')" style="font-size:22px;color:var(--mu);padding:0 6px">⋯</span></div><div style="margin:4px 0"><span class="pl" style="background:${xcol(e.type)}22;color:${xcol(e.type)}">${esc(e.type||"অন্যান্য")}</span><span class="pl" style="font-size:15px;font-weight:700;padding:4px 12px;border-radius:8px;background:var(--pri);color:#fff;margin-left:2px">📖 ${esc(e.subject)}</span></div><small style="color:var(--mu)">${e.date?"তারিখ: "+bn(e.date)+" · ":""}মোট: ${bn(e.total||100)}</small><div style="margin-top:8px"><button class="ob" onclick="peOpen('${e.id}')">📋 ফলাফল প্রবেশ</button></div></div>`}
 function xList(){
  const l=xPapers(),cl=[...new Set(l.map(e=>e.cls))];
  return `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin:10px 0"><button class="ob" onclick="xExcel()">📄 Excel</button><button class="ob" onclick="xPdf()">🗎 PDF</button><button class="btn" onclick="exForm()">＋ নতুন পরীক্ষা</button></div>`
@@ -2950,8 +2950,58 @@ function exSave(){
  rs.forEach(r=>S.exams.push({id:uid(),name:f.name,type:f.type,cls:f.cls,subject:r.subject,date:r.date,total:+f.total||100,pass:f.pass===""?"":+f.pass,marks:{}}));
  logA("add","পরীক্ষা","নতুন পরীক্ষা: "+f.name+" ("+f.cls+") — "+rs.length+"টি বিষয়");save();closeM();render();
 }
+/* multi-subject create form (calendar) */
+let cmx=null;
+const calBlank=(d)=>({subject:"",date:d||"",start:"",end:"",syllabus:""});
+function cmxOpen(pre){
+  pre=pre||{};
+  cmx={name:pre.name||"",cls:pre.cls||calCls||xCls||"",type:pre.type||"",total:pre.total||100,room:pre.room||"",inv:pre.inv||"",note:pre.note||"",rows:[calBlank(pre.date)]};
+  cmxDraw();
+}
+function cmxGrab(){
+  const m=cmx;m.name=gv("cf_n");m.cls=gv("cf_c");m.type=gv("cf_t");m.total=gv("cf_m");m.room=gv("cf_r");m.inv=gv("cf_i");m.note=gv("cf_o");
+  m.rows.forEach((r,i)=>{r.subject=gv("cr"+i+"s");r.date=gv("cr"+i+"d");r.start=gv("cr"+i+"a");r.end=gv("cr"+i+"b");r.syllabus=gv("cr"+i+"y")});
+}
+function cmxAdd(){
+  cmxGrab();const last=cmx.rows[cmx.rows.length-1];let d="";
+  if(last&&last.date){const t=new Date(last.date+"T00:00:00Z");t.setUTCDate(t.getUTCDate()+1);d=t.toISOString().slice(0,10)}
+  const r=calBlank(d);if(last){r.start=last.start;r.end=last.end}
+  cmx.rows.push(r);cmxDraw();
+  setTimeout(()=>{const e=$("cr"+(cmx.rows.length-1)+"s");if(e)e.focus()},50);
+}
+function cmxRm(i){cmxGrab();cmx.rows.splice(i,1);if(!cmx.rows.length)cmx.rows.push(calBlank());cmxDraw()}
+function cmxDraw(){
+  const m=cmx;
+  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:6px">নতুন পরীক্ষা যোগ</h2>${fi("পরীক্ষার নাম","cf_n",m.name,"text",1,"যেমন: প্রথম সাময়িক পরীক্ষা")}<datalist id="xtl">${XT.map(t=>`<option value="${t}">`).join("")}</datalist><datalist id="xcl">${xClsList().map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
+<div class="g2" style="margin:0"><div>${fi("শ্রেণী","cf_c",m.cls,"text",1,"শ্রেণি লিখুন বা নির্বাচন করুন",'list="xcl"')}</div><div>${fi("ধরন","cf_t",m.type,"text",1,"ধরন",'list="xtl"')}</div><div>${fi("মোট নম্বর (প্রতি বিষয়)","cf_m",m.total,"number",0,"১০০")}</div><div>${fi("কক্ষ","cf_r",m.room,"text",0,"কক্ষ নম্বর")}</div></div>
+${fi("পরিদর্শক","cf_i",m.inv,"text",0,"শিক্ষকের নাম")}
+<div class="ch" style="margin:10px 0 6px"><b>📚 বিষয় ও তারিখ <span style="color:var(--rd)">*</span></b><span class="tag">${bn(m.rows.length)}টি বিষয়</span></div>
+${m.rows.map((r,i)=>`<div style="border:1px solid var(--ln);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--bg)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px;color:var(--pri)">বিষয় ${bn(i+1)}</b>${m.rows.length>1?`<span onclick="cmxRm(${i})" style="color:var(--rd);padding:2px 6px">🗑 বাদ দিন</span>`:""}</div><div class="g2" style="margin:0"><div><label class="lb">বিষয়</label><input id="cr${i}s" placeholder="যেমন: গণিত" value="${esc(r.subject)}"></div><div><label class="lb">তারিখ</label><input id="cr${i}d" type="date" value="${esc(r.date)}"></div><div><label class="lb">শুরুর সময়</label><input id="cr${i}a" type="time" value="${esc(r.start)}"></div><div><label class="lb">শেষের সময়</label><input id="cr${i}b" type="time" value="${esc(r.end)}"></div></div><input id="cr${i}y" placeholder="সিলেবাস/অধ্যায় (ঐচ্ছিক)" value="${esc(r.syllabus)}" style="margin-bottom:0"></div>`).join("")}
+<button class="btn o" style="width:100%;margin:2px 0 8px" onclick="cmxAdd()">＋ আরেকটি বিষয় যোগ করুন</button>
+<label class="lb">বিশেষ নির্দেশনা (সব বিষয়ের জন্য)</label><textarea id="cf_o" rows="2" placeholder="অতিরিক্ত তথ্য...">${esc(m.note)}</textarea>
+<div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="cmxSave()">${m.rows.length>1?"সব বিষয় যোগ করুন":"যোগ করুন"}</button></div>`);$("mt").onclick=null;
+}
+function cmxSave(){
+  cmxGrab();const m=cmx;
+  if(!m.name||!m.cls||!m.type){alert("পরীক্ষার নাম, শ্রেণী ও ধরন দিন");return}
+  const rs=m.rows.filter(r=>r.subject||r.date||r.start||r.end||r.syllabus);
+  if(!rs.length){alert("অন্তত একটি বিষয় ও তারিখ দিন");return}
+  const bad=rs.findIndex(r=>!r.subject||!r.date);
+  if(bad>=0){alert("বিষয় "+bn(bad+1)+": বিষয়ের নাম ও তারিখ দুটোই দিন (অথবা খালি সারিটি বাদ দিন)");return}
+  const seen=new Set();for(const r of rs){const k=r.subject.trim().toLowerCase();if(seen.has(k)){alert("একই বিষয় ("+r.subject+") দুবার দেওয়া হয়েছে");return}seen.add(k)}
+  let add=0,skip=[];
+  rs.forEach(r=>{
+    if(S.exams.some(x=>x.name==m.name&&x.cls==m.cls&&x.type==m.type&&String(x.subject).trim().toLowerCase()==r.subject.trim().toLowerCase())){skip.push(r.subject);return}
+    S.exams.push({id:uid(),name:m.name,cls:m.cls,type:m.type,subject:r.subject.trim(),date:r.date,start:r.start,end:r.end,total:+m.total||100,room:m.room,inv:m.inv,syllabus:r.syllabus,note:m.note,pass:"",marks:{}});add++;
+  });
+  if(!add){alert("এই নাম, শ্রেণী ও ধরনে এই বিষয়গুলো আগে থেকেই আছে: "+skip.join(", "));return}
+  logA("add","পরীক্ষা","নতুন পরীক্ষা: "+m.name+" ("+m.cls+") — "+bn(add)+"টি বিষয়");
+  save();closeM();render();
+  if(skip.length)toast(bn(add)+"টি যোগ হয়েছে; আগে থেকে থাকায় বাদ: "+skip.join(", "));else toast("✅ "+bn(add)+"টি বিষয়ের পরীক্ষা যোগ হয়েছে");
+}
 /* single paper (calendar style) form */
 function calForm(id,pre){if(!allow("exams"))return;
+ if(!id)return cmxOpen(pre);
  const e=S.exams.find(x=>x.id==id)||pre||{type:"",total:100};
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:6px">${id?"পরীক্ষা সম্পাদনা":"নতুন পরীক্ষা যোগ"}</h2>${fi("পরীক্ষার নাম","cf_n",e.name,"text",1,"যেমন: প্রথম সাময়িক পরীক্ষা")}<datalist id="xtl">${XT.map(t=>`<option value="${t}">`).join("")}</datalist><datalist id="xcl">${xClsList().map(c=>`<option value="${esc(c)}">`).join("")}</datalist>
  <div class="g2" style="margin:0"><div>${fi("শ্রেণী","cf_c",e.cls||calCls||xCls,"text",1,"শ্রেণি লিখুন বা নির্বাচন করুন",'list="xcl"')}</div><div>${fi("ধরন","cf_t",e.type,"text",1,"ধরন",'list="xtl"')}</div><div>${fi("বিষয়","cf_s",e.subject,"text",1,"বিষয়")}</div><div>${fi("তারিখ","cf_d",e.date,"date",1)}</div><div>${fi("শুরুর সময়","cf_a",e.start,"time")}</div><div>${fi("শেষের সময়","cf_b",e.end,"time")}</div><div>${fi("মোট নম্বর","cf_m",e.total||100,"number",0,"১০০")}</div><div>${fi("কক্ষ","cf_r",e.room,"text",0,"কক্ষ নম্বর")}</div></div>
