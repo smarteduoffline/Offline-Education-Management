@@ -2403,13 +2403,23 @@ function evPdf(){
 }
 
 /* ---- homework ---- */
-let hwDate=today(),hwCls="",hwF=null;
-const hwList=()=>S.hw.filter(h=>(!hwDate||h.date==hwDate)&&(!hwCls||h.cls==hwCls));
+let hwDate=today(),hwCls="",hwF=null,hwMode="month";
+const hwStart=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");d.setDate(d.getDate()-29);return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())};
+const hwList=()=>{const st=hwStart(),l=S.hw.filter(h=>(hwMode=="month"?(h.date||"")>=st:(!hwDate||h.date==hwDate))&&(!hwCls||h.cls==hwCls));return hwMode=="month"?l.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:(b.date||"")<(a.date||"")?-1:String(a.cls).localeCompare(String(b.cls))):l};
+const HWD=["রবিবার","সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার"];
+const hwDayLbl=d=>{const x=new Date(d+"T00:00:00");return isNaN(x)?esc(d||"তারিখ নেই"):bn(fdt(d))+" · "+HWD[x.getDay()]+(d==today()?" (আজ)":"")};
+const hwCard=h=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(h.subject)}</b> <span class="pl b">${esc(h.cls)}</span></div>${isParent()?"":`<span onclick="hwForm('${h.id}')" style="padding:0 6px">✏️</span>`}</div>${h.title?`<div style="font-size:14px;margin-top:4px"><b>${esc(h.title)}</b></div>`:""}${h.lesson?`<div style="font-size:13px;margin-top:4px">📖 আজকের পড়া: ${esc(h.lesson)}</div>`:""}${(h.homework||h.text)?`<div style="font-size:13px;margin-top:4px">📝 বাড়ির কাজ: ${esc(h.homework||h.text)}</div>`:""}${h.teacher?`<small style="color:var(--mu)">👤 ${esc(h.teacher)}</small>`:""}</div>`;
 function hw(){
- const l=hwList();
- return phdr("আজকের পড়া ও বাড়ির কাজ",isParent()?"শ্রেণিভিত্তিক দৈনিক পড়া ও বাড়ির কাজ":"শ্রেণিভিত্তিক দৈনিক পড়া ও বাড়ির কাজ আপডেট করুন")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${isParent()?"":`<button class="btn" onclick="hwForm()">＋ নতুন কাজ যোগ</button>`}<button class="ob" onclick="hwPdf()">🗎 PDF</button></div>
- <div class="g2"><input type="date" value="${hwDate}" onchange="hwDate=this.value;render()" style="margin:0"><select onchange="hwCls=this.value;render()" style="margin:0"><option value="">সব শ্রেণী</option>${allCls().map(c=>`<option ${hwCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`
- +(l.map(h=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(h.subject)}</b> <span class="pl b">${esc(h.cls)}</span></div>${isParent()?"":`<span onclick="hwForm('${h.id}')" style="padding:0 6px">✏️</span>`}</div>${h.title?`<div style="font-size:14px;margin-top:4px"><b>${esc(h.title)}</b></div>`:""}${h.lesson?`<div style="font-size:13px;margin-top:4px">📖 আজকের পড়া: ${esc(h.lesson)}</div>`:""}${(h.homework||h.text)?`<div style="font-size:13px;margin-top:4px">📝 বাড়ির কাজ: ${esc(h.homework||h.text)}</div>`:""}${h.teacher?`<small style="color:var(--mu)">👤 ${esc(h.teacher)}</small>`:""}</div>`).join("")||`<div class="card" style="text-align:center;padding:24px"><div style="font-size:34px;color:var(--mu)">📖</div><div style="color:var(--mu);margin:8px 0">আজকের পড়া এখনো আপডেট হয়নি</div>${isParent()?"":`<button class="btn s" onclick="hwForm()">＋ আপডেট করুন</button>`}</div>`);
+  const l=hwList(),mo=hwMode=="month",clsSel=`<select onchange="hwCls=this.value;render()" style="margin:0"><option value="">সব শ্রেণী</option>${allCls().map(c=>`<option ${hwCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select>`;
+  let body;
+  if(mo){
+    const days=[...new Set(l.map(h=>h.date||""))];
+    body=days.map(d=>`<div style="display:flex;align-items:center;gap:8px;margin:14px 2px 8px"><b style="font-size:14px;color:var(--pri)">📅 ${hwDayLbl(d)}</b><span class="tag">${bn(l.filter(h=>(h.date||"")==d).length)}টি</span></div>`+l.filter(h=>(h.date||"")==d).map(hwCard).join("")).join("");
+  }else body=l.map(hwCard).join("");
+  if(!body)body=`<div class="card" style="text-align:center;padding:24px"><div style="font-size:34px;color:var(--mu)">📖</div><div style="color:var(--mu);margin:8px 0">${mo?"গত ১ মাসে কোনো পড়া আপডেট করা হয়নি":"এই তারিখের পড়া এখনো আপডেট হয়নি"}</div>${isParent()?"":`<button class="btn s" onclick="hwForm()">＋ আপডেট করুন</button>`}</div>`;
+  return phdr("আজকের পড়া ও বাড়ির কাজ",isParent()?"শ্রেণিভিত্তিক দৈনিক পড়া ও বাড়ির কাজ":"শ্রেণিভিত্তিক দৈনিক পড়া ও বাড়ির কাজ আপডেট করুন")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${isParent()?"":`<button class="btn" onclick="hwForm()">＋ নতুন কাজ যোগ</button>`}<button class="ob" onclick="hwPdf()">🗎 PDF</button></div>
+<div class="seg"><button class="${mo?"on":""}" onclick="hwMode='month';render()">🗓 গত ১ মাস</button><button class="${mo?"":"on"}" onclick="hwMode='day';render()">📅 নির্দিষ্ট দিন</button></div>
+`+(mo?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><div style="flex:1">${clsSel}</div></div><small style="color:var(--mu)">${bn(fdt(hwStart()))} থেকে ${bn(fdt(today()))} — মোট ${bn(l.length)}টি</small>`:`<div class="g2"><input type="date" value="${hwDate}" onchange="hwDate=this.value;render()" style="margin:0">${clsSel}</div>`)+body;
 }
 function hwForm(id){if(isParent())return;if(!allow("classes"))return;
  if(!allCls().length){alert("আগে শিক্ষার্থী যোগ করুন");return}
@@ -2436,8 +2446,8 @@ function hwSave(){
 }
 function hwDel(id){if(!confirm("মুছে ফেলবেন?"))return;S.hw=S.hw.filter(x=>x.id!=id);save();closeM();render()}
 function hwPdf(){
- const l=hwList();
- printDoc("homework",sch()+`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style><div style="text-align:center;margin-bottom:10px">পড়া ও বাড়ির কাজ — তারিখ: ${bn(hwDate||"সব")}${hwCls?" · শ্রেণি: "+esc(hwCls):""}</div><table class="ptb" style="border:1px solid #1d4ed8"><tr><th>শ্রেণি</th><th>বিষয়</th><th>শিরোনাম</th><th>আজকের পড়া</th><th>বাড়ির কাজ</th><th>শিক্ষক</th></tr>${l.map(h=>`<tr><td>${esc(h.cls)}</td><td>${esc(h.subject)}</td><td>${esc(h.title||"")}</td><td>${esc(h.lesson||"")}</td><td>${esc(h.homework||h.text||"")}</td><td>${esc(h.teacher||"")}</td></tr>`).join("")||'<tr><td colspan="6">কিছু নেই</td></tr>'}</table>`);
+ const l=hwList(),mo=hwMode=="month";
+ printDoc("homework",sch()+`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style><div style="text-align:center;margin-bottom:10px">পড়া ও বাড়ির কাজ — ${mo?"গত ১ মাস ("+bn(fdt(hwStart()))+" থেকে "+bn(fdt(today()))+")":"তারিখ: "+bn(hwDate||"সব")}${hwCls?" · শ্রেণি: "+esc(hwCls):""}</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${mo?"<th>তারিখ</th>":""}<th>শ্রেণি</th><th>বিষয়</th><th>শিরোনাম</th><th>আজকের পড়া</th><th>বাড়ির কাজ</th><th>শিক্ষক</th></tr>${l.map(h=>`<tr>${mo?`<td style="white-space:nowrap">${bn(fdt(h.date||""))}</td>`:""}<td>${esc(h.cls)}</td><td>${esc(h.subject)}</td><td>${esc(h.title||"")}</td><td>${esc(h.lesson||"")}</td><td>${esc(h.homework||h.text||"")}</td><td>${esc(h.teacher||"")}</td></tr>`).join("")||`<tr><td colspan="${mo?7:6}">কিছু নেই</td></tr>`}</table>`);
 }
 
 /* ---- textbooks ---- */
@@ -2769,7 +2779,7 @@ async function feedPub(){
   try{
     if(!sb||!navigator.onLine||!activeUser||!unlocked||isParent()||isSuper()||activeUser.role!=="admin")return;
     const {data:{session}}=await sb.auth.getSession();if(!session)return;
-    const cut=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+    const cut=new Date(Date.now()-31*864e5).toISOString().slice(0,10);
     const patch={
       bar:String(S.set.bar||""),
       notices:S.notices.filter(n=>!n.aud||n.aud==="সকল"||n.aud==="অভিভাবক").slice(-30).map(n=>({id:n.id,title:n.title||"",date:n.date||"",body:n.body||"",aud:n.aud||"সকল"})),
