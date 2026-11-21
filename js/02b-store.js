@@ -5,7 +5,7 @@
    অজানা নামে লিখলে কনসোলে সতর্কতা আসে (বানান-ভুল ধরার জন্য); আচরণ বদলায় না। */
 const Store=(()=>{
   let known=null;
-  const keys=()=>known||(known=new Set(Object.keys(D())));
+  const keys=()=>known||(known=new Set([...Object.keys(D()),"trash","sub","tbFiles"]))  /* D()-তে না থাকা, দরকারমতো তৈরি হওয়া কী */;
   return new Proxy({},{
     get:(_,k)=>k==="raw"?S:k==="replace"?(v=>{S=v}):S[k],
     set:(_,k,v)=>{

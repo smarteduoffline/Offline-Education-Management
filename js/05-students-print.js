@@ -96,8 +96,8 @@ const MT="প্রিয় অভিভাবক,\n\nআপনার সন্
 const GP=p=>p>=80?5:p>=70?4:p>=60?3.5:p>=50?3:p>=40?2:p>=33?1:0;
 const openExt=u=>{const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();a.remove()};
 function waLink(ph,t){let d=String(ph||"").replace(/\D/g,"");if(d.startsWith("0"))d="88"+d;return "https://wa.me/"+d+"?text="+encodeURIComponent(t)}
-function sendTo(x,ch,tx,ty){S.smslog.unshift({t:Date.now(),sid:x.id,ch,tx:smsTx(tx),ty:ty||(/বকেয়া/.test(tx)?"বকেয়া":"")});S.smslog=S.smslog.slice(0,SMS_KEEP);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
-const fillT=(t,x)=>t.replace(/\{ফল:([^}]+)\}/g,(m,n)=>smRes(x,n)).replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"").replace(/\{বকেয়া\}/g,money(S.fees.filter(f=>f.sid==x.id).reduce((a,f)=>a+(f.amt-f.paid),0)));
+function sendTo(x,ch,tx,ty){Store.smslog.unshift({t:Date.now(),sid:x.id,ch,tx:smsTx(tx),ty:ty||(/বকেয়া/.test(tx)?"বকেয়া":"")});Store.smslog=Store.smslog.slice(0,SMS_KEEP);save();if(ch=="wa")openExt(waLink(x.phone,tx));else location.href="sms:"+x.phone+"?body="+encodeURIComponent(tx)}
+const fillT=(t,x)=>t.replace(/\{ফল:([^}]+)\}/g,(m,n)=>smRes(x,n)).replace(/\{নাম\}/g,x.name).replace(/\{শ্রেণি\}/g,x.cls||"").replace(/\{বকেয়া\}/g,money(Store.fees.filter(f=>f.sid==x.id).reduce((a,f)=>a+(f.amt-f.paid),0)));
 const pill=(t,k)=>`<span class="pl ${k||""}">${t}</span>`;
 
 /* ---- QR (byte mode, ECC M, v1-10) ---- */
@@ -164,20 +164,20 @@ function resultsM(id,key){
 function markAdd(id,key){
  const g=exGroup(key);if(!g.papers.length){alert("এই পরীক্ষায় কোনো বিষয় নেই");return}
  ask("নম্বর যুক্ত করুন",[["p","বিষয়","select",g.papers.map(p=>[p.id,p.subject+" (মোট "+(p.total||100)+")"])],["g","প্রাপ্ত নম্বর","number"]],v=>{
-  const p=S.exams.find(e=>e.id==v[0]);if(v[1]===""||isNaN(+v[1])){alert("প্রাপ্ত নম্বর দিন");return false}
+  const p=Store.exams.find(e=>e.id==v[0]);if(v[1]===""||isNaN(+v[1])){alert("প্রাপ্ত নম্বর দিন");return false}
   p.marks=p.marks||{};p.marks[id]=Math.min(+v[1],+p.total||100);logA("add","ফলাফল","নম্বর যুক্ত: "+sOf(id).name+" — "+p.subject);save();resultsM(id,key);return false});
 }
-function delMark(id,pid,key){const p=S.exams.find(e=>e.id==pid);delete p.marks[id];save();resultsM(id,key)}
+function delMark(id,pid,key){const p=Store.exams.find(e=>e.id==pid);delete p.marks[id];save();resultsM(id,key)}
 
 /* ---- monthly attendance report ---- */
 function attText(id){const x=sOf(id),pre=mk(arS.y,arS.m),c=cnt(id,pre),pc=pctOf([id],pre)||0;return arS.sn+"\n"+x.name+" ("+x.cls+") — "+MN[arS.m]+" "+bn(arS.y)+" উপস্থিতি\nউপস্থিত: "+bn(c.p)+", অনুপস্থিত: "+bn(c.a)+", বিলম্ব: "+bn(c.l)+", ছুটি: "+bn(c.h)+"\nউপস্থিতির হার: "+bn(pc)+"%"}
 function attDoc(id,m,y,sn){
- const x=sOf(id),pre=mk(y,m),c=cnt(id,pre),pc=pctOf([id],pre)||0,ds=Object.keys(S.att).filter(d=>d.startsWith(pre)&&S.att[d][id]).sort();
- return pdfHdr()+`<p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)}${x.branch?" | শাখা: "+esc(x.branch):""} | রোল: ${esc(x.roll)}<br>${MN[m]} ${bn(y)} — মাসিক উপস্থিতি রিপোর্ট</p><p>উপস্থিত: ${bn(c.p)} | অনুপস্থিত: ${bn(c.a)} | বিলম্ব: ${bn(c.l)} | ছুটি: ${bn(c.h)} | হার: ${bn(pc)}%</p><table><tr><th>তারিখ</th><th>অবস্থা</th></tr>${ds.map(d=>`<tr><td>${bn(d)}</td><td>${ST[S.att[d][id]][0]}</td></tr>`).join("")||'<tr><td colspan="2">কোনো রেকর্ড নেই</td></tr>'}</table>`;
+ const x=sOf(id),pre=mk(y,m),c=cnt(id,pre),pc=pctOf([id],pre)||0,ds=Object.keys(Store.att).filter(d=>d.startsWith(pre)&&Store.att[d][id]).sort();
+ return pdfHdr()+`<p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)}${x.branch?" | শাখা: "+esc(x.branch):""} | রোল: ${esc(x.roll)}<br>${MN[m]} ${bn(y)} — মাসিক উপস্থিতি রিপোর্ট</p><p>উপস্থিত: ${bn(c.p)} | অনুপস্থিত: ${bn(c.a)} | বিলম্ব: ${bn(c.l)} | ছুটি: ${bn(c.h)} | হার: ${bn(pc)}%</p><table><tr><th>তারিখ</th><th>অবস্থা</th></tr>${ds.map(d=>`<tr><td>${bn(d)}</td><td>${ST[Store.att[d][id]][0]}</td></tr>`).join("")||'<tr><td colspan="2">কোনো রেকর্ড নেই</td></tr>'}</table>`;
 }
 function attPdf(id,m,y,sn){printDoc("attendance-report",attDoc(id,m,y,sn))}
 function stuAtt(id,keep){
- const x=sOf(id),Y=new Date().getFullYear();if(!keep)arS={m:new Date().getMonth(),y:Y,sn:S.school.name};
+ const x=sOf(id),Y=new Date().getFullYear();if(!keep)arS={m:new Date().getMonth(),y:Y,sn:Store.school.name};
  const pre=mk(arS.y,arS.m),c=cnt(id,pre),tot=c.p+c.a+c.l+c.h,pc=pctOf([id],pre)||0;
  const bd=pc>=90?["চমৎকার","#dcfce7","#16a34a"]:pc>=75?["ভালো","#d3f1df","#16a34a"]:pc>=60?["সতর্কতা","#fef3c7","#b45309"]:["উদ্বেগজনক","#ffe4e9","#e11d48"];
  const tl=(i,l,n,col)=>`<div class="mini" style="background:var(--bg)"><div style="color:${col}">${i}</div><b style="font-size:20px;color:${col}">${bn(n)}</b>${l}</div>`;
@@ -192,7 +192,7 @@ function stuAtt(id,keep){
 
 /* ---- transactions ---- */
 function txnBody(id,rf){
- const x=sOf(id),fs=S.fees.filter(f=>f.sid==id),mo=f=>f.ym||f.auto||(f.date||"").slice(0,7),Y=new Date().getFullYear(),sm=(l,k)=>l.reduce((a,f)=>a+f[k],0);
+ const x=sOf(id),fs=Store.fees.filter(f=>f.sid==id),mo=f=>f.ym||f.auto||(f.date||"").slice(0,7),Y=new Date().getFullYear(),sm=(l,k)=>l.reduce((a,f)=>a+f[k],0);
  const yr=fs.filter(f=>mo(f).startsWith(txY+"-")),P=sm(yr,"paid"),D=sm(yr,"amt")-P;
  const st=(a,p)=>a-p<=0?pill("পরিশোধিত","g"):p>0?'<span class="pl" style="background:#fef3c7;color:#b45309">আংশিক</span>':pill("অপরিশোধিত","r");
  const mr=MN.map((m,i)=>{const r=fs.filter(f=>mo(f)==mk(txY,i)),a=sm(r,"amt"),p=sm(r,"paid");return r.length?`<tr><td><b>${m}</b></td><td><b>${bn(a)}</b></td><td style="color:var(--gr)">${p?bn(p):"—"}</td><td style="color:var(--rd)"><b>${a-p?bn(a-p):"—"}</b></td><td>${st(a,p)}</td></tr>`:`<tr style="color:var(--mu)"><td>${m}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`}).join("");
@@ -206,7 +206,7 @@ function txnBody(id,rf){
  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--mu)"><span>পৃষ্ঠা ${bn(txP)} / ${bn(pages)} · মোট ${bn(hist.length)} টি</span><span><button class="ob" style="padding:4px 10px" onclick="txP=Math.max(1,txP-1);${rf}">‹</button> <button class="ob" style="padding:4px 10px" onclick="txP=Math.min(${pages},txP+1);${rf}">›</button></span></div></div>`;
 }
 function stuTxn(id,keep){if(!keep){txY=new Date().getFullYear();txP=1}txM=true;const x=sOf(id);modal(HND+`<h2 style="font-size:16px;margin-bottom:8px">👛 ${esc(x.name)} — লেনদেন</h2>`+txnBody(id,`stuTxn('${id}',1)`)+`<button class="btn o" style="width:100%" onclick="closeM()">বন্ধ</button>`)}
-function delTx(id,fid){if(!confirm("এই লেনদেনের রেকর্ড মুছবেন?"))return;S.fees=S.fees.filter(f=>f.id!=fid);logA("edit","ফি","ফি রেকর্ড মুছে ফেলা হয়েছে");save();if(txM)stuTxn(id,1);else render()}
+function delTx(id,fid){if(!confirm("এই লেনদেনের রেকর্ড মুছবেন?"))return;Store.fees=Store.fees.filter(f=>f.id!=fid);logA("edit","ফি","ফি রেকর্ড মুছে ফেলা হয়েছে");save();if(txM)stuTxn(id,1);else render()}
 
 /* ---- message ---- */
 function msgM(ids,txt,cb){
@@ -227,13 +227,13 @@ function msgOne(id,ch){const x=pOf(id);mctx.done[id]=1;if(mctx.cb)mctx.cb();send
 function msgNext(){const id=mctx.ids.find(i=>mctx.sel[i]&&!mctx.done[i]);if(!id){alert("নির্বাচিত সবাইকে পাঠানো হয়েছে");return}msgOne(id,"wa")}
 
 /* ---- admit card / id card ---- */
-function schFields(list){return list.map(f=>`<label class="lb">${f[1]}</label><input id="sc_${f[0]}" value="${esc(S.school[f[0]])}" oninput="schUp()">`).join("")}
-function schUp(){["name","nameEn","addr","phone","est","year","director","founder"].forEach(k=>{const e=$("sc_"+k);if(e)S.school[k]=e.value});save();pvUp()}
+function schFields(list){return list.map(f=>`<label class="lb">${f[1]}</label><input id="sc_${f[0]}" value="${esc(Store.school[f[0]])}" oninput="schUp()">`).join("")}
+function schUp(){["name","nameEn","addr","phone","est","year","director","founder"].forEach(k=>{const e=$("sc_"+k);if(e)Store.school[k]=e.value});save();pvUp()}
 function pvUp(){const p=$("pv");if(!p)return;const k=cardCtx.kind;p.innerHTML=k=="id"?idHtml(sOf(cardCtx.id)):k=="rc"?rcHtml(sOf(cardCtx.id),rcPapers()):k=="sh"?shHtml(shData()):admitHtml(sOf(cardCtx.id),exGroup(cardCtx.eid))}
-function exUp(){S.exg=S.exg||{};S.exg[cardCtx.eid]={center:$("ex_c").value,start:$("ex_s").value,end:$("ex_e").value};save();pvUp()}
-function cardLogo(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");S.school.logo=x;save();cardRedraw()};pickPhoto()}
+function exUp(){Store.exg=Store.exg||{};Store.exg[cardCtx.eid]={center:$("ex_c").value,start:$("ex_s").value,end:$("ex_e").value};save();pvUp()}
+function cardLogo(){photoCb=u=>{const x=safeImageSrc(u);if(!x)return alert("শুধু বৈধ image ফাইল ব্যবহার করুন");Store.school.logo=x;save();cardRedraw()};pickPhoto()}
 function cardRedraw(){const k=cardCtx.kind;if(k=="id")drawId();else if(k=="rc")drawRc();else if(k=="sh")drawSh();else drawAdmit()}
-function logoRow(){return `<label class="lb">প্রতিষ্ঠানের লোগো</label><div class="row" style="border:0;padding:4px 0"><div class="av" style="width:46px;height:46px;font-size:11px">${S.school.logo?`<img class="av" style="width:46px;height:46px" src="${safeImageSrc(S.school.logo)}">`:"লোগো"}</div><button class="btn o s" onclick="cardLogo()">⬆ লোগো আপলোড</button><span onclick="S.school.logo='';save();cardRedraw()" style="color:var(--rd);font-size:13px">✕ সরান</span></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">`}
+function logoRow(){return `<label class="lb">প্রতিষ্ঠানের লোগো</label><div class="row" style="border:0;padding:4px 0"><div class="av" style="width:46px;height:46px;font-size:11px">${Store.school.logo?`<img class="av" style="width:46px;height:46px" src="${safeImageSrc(Store.school.logo)}">`:"লোগো"}</div><button class="btn o s" onclick="cardLogo()">⬆ লোগো আপলোড</button><span onclick="Store.school.logo='';save();cardRedraw()" style="color:var(--rd);font-size:13px">✕ সরান</span></div><input id="ph" type="file" accept="image/*" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px" onchange="photoFile(this.files[0]);this.value=''">`}
 function admit(id){
  const x=sOf(id),gs=exGroups(e=>e.cls==x.cls);
  if(!gs.length){alert("এই শ্রেণির কোনো পরীক্ষা নেই। আগে আরও → পরীক্ষা ও ফলাফল থেকে পরীক্ষা যোগ করুন।");return}
@@ -244,7 +244,7 @@ function drawAdmit(){
  modal(HND+`<h2 style="font-size:16px">📄 প্রবেশপত্র তৈরি — ${esc(x.name)}</h2><small style="color:var(--mu)">প্রতিষ্ঠানের তথ্য (স্বয়ংক্রিয়ভাবে লোড হয়, প্রয়োজনে সম্পাদনা করুন)</small>${logoRow()}
  ${schFields([["name","প্রতিষ্ঠানের নাম *"],["nameEn","ইংরেজি নাম"],["addr","ঠিকানা"],["phone","ফোন"],["est","স্থাপন সাল"],["director","পরিচালক / প্রধান শিক্ষক"]])}
  <label class="lb">পরীক্ষা</label><select onchange="cardCtx.eid=this.value;drawAdmit()">${gs.map(v=>`<option value="${esc(v.key)}" ${v.key==e.key?"selected":""}>${esc(v.name)}</option>`).join("")}</select>
- <label class="lb">পরীক্ষার কেন্দ্র</label><input id="ex_c" value="${esc(e.center||S.school.name)}" oninput="exUp()">
+ <label class="lb">পরীক্ষার কেন্দ্র</label><input id="ex_c" value="${esc(e.center||Store.school.name)}" oninput="exUp()">
  <div class="g2" style="margin:0"><div><label class="lb">পরীক্ষা শুরুর তারিখ</label><input id="ex_s" type="date" value="${esc(e.start||d1)}" onchange="exUp()"></div><div><label class="lb">পরীক্ষা শেষের তারিখ</label><input id="ex_e" type="date" value="${esc(e.end||(ps.length?ps[ps.length-1].date:""))}" onchange="exUp()"></div></div>
  <div id="pv" style="background:#eef3f3;padding:6px;border-radius:12px;overflow:auto;margin:6px 0">${admitHtml(x,e)}</div>
  <div class="card" style="background:#f0fdf4;padding:12px"><b style="color:#16a34a;font-size:14px">💬 অভিভাবককে পরীক্ষার সূচি পাঠান</b><div style="font-size:12px;margin:4px 0 8px;color:#16a34a">${esc(x.guardian||"অভিভাবক")}${x.phone?" ("+esc(x.phone)+")":""}-এর কাছে ${esc(e.name)} পরীক্ষার সময়সূচি পাঠান।</div><div class="g2" style="margin:0"><button class="btn g" onclick="admMsg('wa')">WhatsApp</button><button class="btn o g" style="margin:0" onclick="admMsg('sms')">SMS</button></div></div>
@@ -254,10 +254,10 @@ function drawAdmit(){
 function schedTxt(ps){return ps.map(r=>bn(r.date||"")+" — "+r.subject+((r.start||r.end)?" ("+(r.start||"")+(r.end?"-"+r.end:"")+")":"")).join("\n")}
 function admMsg(ch){
  const x=sOf(cardCtx.id),e=exGroup(cardCtx.eid);if(!x.phone){alert("অভিভাবকের মোবাইল নম্বর নেই");return}
- sendTo(x,ch,"প্রিয় অভিভাবক,\n"+x.name+" ("+x.cls+")-এর "+e.name+" পরীক্ষার সূচি:\n"+(schedTxt(e.papers)||"পরীক্ষা শুরু: "+bn(e.start||""))+"\n— "+S.school.name);
+ sendTo(x,ch,"প্রিয় অভিভাবক,\n"+x.name+" ("+x.cls+")-এর "+e.name+" পরীক্ষার সূচি:\n"+(schedTxt(e.papers)||"পরীক্ষা শুরু: "+bn(e.start||""))+"\n— "+Store.school.name);
 }
 function admitHtml(x,e){
- const sc=S.school,lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff">`:'<div style="width:50px;height:50px;border-radius:50%;border:2px solid #7fc8d6;color:#7fc8d6;font-size:10px;display:flex;align-items:center;justify-content:center">logo</div>',
+ const sc=Store.school,lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff">`:'<div style="width:50px;height:50px;border-radius:50%;border:2px solid #7fc8d6;color:#7fc8d6;font-size:10px;display:flex;align-items:center;justify-content:center">logo</div>',
  td="border:1px solid #ddd;padding:4px 6px",rt=e.papers||[],
  dy=d=>{try{return new Date(d+"T00:00:00").toLocaleDateString(LC(),{weekday:"long"})}catch(z){return ""}},
  row=(l,v)=>`<div style="display:flex;font-size:13px;padding:2px 0"><span style="width:62px;color:#555">${l}</span><span>: <b>${esc(v||"—")}</b></span></div>`,
@@ -282,7 +282,7 @@ function drawId(){
  $("mt").onclick=null;
 }
 function idHtml(x,ph){
- const sc=S.school,lg=z=>sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:${z}px;height:${z}px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:${z}px;height:${z}px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:${Math.round(z/2)}px">🕌</div>`,
+ const sc=Store.school,lg=z=>sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:${z}px;height:${z}px;border-radius:50%;object-fit:cover;background:#fff;border:2px solid #f5c518">`:`<div style="width:${z}px;height:${z}px;border-radius:50%;background:#fff;border:2px solid #f5c518;display:flex;align-items:center;justify-content:center;font-size:${Math.round(z/2)}px">🕌</div>`,
  cl=x.cls+(x.branch?" ("+x.branch+")":""),
  r=(l,v)=>`<div style="display:flex;font-size:11px;padding:2px 0"><span style="width:56px;color:#444">${l}</span><span style="flex:1">: ${esc(v||"—")}</span></div>`,
  qr=qrSvg([sc.name,x.name,"শ্রেণি: "+cl,"রোল: "+(x.roll||""),"মোবাইল: "+(x.phone||"")].join("\n"),96),
@@ -300,8 +300,8 @@ function printCard(){const x=cardCtx.id?sOf(cardCtx.id):null,k=cardCtx.kind;if(k
 function resDoc(id){const x=sOf(id);return pdfHdr()+`<p><b>${esc(x.name)}</b> — শ্রেণি ${esc(x.cls)} | রোল: ${esc(x.roll)} — ফলাফল</p>`+(exGroups(e=>e.cls==x.cls).map(g=>{const r=stuRes(x,g.papers);return r.n?`<h3>${esc(g.name)}</h3><table><tr><th>বিষয়</th><th>পূর্ণমান</th><th>প্রাপ্ত</th><th>%</th><th>গ্রেড</th><th>GPA</th></tr>${r.rows.map(q=>`<tr><td>${esc(q.p.subject)}</td><td>${bn(q.f)}</td><td>${bn(q.g)}</td><td>${bn(q.pc.toFixed(0))}%</td><td>${q.gr}</td><td>${bn(q.gp.toFixed(2))}</td></tr>`).join("")}</table>`:""}).join("")||"<p>কোনো ফলাফল নেই</p>")}
 function profilePage(){
  const x=sOf(profId);if(!x){profId="";return stu()}
- const Y=new Date().getFullYear(),ad=Object.keys(S.att).filter(d=>S.att[d][x.id]),pcn=ad.filter(d=>S.att[d][x.id]=="p"||S.att[d][x.id]=="l").length,pr=ad.length?Math.round(pcn/ad.length*100):0,ab=ad.filter(d=>S.att[d][x.id]=="a").length;
- const subj=S.exams.reduce((a,e)=>a+(((e.sub||{})[x.id])||[]).length,0),logs=S.smslog.filter(l=>l.sid==x.id);
+ const Y=new Date().getFullYear(),ad=Object.keys(Store.att).filter(d=>Store.att[d][x.id]),pcn=ad.filter(d=>Store.att[d][x.id]=="p"||Store.att[d][x.id]=="l").length,pr=ad.length?Math.round(pcn/ad.length*100):0,ab=ad.filter(d=>Store.att[d][x.id]=="a").length;
+ const subj=Store.exams.reduce((a,e)=>a+(((e.sub||{})[x.id])||[]).length,0),logs=Store.smslog.filter(l=>l.sid==x.id);
  const kv=(l,v)=>`<div class="row" style="padding:8px 0"><div class="f" style="color:var(--mu);font-size:13px">${l}</div><span style="text-align:right">${esc(v||"-")}</span></div>`;
  const stat=(n,l,sub,c)=>`<div class="card" style="margin:0;padding:12px"><b style="font-size:22px;color:${c}">${n}</b><div style="font-size:13px">${l}</div><small style="color:var(--mu)">${sub}</small></div>`;
  const TB=[["info","ব্যক্তিগত তথ্য"],["res","ফলাফল"],["att","উপস্থিতি"],["log","যোগাযোগ লগ"],["txn","লেনদেন"]];
@@ -312,9 +312,9 @@ function profilePage(){
  else if(profTab=="log")c=`<div class="card"><h2>যোগাযোগ লগ</h2>${logs.map(l=>{const t=new Date(l.t);return `<div class="row" style="align-items:flex-start"><span class="pl ${l.ch=="wa"?"g":"b"}">${l.ch=="wa"?"WhatsApp":"SMS"}</span><div class="f" style="font-size:13px;white-space:pre-wrap">${esc(l.tx)}<small>${bn(p2(t.getDate())+"/"+p2(t.getMonth()+1)+"/"+t.getFullYear()+" "+p2(t.getHours())+":"+p2(t.getMinutes()))}</small></div></div>`}).join("")||'<div class="em">কোনো বার্তা পাঠানো হয়নি</div>'}</div>`;
  else{txM=false;c=txnBody(x.id,"render()")}
  return `<div class="lk" style="margin-bottom:10px" onclick="profId='';render()">← শিক্ষার্থী তালিকায় ফিরুন</div>
- <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${S.school.logo?`<img class="av" style="width:30px;height:30px" src="${safeImageSrc(S.school.logo)}">`:"🕌"}</span>${esc(S.school.name)}</div>
+ <div class="card" style="padding:0;overflow:hidden"><div style="background:linear-gradient(135deg,#0d9488,#16a34a);color:#fff;padding:14px 14px 34px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px"><span class="av" style="width:30px;height:30px;font-size:14px">${Store.school.logo?`<img class="av" style="width:30px;height:30px" src="${safeImageSrc(Store.school.logo)}">`:"🕌"}</span>${esc(Store.school.name)}</div>
  <div style="padding:0 14px 14px"><div style="margin-top:-30px;display:inline-block;border:3px solid var(--card);border-radius:50%;line-height:0">${avt(x,64)}</div><div style="margin-top:6px"><b style="font-size:20px">${esc(x.name)}</b> ${pill(esc(x.status||"সক্রিয়"),(x.status||"সক্রিয়")=="সক্রিয়"?"g":"r")}</div><small style="color:var(--mu)">${esc(x.cls)} শ্রেণি${x.branch?" · "+esc(x.branch)+" শাখা":""} · রোল: ${esc(x.roll)}</small>
- <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},'${jsq(S.school.name)}')">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
+ <div class="top" style="margin:10px 0 0"><button class="ob" onclick="attPdf('${x.id}',new Date().getMonth(),${Y},'${jsq(Store.school.name)}')">⬇ উপস্থিতি PDF</button><button class="ob" onclick="printDoc('result-report',resDoc('${x.id}'))">⬇ ফলাফল PDF</button></div></div></div>
  <div class="g2">${stat(bn(pr)+"%","উপস্থিতির হার",bn(pcn)+"/"+bn(ad.length)+" দিন","#16a34a")}${stat(bn(ab),"অনুপস্থিত দিন","মোট দিন থেকে","#e11d48")}${stat(bn(subj),"মোট বিষয়","ফলাফল প্রবেশিত","#16a34a")}${stat(bn(logs.length),"SMS লগ","পাঠানো বার্তা","#7c3aed")}</div>
  <div class="sub">${TB.map(t=>`<button class="${profTab==t[0]?"on":""}" onclick="profTab='${t[0]}';render()">${t[1]}</button>`).join("")}</div>${c}`;
 }
@@ -322,7 +322,7 @@ const FEES=[["monthly","মাসিক বেতন (৳)","মাসিক ব
 const DIVS=["স্কুল/কিন্ডারগার্টেন","নূরানী","হিফজ","কিতাব","মক্তব"];
 const TYPES={"অনাবাসিক":"সাধারণ দিবা শিক্ষার্থী","আবাসিক":"হোস্টেলে থেকে পড়ে","ডেকেয়ার":"দিনের বেলা তত্ত্বাবধানে থাকে"};
 let draft={},step=1,editId=null;
-function stuForm(id){if(!allow("students"))return;editId=id||null;const s=S.students.find(x=>x.id==id);draft=s?{...s}:{type:"অনাবাসিক",status:"সক্রিয়",division:DIVS[0],admDate:today(),fees:{}};step=1;drawStu()}
+function stuForm(id){if(!allow("students"))return;editId=id||null;const s=Store.students.find(x=>x.id==id);draft=s?{...s}:{type:"অনাবাসিক",status:"সক্রিয়",division:DIVS[0],admDate:today(),fees:{}};step=1;drawStu()}
 function grab(){
  const g=id=>{const e=$(id);return e?e.value.trim():undefined};
  if(step==1)["name","nameEn","cls","branch","division","roll","gender","dob","admDate","guardian","phone","email","status","addr","pass","monthlyFee","boardFee","blood"].forEach(k=>{const v=g("s_"+k);if(v!==undefined)draft[k]=v});
@@ -376,8 +376,8 @@ function stuBack(){grab();step=1;drawStu()}
 function stuAdmit(){grab();commit()}
 function commit(){
  const {fees,...o}=draft;
- if(editId){o.monthlyFee=+o.monthlyFee||0;o.boardFee=o.type=="আবাসিক"?(+o.boardFee||0):0;Object.assign(S.students.find(x=>x.id==editId),o);logA("edit","শিক্ষার্থী","শিক্ষার্থীর তথ্য আপডেট: "+o.name)}
- else{const id=uid();S.students.push({id,...o,monthlyFee:+((fees||{}).monthly)||0,boardFee:o.type=="আবাসিক"?(+((fees||{}).board)||0):0});FEES.forEach(f=>{if(f[0]=="monthly"||f[0]=="board")return;const a=+((fees||{})[f[0]]);if(a>0)S.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})});logA("add","শিক্ষার্থী","নতুন শিক্ষার্থী ভর্তি: "+o.name)}
+ if(editId){o.monthlyFee=+o.monthlyFee||0;o.boardFee=o.type=="আবাসিক"?(+o.boardFee||0):0;Object.assign(Store.students.find(x=>x.id==editId),o);logA("edit","শিক্ষার্থী","শিক্ষার্থীর তথ্য আপডেট: "+o.name)}
+ else{const id=uid();Store.students.push({id,...o,monthlyFee:+((fees||{}).monthly)||0,boardFee:o.type=="আবাসিক"?(+((fees||{}).board)||0):0});FEES.forEach(f=>{if(f[0]=="monthly"||f[0]=="board")return;const a=+((fees||{})[f[0]]);if(a>0)Store.fees.push({id:uid(),sid:id,title:f[2],amt:a,paid:0,date:today()})});logA("add","শিক্ষার্থী","নতুন শিক্ষার্থী ভর্তি: "+o.name)}
  autoFees();save();closeM();render();
 }
 function shrink(url){const im=new Image();im.onload=()=>{const c=document.createElement("canvas");let u;
@@ -400,7 +400,7 @@ async function pickPhoto(){
  if(err)alert("ছবি খোলা যায়নি: "+err);
  $("ph").click();
 }
-function stuDel(id){if(!confirm("এই শিক্ষার্থী ও তার ফি রেকর্ড মুছে ফেলবেন?"))return;S.students=S.students.filter(x=>x.id!=id);S.fees=S.fees.filter(f=>f.sid!=id);delete selS[id];logA("edit","শিক্ষার্থী","শিক্ষার্থী মুছে ফেলা হয়েছে");save();closeM();render()}
+function stuDel(id){if(!confirm("এই শিক্ষার্থী ও তার ফি রেকর্ড মুছে ফেলবেন?"))return;Store.students=Store.students.filter(x=>x.id!=id);Store.fees=Store.fees.filter(f=>f.sid!=id);delete selS[id];logA("edit","শিক্ষার্থী","শিক্ষার্থী মুছে ফেলা হয়েছে");save();closeM();render()}
 
 let attView="list",attGroup="stu",attSub="daily",attFilter="all",attYear=new Date().getFullYear(),attMonth=new Date().getMonth(),attCls="",attBr="",attDraft={},qrMsg="";
 const ST={p:["উপস্থিত","#16a34a"],a:["অনুপস্থিত","#e11d48"],l:["বিলম্ব","#f59e0b"],h:["ছুটি","#6b7385"]};
@@ -408,35 +408,35 @@ const MN=["জানুয়ারি","ফেব্রুয়ারি","ম
 const MC=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#14b8a6","#a855f7","#eab308","#ef4444"];
 const mk=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
 function members(all){
- if(attGroup=="tea")return S.teachers.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.sub||t.desig||""}));
- if(attGroup=="staff")return S.staff.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.role||t.desig||""}));
- return S.students.filter(s=>s.status!="নিষ্ক্রিয়"&&(all||((!attCls||s.cls==attCls)&&(!attBr||s.branch==attBr)))).sort(byRollCls).map(s=>({id:s.id,name:s.name,roll:s.roll||"",cls:s.cls||"",br:s.branch||""}));
+ if(attGroup=="tea")return Store.teachers.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.sub||t.desig||""}));
+ if(attGroup=="staff")return Store.staff.filter(t=>t.status!="নিষ্ক্রিয়").map((t,i)=>({id:t.id,name:t.name,roll:String(i+1),cls:t.role||t.desig||""}));
+ return Store.students.filter(s=>s.status!="নিষ্ক্রিয়"&&(all||((!attCls||s.cls==attCls)&&(!attBr||s.branch==attBr)))).sort(byRollCls).map(s=>({id:s.id,name:s.name,roll:s.roll||"",cls:s.cls||"",br:s.branch||""}));
 }
-function pctOf(ids,pre){let p=0,t=0;for(const d in S.att){if(!d.startsWith(pre))continue;const r=S.att[d];ids.forEach(id=>{const v=r[id];if(v=="p"||v=="l"){p++;t++}else if(v=="a")t++})}return t?Math.round(p/t*1000)/10:null}
-function cnt(id,pre){const c={p:0,a:0,l:0,h:0};for(const d in S.att){if(d.startsWith(pre)){const v=S.att[d][id];if(v)c[v]++}}return c}
+function pctOf(ids,pre){let p=0,t=0;for(const d in Store.att){if(!d.startsWith(pre))continue;const r=Store.att[d];ids.forEach(id=>{const v=r[id];if(v=="p"||v=="l"){p++;t++}else if(v=="a")t++})}return t?Math.round(p/t*1000)/10:null}
+function cnt(id,pre){const c={p:0,a:0,l:0,h:0};for(const d in Store.att){if(d.startsWith(pre)){const v=Store.att[d][id];if(v)c[v]++}}return c}
 function ring(p,z){if(p==null)return '<span style="color:var(--mu)">—</span>';const r=z/2-4,c=2*Math.PI*r,col=p>=75?"#16a34a":p>=50?"#f59e0b":"#e11d48";return `<svg width="${z}" height="${z}"><circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="#e3e7f0" stroke-width="5"/><circle cx="${z/2}" cy="${z/2}" r="${r}" fill="none" stroke="${col}" stroke-width="5" stroke-dasharray="${c*p/100} ${c}" transform="rotate(-90 ${z/2} ${z/2})"/><text x="50%" y="55%" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">${bn(p)}%</text></svg>`}
 function fillDraft(){members().forEach(m=>{if(!attDraft[m.id])attDraft[m.id]="p"})}
-function initDraft(){attDraft={...(S.att[adate]||{})};fillDraft()}
+function initDraft(){attDraft={...(Store.att[adate]||{})};fillDraft()}
 function setView(v){attView=v;attSub="daily";if(v=="take")initDraft();render()}
 function setGrp(g){attGroup=g;attCls="";attBr="";if(g=="stu"&&attSub=="salary")attSub="daily";if(attView=="take")fillDraft();render()}
 function setAtt(id,k){attDraft[id]=k;const y=$("v").scrollTop;render();$("v").scrollTop=y}
-function saveAtt(){S.att[adate]={...(S.att[adate]||{}),...attDraft};logA("edit","উপস্থিতি","হাজিরা সংরক্ষণ — "+adate);save();alert("হাজিরা সংরক্ষিত হয়েছে");render()}
-function staffAdd(){ask("কর্মী যোগ",[["n","নাম","text"],["r","পদবি","text"],["p","মোবাইল","tel"]],v=>{if(!v[0]){alert("নাম দিন");return false}S.staff.push({id:uid(),name:v[0],role:v[1],phone:v[2]})})}
-function staffDel(id){if(attGroup=="staff"&&confirm("এই কর্মীকে মুছবেন?")){S.staff=S.staff.filter(x=>x.id!=id);save();render()}}
+function saveAtt(){Store.att[adate]={...(Store.att[adate]||{}),...attDraft};logA("edit","উপস্থিতি","হাজিরা সংরক্ষণ — "+adate);save();alert("হাজিরা সংরক্ষিত হয়েছে");render()}
+function staffAdd(){ask("কর্মী যোগ",[["n","নাম","text"],["r","পদবি","text"],["p","মোবাইল","tel"]],v=>{if(!v[0]){alert("নাম দিন");return false}Store.staff.push({id:uid(),name:v[0],role:v[1],phone:v[2]})})}
+function staffDel(id){if(attGroup=="staff"&&confirm("এই কর্মীকে মুছবেন?")){Store.staff=Store.staff.filter(x=>x.id!=id);save();render()}}
 function qrIn(){
  const v=$("qr").value.trim(),m=members().filter(x=>String(x.roll)==v||x.name==v);
  if(!m.length)qrMsg="❌ পাওয়া যায়নি";
  else if(m.length>1)qrMsg="⚠️ একাধিক পাওয়া গেছে, আগে শ্রেণি বাছুন";
- else if(attGroup!="stu")attPunch(m[0]);else{const d=S.att[adate]=S.att[adate]||{};d[m[0].id]="p";save();qrMsg="✅ "+m[0].name+" — উপস্থিত"}
+ else if(attGroup!="stu")attPunch(m[0]);else{const d=Store.att[adate]=Store.att[adate]||{};d[m[0].id]="p";save();qrMsg="✅ "+m[0].name+" — উপস্থিত"}
  render();
 }
 function clsSel(withBr){
  if(attGroup!="stu")return "";
- const br=[...new Set(S.students.filter(s=>!attCls||s.cls==attCls).map(s=>s.branch).filter(Boolean))];
+ const br=[...new Set(Store.students.filter(s=>!attCls||s.cls==attCls).map(s=>s.branch).filter(Boolean))];
  return `<div><label class="lb">শ্রেণি</label><select onchange="attCls=this.value;attBr='';if(attView=='take')fillDraft();render()" style="margin:0"><option value="">সব শ্রেণি</option>${classes().map(c=>`<option ${attCls==c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`+(withBr?`<div><label class="lb">শাখা</label><select onchange="attBr=this.value;fillDraft();render()" style="margin:0"><option value="">সব</option>${br.map(b=>`<option ${attBr==b?"selected":""}>${esc(b)}</option>`).join("")}</select></div>`:"");
 }
 function att(){
- const ids=members(true).map(m=>m.id),day=S.att[adate]||{},take=attView=="take",Y=new Date().getFullYear();
+ const ids=members(true).map(m=>m.id),day=Store.att[adate]||{},take=attView=="take",Y=new Date().getFullYear();
  const c3=k=>ids.filter(id=>day[id]==k).length;
  const vals=MN.map((_,i)=>pctOf(ids,mk(attYear,i))),have=vals.filter(v=>v!=null),avg=have.length?Math.round(have.reduce((a,b)=>a+b,0)/have.length*10)/10:0;
  const dots=MN.map((_,i)=>{const a=i/12*2*Math.PI-Math.PI/2,v=vals[i];return `<circle cx="${(110+82*Math.cos(a)).toFixed(1)}" cy="${(110+82*Math.sin(a)).toFixed(1)}" r="${v==null?7:5+v/100*7}" fill="${MC[i]}"/>`}).join("");
@@ -487,7 +487,7 @@ function regPdf(rep){
  if(rep){
   tb=`<table style="table-layout:fixed;width:100%;border-collapse:collapse"><tr><th style="${hd};width:30%">নাম</th><th style="${hd}">উপস্থিত</th><th style="${hd}">অনুপস্থিত</th><th style="${hd}">বিলম্বে</th><th style="${hd}">ছুটি</th><th style="${hd}">হার %</th></tr>${l.map(m=>{const c=cnt(m.id,pre);return `<tr><td style="${nm}">${who(m)}</td><td style="${b}">${bn(c.p)}</td><td style="${b}">${bn(c.a)}</td><td style="${b}">${bn(c.l)}</td><td style="${b}">${bn(c.h)}</td><td style="${b}">${bn(pctOf([m.id],pre)||0)}%</td></tr>`}).join("")}</table>`;
  }else{
-  tb=`<table style="table-layout:fixed;width:100%;border-collapse:collapse"><colgroup><col style="width:112px">${Array.from({length:n},()=>'<col>').join("")}<col style="width:22px"><col style="width:22px"><col style="width:22px"><col style="width:22px"></colgroup><tr><th style="${hd};text-align:left;padding-left:4px">নাম</th>${Array.from({length:n},(_,i)=>`<th style="${hd}">${bn(i+1)}</th>`).join("")}<th style="${hd}">উপ.</th><th style="${hd}">অনু.</th><th style="${hd}">বিল.</th><th style="${hd}">ছুটি</th></tr>${l.map(m=>{const c=cnt(m.id,pre);return `<tr><td style="${nm}">${who(m)}</td>${Array.from({length:n},(_,i)=>{const v=(S.att[pre+"-"+String(i+1).padStart(2,"0")]||{})[m.id];return `<td style="${b};color:${v&&ST[v]?ST[v][1]:"#999"};font-weight:700">${v&&L[v]?L[v]:""}</td>`}).join("")}<td style="${b}">${bn(c.p)}</td><td style="${b}">${bn(c.a)}</td><td style="${b}">${bn(c.l)}</td><td style="${b}">${bn(c.h)}</td></tr>`}).join("")}</table>`;
+  tb=`<table style="table-layout:fixed;width:100%;border-collapse:collapse"><colgroup><col style="width:112px">${Array.from({length:n},()=>'<col>').join("")}<col style="width:22px"><col style="width:22px"><col style="width:22px"><col style="width:22px"></colgroup><tr><th style="${hd};text-align:left;padding-left:4px">নাম</th>${Array.from({length:n},(_,i)=>`<th style="${hd}">${bn(i+1)}</th>`).join("")}<th style="${hd}">উপ.</th><th style="${hd}">অনু.</th><th style="${hd}">বিল.</th><th style="${hd}">ছুটি</th></tr>${l.map(m=>{const c=cnt(m.id,pre);return `<tr><td style="${nm}">${who(m)}</td>${Array.from({length:n},(_,i)=>{const v=(Store.att[pre+"-"+String(i+1).padStart(2,"0")]||{})[m.id];return `<td style="${b};color:${v&&ST[v]?ST[v][1]:"#999"};font-weight:700">${v&&L[v]?L[v]:""}</td>`}).join("")}<td style="${b}">${bn(c.p)}</td><td style="${b}">${bn(c.a)}</td><td style="${b}">${bn(c.l)}</td><td style="${b}">${bn(c.h)}</td></tr>`}).join("")}</table>`;
  }
  printDoc((rep?"attendance-summary-":"attendance-register-")+pre,pdfHdr(ttl)+`<div style="font-size:10px;color:#444;margin:0 0 8px;text-align:center">${rep?"":esc(lgd)+" &nbsp;|&nbsp; "}মোট ${bn(l.length)} জন</div>`+tb);
 }
@@ -496,7 +496,7 @@ function monthTab(rep){
  let h=`<div class="g2" style="margin-bottom:10px"><div><select onchange="attMonth=+this.value;render()" style="margin:0">${MN.map((m,i)=>`<option value="${i}" ${attMonth==i?"selected":""}>${m} ${bn(attYear)}</option>`).join("")}</select></div>${clsSel(false)}</div>`;
  if(rep)return h+regTop(true)+(attGroup!="stu"?repCards(l,pre):"")+`<div class="card ov" style="padding:6px"><table class="tb"><tr><th>নাম</th><th>উপ.</th><th>অনু.</th><th>বিল.</th><th>ছুটি</th><th>%</th>${attGroup!="stu"?"<th>ঘণ্টা</th>":""}</tr>${l.map(m=>{const c=cnt(m.id,pre);return `<tr><td>${esc(m.name)}</td><td>${bn(c.p)}</td><td>${bn(c.a)}</td><td>${bn(c.l)}</td><td>${bn(c.h)}</td><td>${ring(pctOf([m.id],pre),36)}</td>${attGroup!="stu"?`<td>${hrsM(m.id,pre)}</td>`:""}</tr>`}).join("")}</table>${l.length?"":'<div class="em">কোনো তথ্য নেই</div>'}</div>`;
  const L={p:"প",a:"অ",l:"বি",h:"ছু"};
- return h+regTop(false)+`<div class="card ov" style="padding:6px"><table class="tb"><tr><th>নাম</th>${Array.from({length:n},(_,i)=>`<th>${bn(i+1)}</th>`).join("")}</tr>${l.map(m=>`<tr><td>${esc(m.name)}</td>${Array.from({length:n},(_,i)=>{const v=(S.att[pre+"-"+String(i+1).padStart(2,"0")]||{})[m.id];return `<td style="text-align:center;color:${v?ST[v][1]:"var(--mu)"}">${v?L[v]:"·"}</td>`}).join("")}</tr>`).join("")}</table>${l.length?"":'<div class="em">কোনো তথ্য নেই</div>'}</div>`;
+ return h+regTop(false)+`<div class="card ov" style="padding:6px"><table class="tb"><tr><th>নাম</th>${Array.from({length:n},(_,i)=>`<th>${bn(i+1)}</th>`).join("")}</tr>${l.map(m=>`<tr><td>${esc(m.name)}</td>${Array.from({length:n},(_,i)=>{const v=(Store.att[pre+"-"+String(i+1).padStart(2,"0")]||{})[m.id];return `<td style="text-align:center;color:${v?ST[v][1]:"var(--mu)"}">${v?L[v]:"·"}</td>`}).join("")}</tr>`).join("")}</table>${l.length?"":'<div class="em">কোনো তথ্য নেই</div>'}</div>`;
 }
 let sub="",curExam="",repSid="",smsCls="",smsMsg="";
 const gr=p=>p>=80?"A+":p>=70?"A":p>=60?"A-":p>=50?"B":p>=40?"C":p>=33?"D":"F";
@@ -505,10 +505,10 @@ function askOk(){const v=window._fs.map((f,i)=>$("q"+i).value.trim());if(window.
 const fi=(l,id,v,t,r,ph,x)=>`<label class="lb">${l}${r?" *":""}</label><input id="${id}" type="${t||"text"}" value="${esc(v)}" placeholder="${esc(ph||"")}" ${x||""}>`;
 const fsel=(l,id,o,v,r,ph)=>`<label class="lb">${l}${r?" *":""}</label><select id="${id}">${ph?`<option value="">${ph}</option>`:""}${o.map(x=>{const a=Array.isArray(x)?x:[x,x];return `<option value="${esc(a[0])}" ${v==a[0]?"selected":""}>${esc(a[1])}</option>`}).join("")}</select>`;
 const gv=id=>{const e=$(id);return e?e.value.trim():""};
-const allCls=()=>[...new Set([...classes(),...S.routine.map(r=>r.cls),...S.tbooks.map(b=>b.cls)])].filter(Boolean);
+const allCls=()=>[...new Set([...classes(),...Store.routine.map(r=>r.cls),...Store.tbooks.map(b=>b.cls)])].filter(Boolean);
 const phdr=(t,sb)=>`<h1 style="font-size:20px">${t}</h1><small style="color:var(--mu)">${sb}</small>`;
 function pdfHdr(t,flat){
- const sc=S.school,B="#0f4c5c",lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff">`:'<div style="width:50px;height:50px;border-radius:50%;border:2px solid #7fc8d6;color:#7fc8d6;font-size:10px;display:flex;align-items:center;justify-content:center">logo</div>',cell="flex:1;padding:5px;border:1px solid #9fd3da";
+ const sc=Store.school,B="#0f4c5c",lg=sc.logo?`<img src="${safeDataImage(sc.logo)}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;background:#fff">`:'<div style="width:50px;height:50px;border-radius:50%;border:2px solid #7fc8d6;color:#7fc8d6;font-size:10px;display:flex;align-items:center;justify-content:center">logo</div>',cell="flex:1;padding:5px;border:1px solid #9fd3da";
  const head=`<div style="background:${B};color:#fff;padding:10px;display:flex;align-items:center;gap:8px">${lg}<div style="text-align:center;flex:1"><div style="font-size:19px;font-weight:700">${esc(sc.name)}</div><div style="color:#ffd54a;font-size:12px;font-weight:700">${esc(sc.nameEn||"")}</div></div>${lg}</div><div style="background:#127a8c;color:#fff;text-align:center;font-size:12px;padding:5px">${esc(sc.addr||"")}</div><div style="display:flex;font-size:11px;text-align:center;background:#d9f2f5;color:#0f4c5c"><div style="${cell}">পরিচালক: ${esc(sc.director||"—")}</div><div style="${cell}">স্থাপিত: ${esc(sc.est||"—")} | শিক্ষাবর্ষ: ${esc(sc.year||"—")}</div><div style="${cell}">মোবাইল: ${esc(sc.phone||"—")}</div></div>`;
  const chip=t?`<div style="text-align:center;margin:8px 0"><span style="background:#e5e7eb;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;display:inline-block">${t}</span></div>`:"";
  return flat?`<div>${head}${chip}</div>`:`<div style="font-family:sans-serif;color:#222;border:2px solid ${B};border-radius:10px;overflow:hidden;margin:0 0 10px;background:#fff">${head}${chip}</div>`;
@@ -517,7 +517,7 @@ const sch=t=>pdfHdr(t);
 
 /* ---- hub ---- */
 function clsHub(){
- const T=today(),it=[["rt","📅","সাপ্তাহিক ক্লাস রুটিন","প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল",bn(S.routine.length)+" টি রুটিন"],["ev","🎉","ইভেন্ট ক্যালেন্ডার","ইভেন্ট, পরীক্ষা ও ছুটির ক্যালেন্ডার",bn(S.events.length)+" টি ইভেন্ট"],["hw","📝","পড়া ও বাড়ির কাজ",(isParent()?"দৈনিক পড়া ও বাড়ির কাজ দেখুন":"দৈনিক পড়া ও বাড়ির কাজ আপডেট করুন"),bn(S.hw.filter(h=>h.date==T).length)+" টি আজকের"],["bk","📚","শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা",bn(S.tbooks.length)+" টি বই"]];
+ const T=today(),it=[["rt","📅","সাপ্তাহিক ক্লাস রুটিন","প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল",bn(Store.routine.length)+" টি রুটিন"],["ev","🎉","ইভেন্ট ক্যালেন্ডার","ইভেন্ট, পরীক্ষা ও ছুটির ক্যালেন্ডার",bn(Store.events.length)+" টি ইভেন্ট"],["hw","📝","পড়া ও বাড়ির কাজ",(isParent()?"দৈনিক পড়া ও বাড়ির কাজ দেখুন":"দৈনিক পড়া ও বাড়ির কাজ আপডেট করুন"),bn(Store.hw.filter(h=>h.date==T).length)+" টি আজকের"],["bk","📚","শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা",bn(Store.tbooks.length)+" টি বই"]];
  return phdr("শ্রেণী ও পাঠ্য","ক্লাস রুটিন, ইভেন্ট, পড়া ও পাঠ্যবই এক জায়গায়")+`<div style="margin-top:12px">${it.map(x=>`<div class="hb" onclick="sub='${x[0]}';render()"><div class="ic2">${x[1]}</div><div class="f"><b>${x[2]}</b><small style="color:var(--mu);font-size:12px">${x[3]}</small></div><span class="pl b">${x[4]}</span></div>`).join("")}</div>`;
 }
 
@@ -527,14 +527,14 @@ let rtE=null,rtMn="";
 document.addEventListener("click",e=>{if(rtMn&&!(e.target.closest&&e.target.closest(".rtm"))){rtMn="";if(typeof sub!="undefined"&&sub=="rt")render()}});
 const tm=m=>p2(Math.floor(m/60))+":"+p2(m%60);
 function rtDefault(c){return {cls:c,periods:6,days:[0,1,2,3,4,5],times:Array.from({length:10},(_,i)=>({s:tm(480+i*45),e:tm(480+i*45+40)})),cells:{}}}
-function rtOpen(c){if(isParent())return;const ex=S.routine.find(r=>r.cls==c);rtE=ex?JSON.parse(JSON.stringify(ex)):rtDefault(c);const d=rtDefault(c);while(rtE.times.length<10)rtE.times.push(d.times[rtE.times.length]);render()}
-function rtNew(){if(isParent())return;const cl=allCls();if(!cl.length){alert("আগে শিক্ষার্থী যোগ করুন");return}rtOpen(cl.find(c=>!S.routine.some(r=>r.cls==c))||cl[0])}
+function rtOpen(c){if(isParent())return;const ex=Store.routine.find(r=>r.cls==c);rtE=ex?JSON.parse(JSON.stringify(ex)):rtDefault(c);const d=rtDefault(c);while(rtE.times.length<10)rtE.times.push(d.times[rtE.times.length]);render()}
+function rtNew(){if(isParent())return;const cl=allCls();if(!cl.length){alert("আগে শিক্ষার্থী যোগ করুন");return}rtOpen(cl.find(c=>!Store.routine.some(r=>r.cls==c))||cl[0])}
 const rtFilled=r=>Object.keys(r.cells).filter(k=>{const a=k.split("|");return r.days.includes(+a[0])&&+a[1]<=r.periods&&r.cells[k].s}).length;
 function rt(){
- return phdr("সাপ্তাহিক ক্লাস রুটিন",isParent()?"প্রতিটি শ্রেণীর দিন ও পিরিয়ড টাইমটেবিল":"প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল তৈরি করুন")+(rtE?rtEditor():(isParent()?"":`<button class="btn" style="margin:12px 0" onclick="rtNew()">✎ নতুন / সম্পাদনা</button>`)+(S.routine.map(r=>`<div class="hb"><div class="ic2">📅</div><div class="f"><b>${esc(r.cls)}</b><div style="margin-top:4px"><span class="pl b">${bn(r.periods)} পিরিয়ড</span><span class="pl g">${bn(r.days.length)} দিন</span><span class="pl">${bn(rtFilled(r))} টি</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><div class="rtm"><button class="ob" style="padding:8px 10px" onclick="event.stopPropagation();rtMn=rtMn=='${jsq(r.cls)}'?'':'${jsq(r.cls)}';render()">🗎 PDF ${rtMn==r.cls?"▴":"▾"}</button>${rtMn==r.cls?`<div class="mn"><button onclick="rtMn='';rtView('${jsq(r.cls)}')">👁 ভিউ রুটিন</button><button onclick="rtMn='';rtPdf('${jsq(r.cls)}')">⬇ ডাউনলোড PDF</button></div>`:""}</div>${isParent()?"":`<button class="ob" style="padding:8px 10px" onclick="rtOpen('${jsq(r.cls)}')">✎ সম্পাদনা</button>`}</div></div>`).join("")||(isParent()?'<div class="em">কোনো রুটিন নেই</div>':'<div class="em">কোনো রুটিন নেই। "নতুন / সম্পাদনা" চাপুন।</div>')));
+ return phdr("সাপ্তাহিক ক্লাস রুটিন",isParent()?"প্রতিটি শ্রেণীর দিন ও পিরিয়ড টাইমটেবিল":"প্রতিটি শ্রেণীর জন্য দিন ও পিরিয়ড টাইমটেবিল তৈরি করুন")+(rtE?rtEditor():(isParent()?"":`<button class="btn" style="margin:12px 0" onclick="rtNew()">✎ নতুন / সম্পাদনা</button>`)+(Store.routine.map(r=>`<div class="hb"><div class="ic2">📅</div><div class="f"><b>${esc(r.cls)}</b><div style="margin-top:4px"><span class="pl b">${bn(r.periods)} পিরিয়ড</span><span class="pl g">${bn(r.days.length)} দিন</span><span class="pl">${bn(rtFilled(r))} টি</span></div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><div class="rtm"><button class="ob" style="padding:8px 10px" onclick="event.stopPropagation();rtMn=rtMn=='${jsq(r.cls)}'?'':'${jsq(r.cls)}';render()">🗎 PDF ${rtMn==r.cls?"▴":"▾"}</button>${rtMn==r.cls?`<div class="mn"><button onclick="rtMn='';rtView('${jsq(r.cls)}')">👁 ভিউ রুটিন</button><button onclick="rtMn='';rtPdf('${jsq(r.cls)}')">⬇ ডাউনলোড PDF</button></div>`:""}</div>${isParent()?"":`<button class="ob" style="padding:8px 10px" onclick="rtOpen('${jsq(r.cls)}')">✎ সম্পাদনা</button>`}</div></div>`).join("")||(isParent()?'<div class="em">কোনো রুটিন নেই</div>':'<div class="em">কোনো রুটিন নেই। "নতুন / সম্পাদনা" চাপুন।</div>')));
 }
 function rtEditor(){
- const e=rtE,tn=S.teachers.map(t=>t.name);
+ const e=rtE,tn=Store.teachers.map(t=>t.name);
  const cell=(d,p)=>{const c=e.cells[d+"|"+p]||{};return `<td style="min-width:108px;vertical-align:top"><input value="${esc(c.s)}" placeholder="বিষয়" oninput="rtC(${d},${p},'s',this.value)" style="margin:0 0 4px;padding:6px;font-size:12px"><select onchange="rtC(${d},${p},'t',this.value)" style="margin:0;padding:5px;font-size:11px"><option value="">শিক্ষক</option>${tn.map(n=>`<option ${c.t==n?"selected":""}>${esc(n)}</option>`).join("")}</select></td>`};
  return `<div class="top" style="margin:12px 0"><button class="ob" onclick="rtE=null;render()">≡ তালিকা</button><button class="ob" onclick="rtPdf(rtE.cls)">🗎 PDF ডাউনলোড</button></div>
  <div class="card">${fsel("শ্রেণী","rt_c",allCls(),e.cls,1).replace("<select ",'<select onchange="rtOpen(this.value)" ')}${fi("পিরিয়ড সংখ্যা","rt_p",e.periods,"number",1,"","min=1 max=10 onchange=\"rtP(this.value)\"")}<div class="hint">প্রতিদিনের পিরিয়ড (১–১০) ও ক্লাসের দিন বেছে নিন।</div><label class="lb">ক্লাসের দিন</label><div style="display:flex;gap:6px;flex-wrap:wrap">${DSH.map((d,i)=>`<button class="chip ${e.days.includes(i)?"on":""}" onclick="rtDay(${i})">${d}</button>`).join("")}</div></div>
@@ -545,23 +545,23 @@ function rtC(d,p,k,v){const key=d+"|"+p;(rtE.cells[key]=rtE.cells[key]||{})[k]=v
 function rtT(i,k,v){rtE.times[i][k]=v}
 function rtP(v){rtE.periods=Math.max(1,Math.min(10,+v||1));render()}
 function rtDay(i){const d=rtE.days;if(d.includes(i)){if(d.length>1)rtE.days=d.filter(x=>x!=i)}else{d.push(i);d.sort((a,b)=>a-b)}render()}
-function rtSave(){const e=rtE,i=S.routine.findIndex(r=>r.cls==e.cls),o={...e,times:e.times.slice(0,10)};if(i>=0)S.routine[i]=o;else S.routine.push(o);logA("add","ক্লাস রুটিন",e.cls+" শ্রেণীর রুটিন সংরক্ষিত");save();rtE=null;render()}
-function rtDel(c){if(!confirm(c+" শ্রেণীর রুটিন মুছবেন?"))return;S.routine=S.routine.filter(r=>r.cls!=c);save();rtE=null;render()}
+function rtSave(){const e=rtE,i=Store.routine.findIndex(r=>r.cls==e.cls),o={...e,times:e.times.slice(0,10)};if(i>=0)Store.routine[i]=o;else Store.routine.push(o);logA("add","ক্লাস রুটিন",e.cls+" শ্রেণীর রুটিন সংরক্ষিত");save();rtE=null;render()}
+function rtDel(c){if(!confirm(c+" শ্রেণীর রুটিন মুছবেন?"))return;Store.routine=Store.routine.filter(r=>r.cls!=c);save();rtE=null;render()}
 function rtTbl(r,cls){return `<table class="ptb" style="border:1px solid #1d4ed8"><tr><th style="background:#2563eb;color:#fff">পিরিয়ড</th>${r.days.map(d=>`<th style="background:#2563eb;color:#fff">${DAYS[d]}</th>`).join("")}</tr>${Array.from({length:r.periods},(_,i)=>`<tr><td><b>${bn(i+1)}</b><br><small>${bn(r.times[i].s)} - ${bn(r.times[i].e)}</small></td>${r.days.map(d=>{const c2=r.cells[d+"|"+(i+1)]||{};return `<td>${esc(c2.s||"")}${c2.t?`<br><small style="color:#555">${esc(c2.t)}</small>`:""}</td>`}).join("")}</tr>`).join("")}</table>`}
 function rtDoc(r,c){return sch()+`<div style="text-align:center;margin-bottom:10px">সাপ্তাহিক ক্লাস রুটিন — শ্রেণি: <b>${esc(c)}</b></div>${rtTbl(r)}<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style>`}
 function rtPdf(c){
- const r=(rtE&&rtE.cls==c)?rtE:S.routine.find(x=>x.cls==c);if(!r){alert("রুটিন পাওয়া যায়নি");return}
+ const r=(rtE&&rtE.cls==c)?rtE:Store.routine.find(x=>x.cls==c);if(!r){alert("রুটিন পাওয়া যায়নি");return}
  printDoc("class-routine",rtDoc(r,c));
 }
 function rtView(c){
- const r=(rtE&&rtE.cls==c)?rtE:S.routine.find(x=>x.cls==c);if(!r){alert("রুটিন পাওয়া যায়নি");return}
+ const r=(rtE&&rtE.cls==c)?rtE:Store.routine.find(x=>x.cls==c);if(!r){alert("রুটিন পাওয়া যায়নি");return}
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:4px">সাপ্তাহিক ক্লাস রুটিন</h2><div style="text-align:center;font-size:13px;color:var(--mu);margin-bottom:10px">শ্রেণি: <b style="color:var(--tx)">${esc(c)}</b></div><div class="ov" style="background:#fff;color:#111;border-radius:10px;padding:6px;border:1px solid var(--ln)"><style>.rtv td,.rtv th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px;text-align:center;color:#111}</style><div class="rtv">${rtTbl(r)}</div></div><div class="g2" style="margin:10px 0 0"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="closeM();rtPdf('${jsq(c)}')">⬇ ডাউনলোড PDF</button></div>`);
 }
 
 /* ---- events ---- */
 const EVT={"ইভেন্ট":"#ec4899","ছুটি":"#ef4444","পরীক্ষা":"#10b981","সভা":"#f59e0b","অন্যান্য":"#8b5cf6"},EVI={"ইভেন্ট":"🎉","ছুটি":"🏖","পরীক্ষা":"📝","সভা":"👥","অন্যান্য":"📌"};
 let evView="cal",evM=new Date().getMonth(),evY=new Date().getFullYear(),evSel=today();
-const evAll=()=>S.events.concat(S.exams.filter(x=>x.date).map(x=>({id:"x"+x.id,name:x.name+" — "+(x.subject||"")+" ("+x.cls+")",type:"পরীক্ষা",start:x.date,end:x.date,auto:1})));
+const evAll=()=>Store.events.concat(Store.exams.filter(x=>x.date).map(x=>({id:"x"+x.id,name:x.name+" — "+(x.subject||"")+" ("+x.cls+")",type:"পরীক্ষা",start:x.date,end:x.date,auto:1})));
 const evOn=d=>evAll().filter(e=>e.start<=d&&d<=(e.end||e.start));
 function evCard(e){return `<div class="card" style="border-left:4px solid ${EVT[e.type]||"#8b5cf6"};padding:10px;margin-bottom:8px"><div class="ch" style="margin:0"><b>${esc(e.name)}</b>${e.auto||isParent()?"":`<span onclick="evForm('${e.id}')" style="padding:0 6px">✏️</span>`}</div><span class="pl" style="background:${EVT[e.type]||"#8b5cf6"}22;color:${EVT[e.type]||"#8b5cf6"}">${EVI[e.type]||""} ${esc(e.type)}</span><div style="font-size:12px;color:var(--mu)">📅 ${bn(e.start)}${e.end&&e.end!=e.start?" — "+bn(e.end):""}${e.place?" · 📍 "+esc(e.place):""}</div>${e.desc?`<div style="font-size:12px;margin-top:4px">${esc(e.desc)}</div>`:""}</div>`}
 function ev(){
@@ -575,7 +575,7 @@ function ev(){
 }
 function evMv(n){evM+=n;if(evM<0){evM=11;evY--}if(evM>11){evM=0;evY++}render()}
 function evForm(id){if(isParent())return;if(!allow("classes"))return;
- const e=S.events.find(x=>x.id==id)||{type:"ইভেন্ট",start:evSel||today()};
+ const e=Store.events.find(x=>x.id==id)||{type:"ইভেন্ট",start:evSel||today()};
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:6px">${id?"ইভেন্ট সম্পাদনা":"নতুন ইভেন্ট যোগ"}</h2>${fi("ইভেন্টের নাম","ev_n",e.name,"text",1,"ইভেন্টের নাম লিখুন")}<div class="g2" style="margin:0"><div>${fsel("ধরন","ev_t",Object.keys(EVT),e.type,1)}</div><div>${fi("স্থান","ev_p",e.place,"text",0,"স্থান")}</div><div>${fi("তারিখ","ev_s",e.start,"date",1)}</div><div>${fi("শেষ তারিখ","ev_e",e.end,"date")}</div></div><label class="lb">বিবরণ</label><textarea id="ev_d" rows="3" placeholder="বিবরণ">${esc(e.desc)}</textarea>${fi("মন্তব্য","ev_o",e.note,"text",0,"অতিরিক্ত তথ্য (ঐচ্ছিক)")}
  <div class="bt"><button class="btn o" onclick="closeM()">বাতিল</button><button class="btn" onclick="evSave('${id||""}')">সংরক্ষণ</button></div>${id?`<button class="btn r" style="width:100%;margin-top:8px" onclick="evDel('${id}')">মুছে ফেলুন</button>`:""}`);$("mt").onclick=null;
 }
@@ -583,10 +583,10 @@ function evSave(id){
  const o={name:gv("ev_n"),type:gv("ev_t"),place:gv("ev_p"),start:gv("ev_s"),end:gv("ev_e"),desc:gv("ev_d"),note:gv("ev_o")};
  if(!o.name||!o.start){alert("ইভেন্টের নাম ও তারিখ দিন");return}
  if(o.end&&o.end<o.start){alert("শেষ তারিখ শুরুর আগে হতে পারে না");return}
- if(id)Object.assign(S.events.find(x=>x.id==id),o);else S.events.push({id:uid(),...o});
+ if(id)Object.assign(Store.events.find(x=>x.id==id),o);else Store.events.push({id:uid(),...o});
  logA(id?"edit":"add","ইভেন্ট",(id?"ইভেন্ট আপডেট: ":"নতুন ইভেন্ট: ")+o.name);save();closeM();render();
 }
-function evDel(id){if(!confirm("ইভেন্টটি মুছবেন?"))return;S.events=S.events.filter(x=>x.id!=id);save();closeM();render()}
+function evDel(id){if(!confirm("ইভেন্টটি মুছবেন?"))return;Store.events=Store.events.filter(x=>x.id!=id);save();closeM();render()}
 function evPdf(){
  const mo=mk(evY,evM),l=evAll().filter(e=>e.start.slice(0,7)<=mo&&(e.end||e.start).slice(0,7)>=mo).sort((a,b)=>a.start>b.start?1:-1);
  printDoc("events",sch()+`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style><div style="text-align:center;margin-bottom:10px">ইভেন্ট ও ছুটির ক্যালেন্ডার — ${MN[evM]} ${bn(evY)}</div><table class="ptb" style="border:1px solid #1d4ed8"><tr><th>তারিখ</th><th>ইভেন্ট</th><th>ধরন</th><th>স্থান</th><th>বিবরণ</th></tr>${l.map(e=>`<tr><td>${bn(e.start)}${e.end&&e.end!=e.start?" — "+bn(e.end):""}</td><td>${esc(e.name)}</td><td>${esc(e.type)}</td><td>${esc(e.place||"")}</td><td>${esc(e.desc||"")}</td></tr>`).join("")||'<tr><td colspan="5">কোনো ইভেন্ট নেই</td></tr>'}</table>`);
@@ -595,7 +595,7 @@ function evPdf(){
 /* ---- homework ---- */
 let hwDate=today(),hwCls="",hwF=null,hwMode="month";
 const hwStart=()=>{const d=new Date(),p=n=>String(n).padStart(2,"0");d.setDate(d.getDate()-29);return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())};
-const hwList=()=>{const st=hwStart(),l=S.hw.filter(h=>(hwMode=="month"?(h.date||"")>=st:(!hwDate||h.date==hwDate))&&(!hwCls||h.cls==hwCls));return hwMode=="month"?l.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:(b.date||"")<(a.date||"")?-1:String(a.cls).localeCompare(String(b.cls))):l};
+const hwList=()=>{const st=hwStart(),l=Store.hw.filter(h=>(hwMode=="month"?(h.date||"")>=st:(!hwDate||h.date==hwDate))&&(!hwCls||h.cls==hwCls));return hwMode=="month"?l.slice().sort((a,b)=>(b.date||"")>(a.date||"")?1:(b.date||"")<(a.date||"")?-1:String(a.cls).localeCompare(String(b.cls))):l};
 const HWD=["রবিবার","সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার"];
 const hwDayLbl=d=>{const x=new Date(d+"T00:00:00");return isNaN(x)?esc(d||"তারিখ নেই"):bn(fdt(d))+" · "+HWD[x.getDay()]+(d==today()?" (আজ)":"")};
 const hwCard=h=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(h.subject)}</b> <span class="pl b">${esc(h.cls)}</span></div>${isParent()?"":`<span onclick="hwForm('${h.id}')" style="padding:0 6px">✏️</span>`}</div>${h.title?`<div style="font-size:14px;margin-top:4px"><b>${esc(h.title)}</b></div>`:""}${h.lesson?`<div style="font-size:13px;margin-top:4px">📖 আজকের পড়া: ${esc(h.lesson)}</div>`:""}${(h.homework||h.text)?`<div style="font-size:13px;margin-top:4px">📝 বাড়ির কাজ: ${esc(h.homework||h.text)}</div>`:""}${h.teacher?`<small style="color:var(--mu)">👤 ${esc(h.teacher)}</small>`:""}</div>`;
@@ -613,7 +613,7 @@ function hw(){
 }
 function hwForm(id){if(isParent())return;if(!allow("classes"))return;
  if(!allCls().length){alert("আগে শিক্ষার্থী যোগ করুন");return}
- const o=S.hw.find(x=>x.id==id);
+ const o=Store.hw.find(x=>x.id==id);
  hwF=o?{id,date:o.date,cls:o.cls,teacher:o.teacher||"",blocks:[{subject:o.subject,title:o.title||"",lesson:o.lesson||"",homework:o.homework||o.text||""}]}:{id:null,date:hwDate||today(),cls:hwCls||allCls()[0],teacher:"",blocks:[{subject:"",title:"",lesson:"",homework:""}]};
  drawHw();
 }
@@ -621,7 +621,7 @@ function hwGrab(){hwF.date=gv("hf_d");hwF.cls=gv("hf_c");hwF.teacher=gv("hf_t");
 function hwAddB(){hwGrab();hwF.blocks.push({subject:"",title:"",lesson:"",homework:""});drawHw()}
 function hwRm(i){hwGrab();hwF.blocks.splice(i,1);drawHw()}
 function drawHw(){
- const subs=[...new Set(S.tbooks.map(b=>b.subject).filter(Boolean).concat(S.exams.flatMap(e=>Object.values(e.sub||{}).flat().map(r=>r.s))))];
+ const subs=[...new Set(Store.tbooks.map(b=>b.subject).filter(Boolean).concat(Store.exams.flatMap(e=>Object.values(e.sub||{}).flat().map(r=>r.s))))];
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:6px">${hwF.id?"কাজ সম্পাদনা":"নতুন পড়া ও বাড়ির কাজ"}</h2><div class="g2" style="margin:0"><div>${fi("তারিখ","hf_d",hwF.date,"date",1)}</div><div>${fsel("শ্রেণী","hf_c",allCls(),hwF.cls,1)}</div></div><datalist id="hsub">${subs.map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`
  +hwF.blocks.map((b,i)=>`<div class="card" style="padding:10px;margin:8px 0"><div class="ch" style="margin:0"><b style="font-size:13px">বিষয় ${bn(i+1)}</b>${hwF.blocks.length>1?`<span onclick="hwRm(${i})" style="color:var(--rd);padding:0 6px">✕</span>`:""}</div>${fi("বিষয়","hb"+i+"s",b.subject,"text",1,"বিষয়ের নাম",'list="hsub"')}${fi("শিরোনাম","hb"+i+"t",b.title,"text",0,"পাঠের শিরোনাম")}<label class="lb">আজকের পড়া/টাস্ক (নির্দেশনা)</label><textarea id="hb${i}l" rows="2" placeholder="কোন অধ্যায়/পৃষ্ঠা পড়াতে হবে">${esc(b.lesson)}</textarea><label class="lb">বাড়ির কাজ</label><textarea id="hb${i}h" rows="2" placeholder="বাড়ির কাজ কী করতে হবে...">${esc(b.homework)}</textarea></div>`).join("")
  +(hwF.id?"":`<button class="btn o s" style="width:100%;margin-bottom:6px" onclick="hwAddB()">＋ আরও বিষয় যোগ করুন</button>`)+fi("শিক্ষকের নাম (ঐচ্ছিক)","hf_t",hwF.teacher,"text",0,"শিক্ষকের নাম")
@@ -631,10 +631,10 @@ function hwSave(){
  hwGrab();const f=hwF,bl=f.blocks.filter(b=>b.subject);
  if(!f.date||!f.cls||!bl.length){alert("তারিখ, শ্রেণী ও অন্তত একটি বিষয় দিন");return}
  const mkE=b=>({cls:f.cls,date:f.date,subject:b.subject,title:b.title,lesson:b.lesson,homework:b.homework,teacher:f.teacher,text:b.homework||b.lesson||b.title});
- if(f.id)Object.assign(S.hw.find(x=>x.id==f.id),mkE(bl[0]));else bl.forEach(b=>S.hw.push({id:uid(),...mkE(b)}));
+ if(f.id)Object.assign(Store.hw.find(x=>x.id==f.id),mkE(bl[0]));else bl.forEach(b=>Store.hw.push({id:uid(),...mkE(b)}));
  logA(f.id?"edit":"add","পড়া ও বাড়ির কাজ",f.cls+" — "+bl.map(b=>b.subject).join(", "));hwDate=f.date;save();closeM();render();
 }
-function hwDel(id){if(!confirm("মুছে ফেলবেন?"))return;S.hw=S.hw.filter(x=>x.id!=id);save();closeM();render()}
+function hwDel(id){if(!confirm("মুছে ফেলবেন?"))return;Store.hw=Store.hw.filter(x=>x.id!=id);save();closeM();render()}
 function hwPdf(){
  const l=hwList(),mo=hwMode=="month";
  printDoc("homework",sch()+`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style><div style="text-align:center;margin-bottom:10px">পড়া ও বাড়ির কাজ — ${mo?"গত ১ মাস ("+bn(fdt(hwStart()))+" থেকে "+bn(fdt(today()))+")":"তারিখ: "+bn(hwDate||"সব")}${hwCls?" · শ্রেণি: "+esc(hwCls):""}</div><table class="ptb" style="border:1px solid #1d4ed8"><tr>${mo?"<th>তারিখ</th>":""}<th>শ্রেণি</th><th>বিষয়</th><th>শিরোনাম</th><th>আজকের পড়া</th><th>বাড়ির কাজ</th><th>শিক্ষক</th></tr>${l.map(h=>`<tr>${mo?`<td style="white-space:nowrap">${bn(fdt(h.date||""))}</td>`:""}<td>${esc(h.cls)}</td><td>${esc(h.subject)}</td><td>${esc(h.title||"")}</td><td>${esc(h.lesson||"")}</td><td>${esc(h.homework||h.text||"")}</td><td>${esc(h.teacher||"")}</td></tr>`).join("")||`<tr><td colspan="${mo?7:6}">কিছু নেই</td></tr>`}</table>`);
@@ -649,15 +649,15 @@ async function pickPdf(cb){
 }
 function pdfFile(f){if(!f)return;if(f.size>1048576){alert("PDF ১ MB-এর বেশি হতে পারবে না");return}const r=new FileReader();r.onload=()=>{if(pdfCb)pdfCb(r.result,f.name)};r.readAsDataURL(f)}
 function bk(){
- const cl=[...new Set(S.tbooks.map(b=>b.cls).concat(tbf().map(f=>f.cls)))].filter(Boolean),l=S.tbooks.filter(b=>!bkCls||b.cls==bkCls);
+ const cl=[...new Set(Store.tbooks.map(b=>b.cls).concat(tbf().map(f=>f.cls)))].filter(Boolean),l=Store.tbooks.filter(b=>!bkCls||b.cls==bkCls);
  return phdr("শ্রেণী ও পাঠ্যবই","শ্রেণিভিত্তিক পাঠ্যবইয়ের তালিকা")+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${isParent()?"":`<button class="btn" onclick="bkForm()">＋ নতুন পাঠ্যবই</button><button class="ob" onclick="tbfForm()">📎 তালিকা আপলোড</button>`}<button class="ob" onclick="bkPdf()">🗎 PDF</button></div>
- <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px"><button class="chip ${bkCls?"":"on"}" onclick="bkCls='';render()">সব (${bn(S.tbooks.length)})</button>${cl.map(c=>`<button class="chip ${bkCls==c?"on":""}" onclick="bkCls='${jsq(c)}';render()">${esc(c)} (${bn(S.tbooks.filter(b=>b.cls==c).length)})</button>`).join("")}</div>`
+ <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px"><button class="chip ${bkCls?"":"on"}" onclick="bkCls='';render()">সব (${bn(Store.tbooks.length)})</button>${cl.map(c=>`<button class="chip ${bkCls==c?"on":""}" onclick="bkCls='${jsq(c)}';render()">${esc(c)} (${bn(Store.tbooks.filter(b=>b.cls==c).length)})</button>`).join("")}</div>`
  +tbfSec()
  +(l.map(b=>`<div class="card"><div class="ch" style="margin:0"><div><b>${esc(b.name)}</b> <span class="pl b">${esc(b.cls)}</span></div>${isParent()?"":`<span onclick="bkForm('${b.id}')" style="padding:0 6px">✏️</span>`}</div><div style="font-size:12px;color:var(--mu);line-height:1.7;margin-top:4px">${b.subject?"বিষয়: "+esc(b.subject)+"<br>":""}${b.author?"✍ "+esc(b.author)+"<br>":""}${b.code?"বই নম্বর: "+esc(b.code):""}${b.shelf?" · তাক: "+esc(b.shelf):""}${b.copies?"<br>সংখ্যা: "+bn(b.copies):""}${b.price?" · মূল্য: "+money(b.price):""}</div>${b.syllabus?`<div style="font-size:12px;margin-top:4px">${esc(b.syllabus)}</div>`:""}${b.pdf?`<button class="btn o s" style="margin-top:8px" onclick="bkOpen('${b.id}')">📄 PDF খুলুন</button>`:""}</div>`).join("")||(isParent()?'<div class="em">কোনো পাঠ্যবই নেই</div>':'<div class="em">কোনো পাঠ্যবই নেই। "নতুন পাঠ্যবই" চাপুন।</div>'));
 }
 /* ---- class-wise textbook list files (PDF / image) ---- */
 let tbfD={};
-function tbf(){if(!Array.isArray(S.tbFiles))S.tbFiles=[];return S.tbFiles}
+function tbf(){if(!Array.isArray(Store.tbFiles))Store.tbFiles=[];return Store.tbFiles}
 function tbfSec(){
   const l=tbf().filter(f=>!bkCls||f.cls==bkCls);
   return `<div class="card"><div class="ch" style="margin:0 0 6px"><b>📎 শ্রেণি অনুযায়ী পাঠ্যবইয়ের তালিকা</b>${isParent()?"":`<button class="btn o s" onclick="tbfForm()">⬆ আপলোড</button>`}</div>${l.length?l.map(f=>`<div class="row" style="align-items:center;gap:10px"><div onclick="tbfView('${f.id}')" style="width:48px;height:48px;border-radius:8px;overflow:hidden;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">${f.type==="img"?`<img src="${f.data}" style="width:48px;height:48px;object-fit:cover">`:"📄"}</div><div class="f" style="min-width:0"><b>${esc(f.title||f.fname||"তালিকা")}</b> <span class="pl b">${esc(f.cls)}</span><small style="display:block;color:var(--mu)">${f.type==="img"?"ছবি":"PDF"} · ${bn(fdt(f.date||""))}</small></div><span onclick="tbfView('${f.id}')" style="padding:0 6px">👁</span>${isParent()?"":`<span onclick="tbfDel('${f.id}')" style="padding:0 6px;color:var(--rd)">🗑</span>`}</div>`).join(""):'<div class="hint" style="margin:6px 0">শ্রেণির নাম দিয়ে পাঠ্যবইয়ের তালিকা PDF বা ছবি আকারে আপলোড করুন।</div>'}</div>`;
@@ -691,9 +691,9 @@ function tbfSave(){
   const rec={id:uid(),cls:tbfD.cls,title:tbfD.title,type:tbfD.type,data:tbfD.data,fname:tbfD.fname,date:today()};
   tbf().push(rec);
   try{logA("add","পাঠ্যবই তালিকা",rec.cls);save();closeM();render()}
-  catch(e){S.tbFiles=S.tbFiles.filter(x=>x.id!==rec.id);alert("সংরক্ষণ করা যায়নি (স্টোরেজ ভরে গেছে): "+e.message)}
+  catch(e){Store.tbFiles=Store.tbFiles.filter(x=>x.id!==rec.id);alert("সংরক্ষণ করা যায়নি (স্টোরেজ ভরে গেছে): "+e.message)}
 }
-function tbfDel(id){if(isParent())return;if(!confirm("ফাইলটি মুছবেন?"))return;S.tbFiles=tbf().filter(x=>x.id!==id);save();render()}
+function tbfDel(id){if(isParent())return;if(!confirm("ফাইলটি মুছবেন?"))return;Store.tbFiles=tbf().filter(x=>x.id!==id);save();render()}
 function tbfView(id){
   const f=tbf().find(x=>x.id===id);if(!f)return;
   if(f.type==="img")modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:8px">${esc(f.title||f.cls)} <span class="pl b">${esc(f.cls)}</span></h2><img src="${f.data}" style="width:100%;border-radius:8px"><div class="bt"><button class="btn o" onclick="closeM()">বন্ধ</button><button class="btn" onclick="tbfOpen('${id}')">↗ বাইরে খুলুন</button></div>`);
