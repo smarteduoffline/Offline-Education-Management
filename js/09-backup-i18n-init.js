@@ -32,17 +32,17 @@ async function histRestore(id,when){
   toast("✅ ফেরানো হয়েছে। অন্য ডিভাইসে একবার সিঙ্ক করে নিন");
  }catch(e){toastOff();alert("ফেরানো যায়নি: "+String(e&&e.message||e).slice(0,160))}
 }
-function stDng(){return `<div class="card st-rd"><h2 style="color:#dc2626">⚠️ বিপজ্জনক এলাকা</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 12px">এই কাজগুলো ফেরানো যায় না। আগে ব্যাকআপ নিয়ে নিন।</p><button class="btn o" style="width:100%;margin-bottom:8px" onclick="exp()">⬇ আগে ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px;color:#dc2626;border-color:#fca5a5" onclick="if(confirm('কার্যকলাপের লগ ও SMS ইতিহাস মুছবেন?')){S.log=[];S.smslog=[];save();alert('মুছে ফেলা হয়েছে')}">লগ ও SMS ইতিহাস মুছুন</button><button class="btn r" style="width:100%" onclick="resetAll()">🗑 সব তথ্য মুছে ফেলুন</button></div>`}
-function resetAll(){if(!confirm("সব তথ্য (শিক্ষার্থী, ফি, ফলাফল সব) চিরতরে মুছে যাবে। নিশ্চিত?"))return;if(prompt("নিশ্চিত করতে ইংরেজিতে DELETE লিখুন")!=="DELETE"){alert("বাতিল করা হয়েছে");return}S=D();save();applyTheme();stT=0;render();alert("সব তথ্য মুছে ফেলা হয়েছে")}
+function stDng(){return `<div class="card st-rd"><h2 style="color:#dc2626">⚠️ বিপজ্জনক এলাকা</h2><p style="font-size:13px;color:var(--mu);margin:6px 0 12px">এই কাজগুলো ফেরানো যায় না। আগে ব্যাকআপ নিয়ে নিন।</p><button class="btn o" style="width:100%;margin-bottom:8px" onclick="exp()">⬇ আগে ব্যাকআপ নিন</button><button class="btn o" style="width:100%;margin-bottom:8px;color:#dc2626;border-color:#fca5a5" onclick="if(confirm('কার্যকলাপের লগ ও SMS ইতিহাস মুছবেন?')){Store.log=[];Store.smslog=[];save();alert('মুছে ফেলা হয়েছে')}">লগ ও SMS ইতিহাস মুছুন</button><button class="btn r" style="width:100%" onclick="resetAll()">🗑 সব তথ্য মুছে ফেলুন</button></div>`}
+function resetAll(){if(!confirm("সব তথ্য (শিক্ষার্থী, ফি, ফলাফল সব) চিরতরে মুছে যাবে। নিশ্চিত?"))return;if(prompt("নিশ্চিত করতে ইংরেজিতে DELETE লিখুন")!=="DELETE"){alert("বাতিল করা হয়েছে");return}Store.replace(D());save();applyTheme();stT=0;render();alert("সব তথ্য মুছে ফেলা হয়েছে")}
 let lt=0,lq="",lflt=0,lrb=0,lrm=new Date().getMonth(),lry=new Date().getFullYear();
 const LTN=["বইয়ের তালিকা","ইস্যু রেকর্ড","বই ও পণ্য বিক্রয়","পণ্য মজুত","রিপোর্ট"];
 const lAv=b=>b.copies-b.issues.filter(i=>!i.ret).length;
-const lOpen=()=>S.books.flatMap(b=>b.issues.filter(i=>!i.ret).map(i=>({b,i})));
+const lOpen=()=>Store.books.flatMap(b=>b.issues.filter(i=>!i.ret).map(i=>({b,i})));
 const lOd=i=>!i.ret&&i.due&&i.due<today();
 const lm=s=>!lq||String(s).toLowerCase().includes(lq.toLowerCase());
 function lib(){
- const op=lOpen(),tot=S.books.reduce((a,b)=>a+b.copies,0),od=op.filter(x=>lOd(x.i)).length,td=op.filter(x=>x.i.due==today()).length,n=S.books.length,av=S.books.filter(b=>lAv(b)>0).length,pc=n?av/n*100:0,occ=tot?Math.round(op.length/tot*100):0;
- const cc={};S.books.forEach(b=>{const k=b.cat||"পাঠ্যবই";cc[k]=(cc[k]||0)+b.copies});
+ const op=lOpen(),tot=Store.books.reduce((a,b)=>a+b.copies,0),od=op.filter(x=>lOd(x.i)).length,td=op.filter(x=>x.i.due==today()).length,n=Store.books.length,av=Store.books.filter(b=>lAv(b)>0).length,pc=n?av/n*100:0,occ=tot?Math.round(op.length/tot*100):0;
+ const cc={};Store.books.forEach(b=>{const k=b.cat||"পাঠ্যবই";cc[k]=(cc[k]||0)+b.copies});
  const st=[["মোট বই",tot,"59,130,246","#3b82f6","📖"],["ইস্যু করা",op.length,"168,85,247","#a855f7","🔖"],["মেয়াদোত্তীর্ণ",od,"239,68,68","#ef4444","⚠️"],["আজ শেষ হবে",td,"245,158,11","#d97706","🕒"]];
  return `<div style="font-size:22px;font-weight:700">লাইব্রেরি ম্যানেজমেন্ট</div><div style="color:var(--mu);font-size:13px;margin:2px 0 12px">বইয়ের তালিকা, ইস্যু ট্র্যাকিং ও জরিমানা</div>
 <button class="lx-ob" onclick="libNotify()">🔔 সব overdue নোটিফিকেশন</button>
@@ -55,29 +55,29 @@ function lib(){
 function libTop(){
  const bt=[["libBook()","নতুন বই"],["libIssue()","বই ইস্যু"],["libSale()","নতুন বই ও পণ্য বিক্রয়"],["libGood()","নতুন পণ্য"]][lt];
  let mini="";
- if(lt==2){let t=0,q=0;S.libSales.forEach(r=>{t+=r.q*r.p;q+=+r.q});mini=`<div class="lx-m"><small>মোট বিক্রয়</small><b style="color:#16a34a">${money(t)}</b></div><div class="lx-m"><small>বিক্রি পরিমাণ</small><b style="color:var(--pri)">${bn(q)}</b></div>`}
- if(lt==3){mini=`<div class="lx-m"><small>মোট পণ্য</small><b style="color:var(--pri)">${bn(S.libGoods.length)}</b></div><div class="lx-m"><small>মোট মজুত</small><b style="color:#16a34a">${bn(S.libGoods.reduce((a,g)=>a+(+g.s||0),0))}</b></div>`}
+ if(lt==2){let t=0,q=0;Store.libSales.forEach(r=>{t+=r.q*r.p;q+=+r.q});mini=`<div class="lx-m"><small>মোট বিক্রয়</small><b style="color:#16a34a">${money(t)}</b></div><div class="lx-m"><small>বিক্রি পরিমাণ</small><b style="color:var(--pri)">${bn(q)}</b></div>`}
+ if(lt==3){mini=`<div class="lx-m"><small>মোট পণ্য</small><b style="color:var(--pri)">${bn(Store.libGoods.length)}</b></div><div class="lx-m"><small>মোট মজুত</small><b style="color:#16a34a">${bn(Store.libGoods.reduce((a,g)=>a+(+g.s||0),0))}</b></div>`}
  return `<div style="display:flex;gap:8px;margin-bottom:12px"><input style="margin:0;flex:1" placeholder="🔍 খুঁজুন..." value="${esc(lq)}" oninput="lq=this.value;libRefresh()"><button class="btn" onclick="${bt[0]}">＋ ${bt[1]}</button></div>${mini?`<div style="display:flex;gap:8px;margin-bottom:12px">${mini}</div>`:""}`;
 }
 function libRefresh(){const e=$("ll");if(e)e.innerHTML=libList()}
 function libItem(t,chips,meta,act){return `<div class="lx-i"><div style="min-width:0"><b>${t}</b> ${chips}<div class="m">${meta}</div></div><button class="x" onclick="${act}">⋯</button></div>`}
 function libList(){
  let h="";
- if(lt==0)S.books.forEach(b=>{if(lm(b.title+(b.author||"")+(b.code||"")))h+=libItem(esc(b.title),`<span class="lx-c">${esc(b.cat||"পাঠ্যবই")}</span>${b.cls?`<span class="lx-c n">${esc(b.cls)}</span>`:""}`,`✍ ${esc(b.author||"—")}${b.code?" &nbsp; কোড: "+esc(b.code):""}${b.sh?" &nbsp; ডাক: "+esc(b.sh):""}<br>মোট: ${bn(b.copies)} <span class="lx-c g">উপলব্ধ: ${bn(lAv(b))}</span>`,`libDelBook('${b.id}')`)});
+ if(lt==0)Store.books.forEach(b=>{if(lm(b.title+(b.author||"")+(b.code||"")))h+=libItem(esc(b.title),`<span class="lx-c">${esc(b.cat||"পাঠ্যবই")}</span>${b.cls?`<span class="lx-c n">${esc(b.cls)}</span>`:""}`,`✍ ${esc(b.author||"—")}${b.code?" &nbsp; কোড: "+esc(b.code):""}${b.sh?" &nbsp; ডাক: "+esc(b.sh):""}<br>মোট: ${bn(b.copies)} <span class="lx-c g">উপলব্ধ: ${bn(lAv(b))}</span>`,`libDelBook('${b.id}')`)});
  if(lt==1){
-  const all=S.books.flatMap(b=>b.issues.map((i,k)=>({b,i,k}))).sort((x,y)=>(y.i.date||"")>(x.i.date||"")?1:-1),od=all.filter(x=>lOd(x.i)).length;
+  const all=Store.books.flatMap(b=>b.issues.map((i,k)=>({b,i,k}))).sort((x,y)=>(y.i.date||"")>(x.i.date||"")?1:-1),od=all.filter(x=>lOd(x.i)).length;
   h=`<div class="lx-f">${["সব","ইস্যু করা","মেয়াদোত্তীর্ণ ("+bn(od)+")","ফেরত"].map((t,i)=>`<button class="${i==lflt?"on":""}" onclick="lflt=${i};libFlt()">${t}</button>`).join("")}</div>`;
   all.forEach(x=>{const o=lOd(x.i);if(lflt==1&&x.i.ret||lflt==2&&!o||lflt==3&&!x.i.ret)return;const nm=stuName(x.i.sid);if(!lm(nm+x.b.title))return;
    h+=libItem(esc(nm),`<span class="lx-c ${x.i.ret?"g":o?"r":""}">${x.i.ret?"ফেরত":o?"মেয়াদোত্তীর্ণ":"ইস্যু করা"}</span>`,`📖 ${esc(x.b.title)}<br>ইস্যু: ${bn(fdt(x.i.date))}${x.i.due?" &nbsp; শেষ: "+bn(fdt(x.i.due)):""}`,`libAct('${x.b.id}',${x.k})`)});
  }
- if(lt==2)S.libSales.forEach(r=>{if(lm(r.who+r.item))h+=libItem(esc(r.who),`<span class="lx-c g">${money(r.q*r.p)}</span>`,`তারিখ: ${r.d}<br><span class="lx-c n">${esc(r.type)}</span> ${esc(r.item)} &nbsp; ${bn(r.q)} × ${money(r.p)}`,`libDel('libSales','${r.id}')`)});
- if(lt==3)S.libGoods.forEach(g=>{if(lm(g.n))h+=libItem("📦 "+esc(g.n),`<span class="lx-c">${esc(g.c||"")}</span>`,`একক: ${esc(g.u)} &nbsp; দাম: ${money(g.p)}<br><span class="lx-c g">মজুত: ${bn(g.s)}</span>`,`libDel('libGoods','${g.id}')`)});
+ if(lt==2)Store.libSales.forEach(r=>{if(lm(r.who+r.item))h+=libItem(esc(r.who),`<span class="lx-c g">${money(r.q*r.p)}</span>`,`তারিখ: ${r.d}<br><span class="lx-c n">${esc(r.type)}</span> ${esc(r.item)} &nbsp; ${bn(r.q)} × ${money(r.p)}`,`libDel('libSales','${r.id}')`)});
+ if(lt==3)Store.libGoods.forEach(g=>{if(lm(g.n))h+=libItem("📦 "+esc(g.n),`<span class="lx-c">${esc(g.c||"")}</span>`,`একক: ${esc(g.u)} &nbsp; দাম: ${money(g.p)}<br><span class="lx-c g">মজুত: ${bn(g.s)}</span>`,`libDel('libGoods','${g.id}')`)});
  return lt==1?h:(h||'<div class="lx-e">কোনো তথ্য নেই</div>');
 }
 function libFlt(){const e=$("ll");if(e)e.innerHTML=libList()}
 function libRep(){
  const MNs=["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
- const rs=S.libSales.filter(r=>+r.d.slice(0,4)==lry&&(lrb==1||+r.d.slice(5,7)-1==lrm)),inc=rs.reduce((a,r)=>a+r.q*r.p,0),qt=rs.reduce((a,r)=>a+(+r.q),0),lbl=lrb==1?bn(lry):MNs[lrm]+", "+bn(lry);
+ const rs=Store.libSales.filter(r=>+r.d.slice(0,4)==lry&&(lrb==1||+r.d.slice(5,7)-1==lrm)),inc=rs.reduce((a,r)=>a+r.q*r.p,0),qt=rs.reduce((a,r)=>a+(+r.q),0),lbl=lrb==1?bn(lry):MNs[lrm]+", "+bn(lry);
  const sec=(t,c)=>{const a=rs.filter(r=>r.type==t);return `<div class="card"><div class="lx-r"><span class="lx-c ${c}">${t}</span><small style="color:var(--mu)">${bn(a.length)} রেকর্ড</small></div><b style="font-size:20px">${bn(a.reduce((x,r)=>x+(+r.q),0))}</b> পরিমাণ<div style="color:#16a34a;font-weight:700">${money(a.reduce((x,r)=>x+r.q*r.p,0))}</div></div>`};
  return `<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><label class="lb">ভিত্তি</label><select onchange="lrb=+this.value;render()"><option value="0" ${lrb==0?"selected":""}>মাস অনুযায়ী</option><option value="1" ${lrb==1?"selected":""}>বছর অনুযায়ী</option></select></div><div><label class="lb">মাস</label><select onchange="lrm=+this.value;render()">${MNs.map((x,i)=>`<option value="${i}" ${i==lrm?"selected":""}>${x}</option>`).join("")}</select></div><div><label class="lb">সাল</label><input type="number" value="${lry}" onchange="lry=+this.value;render()"></div></div></div>
 <div class="card" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35)"><h2>🗒 সামারি — ${lbl}</h2><div class="lx-g" style="margin:0"><div>মোট আয়<b style="display:block;color:#16a34a;font-size:18px">${money(inc)}</b></div><div>বিক্রি পরিমাণ<b style="display:block;color:#16a34a;font-size:18px">${bn(qt)}</b></div><div>পণ্য প্রকার<b style="display:block;color:#9333ea;font-size:18px">${bn(new Set(rs.map(r=>r.item)).size)}</b></div><div>বিক্রয় সংখ্যা<b style="display:block;color:#d97706;font-size:18px">${bn(rs.length)}</b></div></div></div>
@@ -86,77 +86,77 @@ ${sec("বই","")}${sec("পণ্য","g")}${sec("ম্যানুয়া�
 <div class="card"><h2>বিক্রয় তালিকা — ${lbl}</h2>${rs.length?rs.map(r=>`<div class="lx-r"><span>${esc(r.who)} · ${r.d}</span><b>${money(r.q*r.p)}</b></div>`).join(""):'<div class="lx-e"><b>কোনো বিক্রয় নেই</b></div>'}</div>`;
 }
 function libNotify(){const o=lOpen().filter(x=>lOd(x.i));alert(o.length?"মেয়াদোত্তীর্ণ ইস্যু:\n"+o.map(x=>stuName(x.i.sid)+" — "+x.b.title+" (শেষ: "+x.i.due+")").join("\n"):"কোনো মেয়াদোত্তীর্ণ ইস্যু নেই")}
-function libBook(){if(!allow("library"))return;ask("নতুন বই",[["t","বইয়ের নাম","text"],["a","লেখক/প্রকাশক","text"],["k","বিভাগ","text","পাঠ্যবই"],["l","শ্রেণি","text"],["e","কোড","text"],["h","শেলফ/ডাক","text"],["c","কপি সংখ্যা","number","1"]],v=>{if(!v[0]){alert("বইয়ের নাম দিন");return false}S.books.push({id:uid(),title:v[0],author:v[1],cat:v[2],cls:v[3],code:v[4],sh:v[5],copies:+v[6]||1,issues:[]})})}
+function libBook(){if(!allow("library"))return;ask("নতুন বই",[["t","বইয়ের নাম","text"],["a","লেখক/প্রকাশক","text"],["k","বিভাগ","text","পাঠ্যবই"],["l","শ্রেণি","text"],["e","কোড","text"],["h","শেলফ/ডাক","text"],["c","কপি সংখ্যা","number","1"]],v=>{if(!v[0]){alert("বইয়ের নাম দিন");return false}Store.books.push({id:uid(),title:v[0],author:v[1],cat:v[2],cls:v[3],code:v[4],sh:v[5],copies:+v[6]||1,issues:[]})})}
 function libIssue(){if(!allow("library"))return;
- if(!S.students.length){alert("আগে শিক্ষার্থী যোগ করুন");return}
- const bs=S.books.filter(b=>lAv(b)>0);if(!bs.length){alert("ইস্যু করার মতো কোনো বই নেই");return}
+ if(!Store.students.length){alert("আগে শিক্ষার্থী যোগ করুন");return}
+ const bs=Store.books.filter(b=>lAv(b)>0);if(!bs.length){alert("ইস্যু করার মতো কোনো বই নেই");return}
  const d=new Date(Date.now()+12096e5),dd=d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
- ask("বই ইস্যু",[["s","শিক্ষার্থী","select",S.students.map(s=>[s.id,s.name+" ("+s.cls+")"])],["b","বই","select",bs.map(b=>[b.id,b.title])],["d","ফেরতের তারিখ","date",dd]],v=>{const b=S.books.find(x=>x.id==v[1]);if(!b||lAv(b)<1){alert("বইটির কপি উপলব্ধ নেই");return false}b.issues.push({sid:v[0],date:today(),due:v[2],ret:false})});
+ ask("বই ইস্যু",[["s","শিক্ষার্থী","select",Store.students.map(s=>[s.id,s.name+" ("+s.cls+")"])],["b","বই","select",bs.map(b=>[b.id,b.title])],["d","ফেরতের তারিখ","date",dd]],v=>{const b=Store.books.find(x=>x.id==v[1]);if(!b||lAv(b)<1){alert("বইটির কপি উপলব্ধ নেই");return false}b.issues.push({sid:v[0],date:today(),due:v[2],ret:false})});
 }
-function libSale(){if(!allow("library"))return;ask("নতুন বিক্রয়",[["w","ক্রেতার নাম","text"],["t","ধরন","select",[["বই","বই"],["পণ্য","পণ্য"],["ম্যানুয়াল","ম্যানুয়াল"]]],["i","আইটেম","text"],["q","পরিমাণ","number","1"],["p","একক দাম (৳)","number","0"]],v=>{if(!v[0]||!v[2]){alert("নাম ও আইটেম দিন");return false}const q=+v[3]||1;S.libSales.unshift({id:uid(),who:v[0],type:v[1],item:v[2],q,p:+v[4]||0,d:today()});const g=S.libGoods.find(x=>x.n==v[2]);if(v[1]=="পণ্য"&&g)g.s=Math.max(0,(+g.s||0)-q)})}
-function libGood(){if(!allow("library"))return;ask("নতুন পণ্য",[["n","পণ্যের নাম","text"],["c","বিভাগ","text"],["u","একক","text","পিস"],["p","দাম (৳)","number","0"],["s","মজুত","number","0"]],v=>{if(!v[0]){alert("পণ্যের নাম দিন");return false}S.libGoods.push({id:uid(),n:v[0],c:v[1],u:v[2],p:+v[3]||0,s:+v[4]||0})})}
-function libDel(k,id){if(confirm("মুছে ফেলবেন?")){S[k]=S[k].filter(x=>x.id!=id);save();render()}}
-function libDelBook(id){if(confirm("বইটি মুছবেন? এর সব ইস্যু রেকর্ডও মুছে যাবে।")){S.books=S.books.filter(x=>x.id!=id);save();render()}}
-function libAct(bid,k){const b=S.books.find(x=>x.id==bid),i=b&&b.issues[k];if(!i)return;if(!i.ret){if(confirm("বইটি ফেরত নেওয়া হয়েছে?")){i.ret=true;save();render()}}else if(confirm("রেকর্ডটি মুছবেন?")){b.issues.splice(k,1);save();render()}}
-function retBook(bid,sid){const b=S.books.find(x=>x.id==bid),i=b.issues.find(x=>x.sid==sid&&!x.ret);if(i)i.ret=true;save();render()}
+function libSale(){if(!allow("library"))return;ask("নতুন বিক্রয়",[["w","ক্রেতার নাম","text"],["t","ধরন","select",[["বই","বই"],["পণ্য","পণ্য"],["ম্যানুয়াল","ম্যানুয়াল"]]],["i","আইটেম","text"],["q","পরিমাণ","number","1"],["p","একক দাম (৳)","number","0"]],v=>{if(!v[0]||!v[2]){alert("নাম ও আইটেম দিন");return false}const q=+v[3]||1;Store.libSales.unshift({id:uid(),who:v[0],type:v[1],item:v[2],q,p:+v[4]||0,d:today()});const g=Store.libGoods.find(x=>x.n==v[2]);if(v[1]=="পণ্য"&&g)g.s=Math.max(0,(+g.s||0)-q)})}
+function libGood(){if(!allow("library"))return;ask("নতুন পণ্য",[["n","পণ্যের নাম","text"],["c","বিভাগ","text"],["u","একক","text","পিস"],["p","দাম (৳)","number","0"],["s","মজুত","number","0"]],v=>{if(!v[0]){alert("পণ্যের নাম দিন");return false}Store.libGoods.push({id:uid(),n:v[0],c:v[1],u:v[2],p:+v[3]||0,s:+v[4]||0})})}
+function libDel(k,id){if(confirm("মুছে ফেলবেন?")){Store[k]=Store[k].filter(x=>x.id!=id);save();render()}}
+function libDelBook(id){if(confirm("বইটি মুছবেন? এর সব ইস্যু রেকর্ডও মুছে যাবে।")){Store.books=Store.books.filter(x=>x.id!=id);save();render()}}
+function libAct(bid,k){const b=Store.books.find(x=>x.id==bid),i=b&&b.issues[k];if(!i)return;if(!i.ret){if(confirm("বইটি ফেরত নেওয়া হয়েছে?")){i.ret=true;save();render()}}else if(confirm("রেকর্ডটি মুছবেন?")){b.issues.splice(k,1);save();render()}}
+function retBook(bid,sid){const b=Store.books.find(x=>x.id==bid),i=b.issues.find(x=>x.sid==sid&&!x.ret);if(i)i.ret=true;save();render()}
 
 let smT=0,smSub=0,smSid="",smQ="",lgQ="";
 const SMT=["SMS কেন্দ্র","অভিভাবক মেসেজিং","WhatsApp/SMS লগ"];
-const smStu=()=>S.students.filter(x=>x.status!="নিষ্ক্রিয়").sort(byRollCls);
+const smStu=()=>Store.students.filter(x=>x.status!="নিষ্ক্রিয়").sort(byRollCls);
 const smPh=()=>smStu().filter(x=>x.phone);
-const smAbs=()=>{const d=S.att[today()]||{};return smStu().filter(x=>d[x.id]=="a")};
-const smResSt=()=>smStu().filter(x=>S.exams.some(e=>e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!==""));
-function smRes(x,n){const ps=S.exams.filter(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="");return ps.map(p=>p.subject+" "+bn(p.marks[x.id])+"/"+bn(p.total||100)).join(", ")||"—"}
+const smAbs=()=>{const d=Store.att[today()]||{};return smStu().filter(x=>d[x.id]=="a")};
+const smResSt=()=>smStu().filter(x=>Store.exams.some(e=>e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!==""));
+function smRes(x,n){const ps=Store.exams.filter(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="");return ps.map(p=>p.subject+" "+bn(p.marks[x.id])+"/"+bn(p.total||100)).join(", ")||"—"}
 const smTy=l=>l.ty||(/বকেয়া/.test(l.tx||"")?"বকেয়া":"বার্তা");
 const smTyC={"নোটিশ":"background:#dbeafe;color:#1d4ed8","অনুপস্থিতি":"background:#ffe4e9;color:#be123c","ফলাফল":"background:#dcfce7;color:#15803d","বকেয়া":"background:#fef3c7;color:#b45309","বার্তা":"background:var(--bg);color:var(--mu)"};
 function smSend(ids,txt,ty){if(!ids.length){alert("মোবাইল নম্বরসহ কোনো অভিভাবক নেই");return}msgM(ids,txt);if($("mt"))mctx.ty=ty}
-function smAll(){smSend(smPh().map(x=>x.id),"প্রিয় অভিভাবক,\n\n"+S.school.name+" থেকে জানানো হচ্ছে: ","বার্তা")}
-function smAbsSend(ids){smSend(ids||smAbs().filter(x=>x.phone).map(x=>x.id),"প্রিয় অভিভাবক, আপনার সন্তান {নাম} আজ ("+bn(today())+") মাদ্রাসায় অনুপস্থিত ছিল। - "+S.school.name,"অনুপস্থিতি")}
-function smNot(id){const n=S.notices.find(x=>x.id==id);if(n)smSend(smPh().map(x=>x.id),nText(n),"নোটিশ")}
-function smResSend(n){const ids=smPh().filter(x=>S.exams.some(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="")).map(x=>x.id);smSend(ids,"প্রিয় অভিভাবক, {নাম}-এর "+n+" পরীক্ষার ফলাফল: {ফল:"+n+"}। - "+S.school.name,"ফলাফল")}
+function smAll(){smSend(smPh().map(x=>x.id),"প্রিয় অভিভাবক,\n\n"+Store.school.name+" থেকে জানানো হচ্ছে: ","বার্তা")}
+function smAbsSend(ids){smSend(ids||smAbs().filter(x=>x.phone).map(x=>x.id),"প্রিয় অভিভাবক, আপনার সন্তান {নাম} আজ ("+bn(today())+") মাদ্রাসায় অনুপস্থিত ছিল। - "+Store.school.name,"অনুপস্থিতি")}
+function smNot(id){const n=Store.notices.find(x=>x.id==id);if(n)smSend(smPh().map(x=>x.id),nText(n),"নোটিশ")}
+function smResSend(n){const ids=smPh().filter(x=>Store.exams.some(e=>e.name==n&&e.marks&&e.marks[x.id]!==undefined&&e.marks[x.id]!=="")).map(x=>x.id);smSend(ids,"প্রিয় অভিভাবক, {নাম}-এর "+n+" পরীক্ষার ফলাফল: {ফল:"+n+"}। - "+Store.school.name,"ফলাফল")}
 function sms(){
- const head=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-size:22px;font-weight:700">${smT==1?"💬 অভিভাবক মেসেজিং":smT==2?"WhatsApp / SMS লগ":"SMS কেন্দ্র"}</div><div style="color:var(--mu);font-size:13px">${smT==1?"শিক্ষার্থীর অভিভাবকদের সাথে সরাসরি যোগাযোগ করুন":smT==2?"মোট "+bn(S.smslog.length)+"টি বার্তা পাঠানো হয়েছে":"অভিভাবকদের মোবাইলে ফলাফল, উপস্থিতি ও নোটিশ পাঠান"}</div></div>${smT==1?'<button class="ob" style="padding:8px 12px" onclick="smAll()">🔔</button>':""}</div>`;
+ const head=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px"><div><div style="font-size:22px;font-weight:700">${smT==1?"💬 অভিভাবক মেসেজিং":smT==2?"WhatsApp / SMS লগ":"SMS কেন্দ্র"}</div><div style="color:var(--mu);font-size:13px">${smT==1?"শিক্ষার্থীর অভিভাবকদের সাথে সরাসরি যোগাযোগ করুন":smT==2?"মোট "+bn(Store.smslog.length)+"টি বার্তা পাঠানো হয়েছে":"অভিভাবকদের মোবাইলে ফলাফল, উপস্থিতি ও নোটিশ পাঠান"}</div></div>${smT==1?'<button class="ob" style="padding:8px 12px" onclick="smAll()">🔔</button>':""}</div>`;
  const tabs=`<div class="sx-t">${SMT.map((t,i)=>`<button class="${i==smT?"on":""}" onclick="smT=${i};smSid='';smQ='';lgQ='';render()">${t}</button>`).join("")}</div>`;
  return tabs+head+(smT==0?smCenter():smT==1?smChat():smLog());
 }
 function smCenter(){
- const ph=smPh(),ab=smAbs(),st=[["👥","মোট অভিভাবক",ph.length,"#3b82f6","rgba(59,130,246,.15)"],["⚠️","আজ অনুপস্থিত",ab.length,"#dc2626","rgba(239,68,68,.15)"],["🔔","সক্রিয় নোটিশ",S.notices.length,"#d97706","rgba(245,158,11,.15)"],["📖","ফলাফলসহ ছাত্র",smResSt().length,"#059669","rgba(16,185,129,.15)"]];
+ const ph=smPh(),ab=smAbs(),st=[["👥","মোট অভিভাবক",ph.length,"#3b82f6","rgba(59,130,246,.15)"],["⚠️","আজ অনুপস্থিত",ab.length,"#dc2626","rgba(239,68,68,.15)"],["🔔","সক্রিয় নোটিশ",Store.notices.length,"#d97706","rgba(245,158,11,.15)"],["📖","ফলাফলসহ ছাত্র",smResSt().length,"#059669","rgba(16,185,129,.15)"]];
  return `<div class="g2">${st.map(x=>`<div class="sx-c"><i style="background:${x[4]};color:${x[3]}">${x[0]}</i><div><b>${bn(x[2])}</b><small>${x[1]}</small></div></div>`).join("")}</div>
 <div class="card"><h2>দ্রুত বার্তা পাঠান</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sx-bt" style="border-color:#fca5a5;color:#dc2626" onclick="smAbsSend()">⚠ আজকের অনুপস্থিতি SMS (${bn(ab.filter(x=>x.phone).length)} জন)</button><button class="sx-bt" style="border-color:#16a34a;color:#16a34a" onclick="smAll()">💬 সকল অভিভাবক (${bn(ph.length)} জন)</button></div></div>
 <div class="sx-t" style="width:max-content;max-width:100%">${["🔔 নোটিশ SMS","📖 ফলাফল SMS","📅 উপস্থিতি SMS"].map((t,i)=>`<button class="${i==smSub?"on":""}" onclick="smSub=${i};render()">${t}</button>`).join("")}</div>${smSubBody()}`;
 }
 function smSubBody(){
  let h="";
- if(smSub==0)h=S.notices.slice().reverse().map(n=>`<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n.title)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">📅 ${bn(n.date)}</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smNot('${n.id}')">💬 SMS পাঠান</button></div>`).join("")||'<div class="em">কোনো নোটিশ নেই</div>';
- if(smSub==1){const ns=[...new Set(S.exams.filter(e=>e.marks&&Object.keys(e.marks).length).map(e=>e.name))];h=ns.map(n=>{const c=S.exams.filter(e=>e.name==n).reduce((a,e)=>a.concat(Object.keys(e.marks||{})),[]);const k=new Set(c).size;return `<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">ফলাফলসহ ${bn(k)} জন</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smResSend(this.dataset.n)" data-n="${esc(n)}">💬 SMS পাঠান</button></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>'}
+ if(smSub==0)h=Store.notices.slice().reverse().map(n=>`<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n.title)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">📅 ${bn(n.date)}</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smNot('${n.id}')">💬 SMS পাঠান</button></div>`).join("")||'<div class="em">কোনো নোটিশ নেই</div>';
+ if(smSub==1){const ns=[...new Set(Store.exams.filter(e=>e.marks&&Object.keys(e.marks).length).map(e=>e.name))];h=ns.map(n=>{const c=Store.exams.filter(e=>e.name==n).reduce((a,e)=>a.concat(Object.keys(e.marks||{})),[]);const k=new Set(c).size;return `<div class="card" style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><b>${esc(n)}</b><div style="color:var(--mu);font-size:12px;margin-top:4px">ফলাফলসহ ${bn(k)} জন</div></div><button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smResSend(this.dataset.n)" data-n="${esc(n)}">💬 SMS পাঠান</button></div>`}).join("")||'<div class="em">কোনো ফলাফল নেই</div>'}
  if(smSub==2){const ab=smAbs();h=(ab.length?`<div class="card" style="padding:6px">${ab.map(x=>`<div class="sx-p"><div style="flex:1;min-width:0"><b>${esc(x.name)}</b><small>${esc(x.cls||"")}${x.phone?" · 📞 "+esc(x.phone):" · ⚠ ফোন নেই"}</small></div>${x.phone?`<button class="sx-bt" style="border-color:#16a34a;color:#16a34a;font-size:13px" onclick="smAbsSend(['${x.id}'])">💬 SMS</button>`:""}</div>`).join("")}</div>`:'<div class="em">আজ কেউ অনুপস্থিত নেই</div>')}
  return h;
 }
 function smChat(){
- if(smSid){const x=sOf(smSid);if(!x){smSid="";return smChat()}const lg=S.smslog.filter(l=>l.sid==x.id).slice().reverse();
+ if(smSid){const x=sOf(smSid);if(!x){smSid="";return smChat()}const lg=Store.smslog.filter(l=>l.sid==x.id).slice().reverse();
   return `<button class="btn o s" style="margin-bottom:10px" onclick="smSid='';render()">← তালিকা</button><div class="card"><div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><div class="sx-p" style="padding:0;border:0"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div></div><div style="flex:1"><b>${esc(x.name)}</b><small style="display:block;color:var(--mu);font-size:12px">${esc(x.cls||"")}${x.guardian?" · অভিভাবক: "+esc(x.guardian):""}${x.phone?" · "+esc(x.phone):""}</small></div></div><div style="max-height:40vh;overflow:auto;margin-bottom:10px">${lg.map(l=>`<div class="sx-bub">${esc(l.tx)}<small>${l.ch=="wa"?"WhatsApp":"SMS"} · ${new Date(l.t).toLocaleString(LC())}</small></div>`).join("")||'<div class="em">কোনো বার্তা নেই</div>'}</div>
   ${x.phone?`<textarea id="smx" rows="3" placeholder="বার্তা লিখুন"></textarea><div class="g2" style="margin:0"><button class="btn g" onclick="smDirect('wa')">WhatsApp</button><button class="btn o" onclick="smDirect('sms')">SMS</button></div>`:'<div class="hint">এই শিক্ষার্থীর অভিভাবকের ফোন নম্বর নেই।</div>'}</div>`}
  return `<input id="smq" placeholder="🔍 শিক্ষার্থী খুঁজুন..." value="${esc(smQ)}" oninput="smQ=this.value;smLst()"><div class="card" style="padding:0;margin-top:8px" id="sml">${smLstH()}</div>`;
 }
 const smAv=x=>x.gender=="মেয়ে"?"background:#fce7f3;color:#be185d":"background:#dbeafe;color:#1d4ed8";
-function smLstH(){const k=smQ.trim().toLowerCase();return smStu().filter(x=>!k||[x.name,x.cls,x.guardian,x.phone].join(" ").toLowerCase().includes(k)).map(x=>{const l=S.smslog.find(m=>m.sid==x.id);return `<div class="sx-p" onclick="smSid='${x.id}';render()"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div><div style="flex:1;min-width:0"><b style="font-weight:500">${esc(x.name)}</b> ${x.phone?"":'<span style="color:#d97706;font-size:12px">⚠</span>'}<small>${esc(x.cls||"")}</small>${l?`<small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((l.tx||"").replace(/\n/g," "))}</small>`:"<em>কোনো বার্তা নেই</em>"}</div></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}
+function smLstH(){const k=smQ.trim().toLowerCase();return smStu().filter(x=>!k||[x.name,x.cls,x.guardian,x.phone].join(" ").toLowerCase().includes(k)).map(x=>{const l=Store.smslog.find(m=>m.sid==x.id);return `<div class="sx-p" onclick="smSid='${x.id}';render()"><div class="a" style="${smAv(x)}">${esc((x.name||"?")[0])}</div><div style="flex:1;min-width:0"><b style="font-weight:500">${esc(x.name)}</b> ${x.phone?"":'<span style="color:#d97706;font-size:12px">⚠</span>'}<small>${esc(x.cls||"")}</small>${l?`<small style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((l.tx||"").replace(/\n/g," "))}</small>`:"<em>কোনো বার্তা নেই</em>"}</div></div>`}).join("")||'<div class="em">কোনো শিক্ষার্থী নেই</div>'}
 function smLst(){const e=$("sml");if(e)e.innerHTML=smLstH()}
 function smDirect(ch){const t=$("smx").value.trim(),x=sOf(smSid);if(!t){alert("বার্তা লিখুন");return}sendTo(x,ch,t,"বার্তা");setTimeout(render,500)}
 function smLog(){return `<input id="lgq" placeholder="🔍 নাম বা ফোন নম্বর খুঁজুন..." value="${esc(lgQ)}" oninput="lgQ=this.value;lgLst()"><div class="card ov" style="padding:0;margin-top:8px" id="lgl">${lgH()}</div>`}
-function lgH(){const k=lgQ.trim().toLowerCase();const r=S.smslog.map(l=>({l,x:pOf(l.sid)||{}})).filter(o=>!k||[o.x.guardian,o.x.name,o.x.phone].join(" ").toLowerCase().includes(k));
+function lgH(){const k=lgQ.trim().toLowerCase();const r=Store.smslog.map(l=>({l,x:pOf(l.sid)||{}})).filter(o=>!k||[o.x.guardian,o.x.name,o.x.phone].join(" ").toLowerCase().includes(k));
  return r.length?`<table class="sx-tb" style="min-width:560px;width:100%;border-collapse:collapse"><tr><th>অভিভাবক</th><th>শিক্ষার্থী</th><th>ফোন</th><th>ধরন</th><th>মাধ্যম</th><th>বার্তা</th></tr>${r.map(o=>{const t=smTy(o.l);return `<tr><td><b style="font-weight:500">${esc(o.x.guardian||"—")}</b></td><td>${esc(o.x.name||"—")}</td><td>${esc(o.x.phone||"")}</td><td><span class="sx-tp" style="${smTyC[t]||smTyC["বার্তা"]}">${t}</span></td><td><span class="sx-tp" style="${o.l.ch=="wa"?"border:1px solid #86efac;color:#15803d":"border:1px solid #86efac;color:#15803d"}">${o.l.ch=="wa"?"WhatsApp":"SMS"}</span></td><td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((o.l.tx||"").replace(/\n/g," "))}</td></tr>`}).join("")}</table>`:'<div class="em">কোনো লগ নেই</div>'}
 function lgLst(){const e=$("lgl");if(e)e.innerHTML=lgH()}
 function tForm(id){
- const t=S.teachers.find(x=>x.id==id)||{};
+ const t=Store.teachers.find(x=>x.id==id)||{};
  modal(`<h2 style="margin-bottom:10px">শিক্ষক</h2><input id="t1" placeholder="নাম" value="${esc(t.name)}"><input id="t2" placeholder="বিষয়" value="${esc(t.sub)}"><input id="t3" type="tel" placeholder="ফোন" value="${esc(t.phone)}">
- <button class="btn" style="width:100%" onclick="tSave('${id||""}')">সংরক্ষণ করুন</button>${id?`<button class="btn r" style="width:100%;margin-top:8px" onclick="S.teachers=S.teachers.filter(x=>x.id!='${id}');save();closeM();render()">মুছে ফেলুন</button>`:""}`);
+ <button class="btn" style="width:100%" onclick="tSave('${id||""}')">সংরক্ষণ করুন</button>${id?`<button class="btn r" style="width:100%;margin-top:8px" onclick="Store.teachers=Store.teachers.filter(x=>x.id!='${id}');save();closeM();render()">মুছে ফেলুন</button>`:""}`);
 }
 function tSave(id){
  const o={name:$("t1").value.trim(),sub:$("t2").value.trim(),phone:$("t3").value.trim()};if(!o.name){alert("নাম লিখুন");return}
- if(id)Object.assign(S.teachers.find(x=>x.id==id),o);else S.teachers.push({id:uid(),...o});logA(id?"edit":"add","শিক্ষক",(id?"শিক্ষকের তথ্য আপডেট: ":"নতুন শিক্ষক যোগ: ")+o.name);save();closeM();render();
+ if(id)Object.assign(Store.teachers.find(x=>x.id==id),o);else Store.teachers.push({id:uid(),...o});logA(id?"edit":"add","শিক্ষক",(id?"শিক্ষকের তথ্য আপডেট: ":"নতুন শিক্ষক যোগ: ")+o.name);save();closeM();render();
 }
 async function exp(){
- S.set.lastBk=Date.now();save();const data=JSON.stringify(S),name="madrasa-backup-"+today()+".json",P=window.Capacitor&&Capacitor.Plugins;
+ Store.set.lastBk=Date.now();save();const data=JSON.stringify(Store.raw),name="madrasa-backup-"+today()+".json",P=window.Capacitor&&Capacitor.Plugins;
  if(P&&P.Filesystem&&P.Share){
   try{const r=await P.Filesystem.writeFile({path:name,data:data,directory:"CACHE",encoding:"utf8"});await P.Share.share({title:"ব্যাকআপ",url:r.uri,dialogTitle:"ব্যাকআপ সংরক্ষণ করুন"});return}catch(e){if(e&&/cancel/i.test(e.message||""))return}
  }
@@ -210,9 +210,9 @@ function trInit(){
  window.alert=m=>_a(trS(String(m)));window.confirm=m=>_c(trS(String(m)));window.prompt=(m,d)=>_p(trS(String(m)),d);
  trNode(document.body);
  new MutationObserver(ms=>{for(const m of ms){if(m.type==="characterData")trNode(m.target);else m.addedNodes.forEach(trNode)}}).observe(document.body,{childList:true,subtree:true,characterData:true})}
-function setLang(l){if(S.set.lang==l||(!S.set.lang&&l=="bn"))return;S.set.lang=l;save();location.reload()}
-initRBAC();migrateExams();autoFees();save();applyTheme();updateNet();render();trInit();lockCheck();setInterval(()=>{if(S.set.theme=="time"||S.set.theme=="auto")themeSync()},60000);
-if(navigator.onLine&&S.sync&&S.sync.apiUrl){setTimeout(syncNow,800);setInterval(()=>{if(navigator.onLine)syncNow()},60000)}
+function setLang(l){if(Store.set.lang==l||(!Store.set.lang&&l=="bn"))return;Store.set.lang=l;save();location.reload()}
+initRBAC();migrateExams();autoFees();save();applyTheme();updateNet();render();trInit();lockCheck();setInterval(()=>{if(Store.set.theme=="time"||Store.set.theme=="auto")themeSync()},60000);
+if(navigator.onLine&&Store.sync&&Store.sync.apiUrl){setTimeout(syncNow,800);setInterval(()=>{if(navigator.onLine)syncNow()},60000)}
 let dip=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e});
 window.addEventListener("appinstalled",()=>{dip=null;toast("✅ অ্যাপ ইনস্টল হয়েছে")});
