@@ -705,5 +705,4 @@ async function tbfOpen(id){
   if(P&&P.Filesystem&&P.Share){try{const r=await P.Filesystem.writeFile({path:"tbl-"+id+(f.type==="img"?".jpg":".pdf"),data:d64,directory:"CACHE"});await P.Share.share({url:r.uri,title:f.title||f.cls});return}catch(e){if(e&&/cancel/i.test(e.message||""))return}}
   const bin=atob(d64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
   openExt(URL.createObjectURL(new Blob([u8],{type:mime})));
-   }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+}
