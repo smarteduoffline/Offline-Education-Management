@@ -6,7 +6,7 @@ async function loadSchExtra(){
     const r=await sb.rpc("smartedu_list_school_extra");
     if(r.error)return;
     const m={};(r.data||[]).forEach(x=>m[String(x.school_id)]=x);window._remStats=m;
-    (S.schools||[]).forEach(sc=>{const x=m[String(sc.id)];if(!x)return;if(x.logo&&!sc.logo)sc.logo=x.logo;if(x.director&&!(sc.admin&&sc.admin.name)){sc.admin=sc.admin||{};sc.admin.name=x.director}});
+    (Store.schools||[]).forEach(sc=>{const x=m[String(sc.id)];if(!x)return;if(x.logo&&!sc.logo)sc.logo=x.logo;if(x.director&&!(sc.admin&&sc.admin.name)){sc.admin=sc.admin||{};sc.admin.name=x.director}});
     if(tab==="more"&&sub==="sat"&&satT===0)render();
   }catch(e){}
 }
@@ -15,7 +15,7 @@ function schBackfill(list){
     if(!isSuper()||ACT_SID!=="main"||window._bfDone||!Array.isArray(list))return;
     window._bfDone=1;
     const have=new Set(list.map(x=>String(x.id)));
-    (S.schools||[]).filter(x=>x&&x.id!=null&&!have.has(String(x.id))).forEach(sc=>pushSchoolToServer(sc.id,sc));
+    (Store.schools||[]).filter(x=>x&&x.id!=null&&!have.has(String(x.id))).forEach(sc=>pushSchoolToServer(sc.id,sc));
   }catch(e){}
 }
 async function loadRemSch(){try{const b=await sb.rpc("smartedu_list_schools");if(!b.error){const m={};(b.data||[]).forEach(x=>m[String(x.id)]=x);window._remSch=m;mergeSchIdx((b.data||[]).map(r=>({id:r.id,name:r.name})));try{if(typeof schReconcile==="function")schReconcile(b.data||[])}catch(_){}try{schBackfill(b.data||[])}catch(_){}loadSchExtra()}}catch(e){}}
@@ -25,8 +25,8 @@ function schReconcile(list){
   let add=0;
   list.forEach(r=>{
     if(!r||r.id==null||String(r.id)==="main")return;
-    if(S.schools.some(x=>String(x.id)===String(r.id)))return;
-    S.schools.push({id:r.id,name:r.name||"",addr:r.addr||"",phone:r.phone||"",est:r.est||"",email:r.email||"",sub:{}});
+    if(Store.schools.some(x=>String(x.id)===String(r.id)))return;
+    Store.schools.push({id:r.id,name:r.name||"",addr:r.addr||"",phone:r.phone||"",est:r.est||"",email:r.email||"",sub:{}});
     add++;
   });
   if(add){save();try{toast(add+"টি প্রতিষ্ঠান সার্ভার থেকে তালিকায় ফিরিয়ে আনা হয়েছে")}catch(_){}}

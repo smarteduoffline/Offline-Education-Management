@@ -1,5 +1,5 @@
 let hist=[],curKey="",goingBack=false;
-var loginTab=(ACT_SID!=="main"||S.users.length)?"email":"pin";
+var loginTab=(ACT_SID!=="main"||Store.users.length)?"email":"pin";
 const ADMIN_AUTH_EMAIL = "aworker247@gmail.com";
 const SITE_URL="https://smarteduoffline.github.io/Offline-Education-Management/";
 function loginLink(){return SITE_URL+"#invite"}
@@ -32,8 +32,8 @@ async function emailLogin(){
    প্রতিটি শাখা {u, sidSel} ফেরত দেয়; null মানে ব্যাপারটা সেখানেই সামলানো হয়েছে (রিলোড/অস্বীকার/সেটআপ) */
 const lgLc=s=>String(s||"").toLowerCase();
 const lgRole=a=>(a.roles||[]).includes(UROLES[0])?"admin":"teacher";
-const lgFindUser=email=>S.users.find(x=>lgLc(x.identifier)===email);
-function lgNewUser(email,fields){const u=Object.assign({id:uid(),identifier:email,pin:uid()+uid(),active:true,permissions:[],createdAt:Date.now()},fields);S.users.push(u);return u}
+const lgFindUser=email=>Store.users.find(x=>lgLc(x.identifier)===email);
+function lgNewUser(email,fields){const u=Object.assign({id:uid(),identifier:email,pin:uid()+uid(),active:true,permissions:[],createdAt:Date.now()},fields);Store.users.push(u);return u}
 async function lgDeny(msg){await sb.auth.signOut();lerr(msg);return null}
 
 /* সুপার এডমিন সবসময় মূল (main) ডেটাসেটে ঢুকবে, নইলে তার প্রতিষ্ঠান-তালিকা হারিয়ে যেত */
@@ -47,7 +47,7 @@ function lgSuperAdmin(email){
 
 /* মালিক-ইমেইল: নিজের রেকর্ড, না থাকলে সুপার এডমিন নয় এমন পুরোনো লোকাল অ্যাডমিন, না থাকলে নতুন রেকর্ড */
 function lgOwnerAdmin(email){
-  let u=lgFindUser(email)||S.users.find(x=>x.role==="admin"&&x.active!==false&&!SUPER_ADMIN_EMAILS.includes(lgLc(x.identifier)));
+  let u=lgFindUser(email)||Store.users.find(x=>x.role==="admin"&&x.active!==false&&!SUPER_ADMIN_EMAILS.includes(lgLc(x.identifier)));
   if(!u){u=lgNewUser(email,{role:"admin"});save()}
   if(u.active===false)return lgDeny("এই অ্যাকাউন্টটি নিষ্ক্রিয়।");
   return {u,sidSel:""};

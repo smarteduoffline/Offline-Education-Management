@@ -5,7 +5,7 @@ function isSchoolAdmin(){return !!activeUser&&!isSuper()&&(activeUser.role==="ad
 async function pushSchoolToServer(id,o){
   try{
     if(!sb||!navigator.onLine||!isSuper()||!id||id==="main")return;
-    const sc=(S.schools||[]).find(x=>String(x.id)===String(id))||{},sub=sc.sub||{};
+    const sc=(Store.schools||[]).find(x=>String(x.id)===String(id))||{},sub=sc.sub||{};
     let r=await _wt(sb.rpc("smartedu_admin_upsert_school",{p_id:String(id),p_name:o.name||sc.name||"",p_addr:o.addr||sc.addr||"",p_phone:o.phone||sc.phone||"",p_est:String(o.est||sc.est||""),p_email:sc.email||"",p_logo:sc.logo||"",p_director:(sc.admin&&sc.admin.name)||"",p_syear:"",p_exp:sub.exp||"",p_inactive:sub.status==="inactive"}),25000);
     if(r.error){
       const old=await _wt(sb.rpc("smartedu_update_school",{p_id:String(id),p_name:o.name||"",p_addr:o.addr||"",p_phone:o.phone||"",p_est:String(o.est||"")}),15000);
@@ -21,7 +21,7 @@ async function pullMySchool(){
     if(!a.error)r=Array.isArray(a.data)?a.data[0]:a.data;
     else{const b=await _wt(sb.rpc("smartedu_list_schools"),10000);if(!b.error&&Array.isArray(b.data))r=b.data.find(x=>String(x.id)===String(ACT_SID))}
     if(!r||!r.name)return;
-    const sc=S.school=S.school||{},srvSig=schSig(r);
+    const sc=Store.school=Store.school||{},srvSig=schSig(r);
     if(sc._srvSig===srvSig)return;
     sc.name=r.name;
     [["addr","addr"],["phone","phone"],["est","est"],["email","email"],["director","director"],["year","syear"],["logo","logo"]].forEach(f=>{const v=r[f[1]];if(v!=null&&String(v)!=="")sc[f[0]]=v});
@@ -42,7 +42,7 @@ async function pushSchoolStats(){
 async function syncMySchool(){
   try{
     if(!sb||!navigator.onLine||!activeUser||isSuper()||ACT_SID==="main")return;
-    const sc=S.school=S.school||{};
+    const sc=Store.school=Store.school||{};
     // এই ডিভাইসে অ্যাডমিন প্রোফাইল বদলালে আগে সার্ভারে পাঠাও, তারপর সার্ভার থেকে নামাও
     if(isSchoolAdmin()&&sc.name&&schSig(sc)!==sc._pushSig){
       const r=await sb.rpc("smartedu_save_my_school",{p_name:sc.name,p_addr:sc.addr||"",p_phone:sc.phone||"",p_est:String(sc.est||""),p_email:sc.email||"",p_logo:sc.logo||"",p_director:sc.director||"",p_syear:String(sc.year||"")});
