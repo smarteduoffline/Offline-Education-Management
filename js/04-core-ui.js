@@ -272,4 +272,4 @@ async function printDoc(name,body){if(LANG=="en")body=trS(body);
   window._pdfJob={fn,body,col,bw:null,gray:false,busy:false,sel:col.pages.map(()=>true)};
   pdfOpts();
  }catch(e){window._pdfBusy=false;fitMobileZoom();toast("PDF তৈরি করা যায়নি — প্রিন্টযোগ্য ফাইল শেয়ার হচ্ছে");htmlShare(name,body)}
-    }
+}
