@@ -1,8 +1,8 @@
 // অফলাইন সাপোর্ট: আগে ইন্টারনেট থেকে নতুন ফাইল নেয়, না পেলে সেভ করা কপি দেখায়
-const CACHE = "smart-edu-v7";
+const CACHE = "smart-edu-v8";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 // মডিউলার CSS/JS ফাইল — অফলাইনে প্রথমবার খোলার জন্য আগেই সংরক্ষণ করা হয়
-const ASSETS = ["./css/app.css", "./js/01-supabase-config.js", "./js/02-state-utils.js", "./js/03a-login-local-users.js", "./js/03b-login-flow.js", "./js/03c-approvals-remote.js", "./js/03d-roles-signup-setup.js", "./js/03e-school-sync-recovery.js", "./js/03f-session-dataset.js", "./js/03g-notifications-header.js", "./js/03h-auth-views-misc.js", "./js/04-core-ui.js", "./js/05-students-print.js", "./js/06-parent-sync.js", "./js/07-exams.js", "./js/08-finance.js", "./js/09-backup-i18n-init.js", "./js/10-security-hardening.js"];
+const ASSETS = ["./css/app.css", "./js/01-supabase-config.js", "./js/02-state-utils.js", "./js/02b-store.js", "./js/03a-login-local-users.js", "./js/03b-login-flow.js", "./js/03c-approvals-remote.js", "./js/03d-roles-signup-setup.js", "./js/03e-school-sync-recovery.js", "./js/03f-session-dataset.js", "./js/03g-notifications-header.js", "./js/03h-auth-views-misc.js", "./js/04-core-ui.js", "./js/05-students-print.js", "./js/06-parent-sync.js", "./js/07-exams.js", "./js/08-finance.js", "./js/09-backup-i18n-init.js", "./js/10-security-hardening.js"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE).then(() => Promise.all(ASSETS.map(u => c.add(u).catch(() => {}))))).then(() => self.skipWaiting()));
 });
