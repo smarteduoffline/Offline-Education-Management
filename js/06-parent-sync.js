@@ -365,4 +365,4 @@ async function bkOpen(id){
 function bkPdf(){
  const l=S.tbooks.filter(b=>!bkCls||b.cls==bkCls);
  printDoc("textbooks",sch()+`<style>.ptb td,.ptb th{border:1px solid #b9e6cd;font-size:12px;padding:6px 7px}</style><div style="text-align:center;margin-bottom:10px">শ্রেণী ও পাঠ্যবই${bkCls?" — "+esc(bkCls):""}</div><table class="ptb" style="border:1px solid #1d4ed8"><tr><th>শ্রেণি</th><th>বইয়ের নাম</th><th>বিষয়</th><th>লেখক</th><th>বই নং</th><th>তাক</th><th>সংখ্যা</th></tr>${l.map(b=>`<tr><td>${esc(b.cls)}</td><td>${esc(b.name)}</td><td>${esc(b.subject||"")}</td><td>${esc(b.author||"")}</td><td>${esc(b.code||"")}</td><td>${esc(b.shelf||"")}</td><td>${bn(b.copies||1)}</td></tr>`).join("")||'<tr><td colspan="7">কোনো বই নেই</td></tr>'}</table>`);
-                }
+}
