@@ -202,4 +202,39 @@ function scheduleSync(){if(navigator.onLine&&S.sync?.apiUrl)setTimeout(()=>syncN
 window.addEventListener("online",()=>{updateNet();scheduleSync()});
 window.addEventListener("offline",updateNet);
 window.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")scheduleSync()});
-async function vaultDecryptText(box,password){const enc=new TextEncoder(),u=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),base=await crypto.subtle.importKey("raw",enc.e
+async function vaultDecryptText(box,password){const enc=new TextEncoder(),u=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),base=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]),key=await crypto.subtle.deriveKey({name:"PBKDF2",salt:u(box.salt),iterations:box.iterations||210000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]),buf=await crypto.subtle.decrypt({name:"AES-GCM",iv:u(box.iv)},key,u(box.data));return new TextDecoder().decode(buf)}
+async function vaultOpen(box){
+ if(!box||box.alg!=="AES-GCM"||box.kdf!=="PBKDF2-SHA-256"||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.salt||"")||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.iv||"")||!/^([A-Za-z0-9+/]+={0,2})$/.test(box.data||"")||String(box.iv).length<12||String(box.iv).length>32||String(box.salt).length<20||String(box.salt).length>64||String(box.data).length>35000000)throw Error("invalid encrypted backup");
+ const iterations=Number(box.iterations||210000);if(!Number.isInteger(iterations)||iterations<100000||iterations>1000000)throw Error("invalid KDF settings");
+ const pw=prompt("Encrypted backup password:");if(!pw)throw 0;return JSON.parse(await vaultDecryptText({...box,iterations},pw))
+}
+async function pasteGo(){try{let d=JSON.parse($("bk").value);if(d&&d.alg==="AES-GCM")d=await vaultOpen(d);if(!validBackup(d))throw 0;if(!restoreBackupData(d))return;closeM();render();alert("রিস্টোর সম্পন্ন")}catch(e){alert("টেক্সটটি সঠিক ব্যাকআপ নয়")}}
+const RBAC={
+ admin:{label:"অ্যাডমিন",all:true},
+ teacher:{label:"শিক্ষক",permissions:["dashboard","attendance","students","classes","exams","reports","messages","notices"]}
+};
+const PERM_LABEL={dashboard:"ড্যাশবোর্ড",attendance:"উপস্থিতি",students:"শিক্ষার্থী",fees:"ফি",reports:"রিপোর্ট",exams:"পরীক্ষা ও ফলাফল",accounting:"আয় ও ব্যয়",classes:"শ্রেণী ও পাঠ্য/বাড়ির কাজ",library:"লাইব্রেরি",messages:"SMS/WhatsApp",teachers:"শিক্ষক ব্যবস্থাপনা",staff:"কর্মী ব্যবস্থাপনা",notices:"নোটিশ",settings:"সেটিংস",backup:"ব্যাকআপ ও রিসাইকেল বিন"};
+function initRBAC(){
+ S.users=Array.isArray(S.users)?S.users:[];
+ if(!S.users.length&&ACT_SID==="main"){
+  let old=null;try{old=JSON.parse(localStorage.getItem(AUTH_KEY)||"null")}catch(e){}
+  if(old&&old.identifier&&old.pin)S.users=[{id:uid(),identifier:old.identifier,pin:old.pin,role:old.role||"admin",active:true,permissions:old.permissions||[],createdAt:old.createdAt||Date.now()}];
+ }
+ if(activeUser){const u=S.users.find(x=>x.id===activeUser.id||x.identifier===activeUser.identifier);if(!u||u.active===false){activeUser=null;unlocked=false;sessionStorage.removeItem("smartEduUser")}else activeUser={id:u.id,identifier:u.identifier,role:u.role}}
+}
+function userPerms(u=activeUser){if(!u)return[];if(u.role==="admin")return Object.keys(PERM_LABEL);const x=S.users.find(v=>v.id===u.id||v.identifier===u.identifier)||u;return Array.isArray(x.permissions)?x.permissions:RBAC.teacher.permissions}
+const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
+const isSupEmail=e=>SUPER_ADMIN_EMAILS.includes(String(e||"").toLowerCase());
+// Super Admin = শুধু উপরের দুই ইমেইল; সাধারণ অ্যাডমিন নয়
+const isSuper=()=>activeUser?.role==="super_admin"||isSupEmail(activeUser?.identifier);
+const isAdm=()=>activeUser?.role==="admin"||isSuper();
+function roleTxt(rs){rs=Array.isArray(rs)?rs:[];const a=UROLES.filter(r=>rs.includes(r));return a.length?a.join(" · "):"শিক্ষক"}
+function myRoleText(){if(isSuper())return "Super Admin";const u=S.users.find(v=>v.id===activeUser?.id||v.identifier===activeUser?.identifier);if(u&&u.roleLabel)return u.roleLabel;return activeUser?.role==="admin"?"অ্যাডমিন":"শিক্ষক"}
+function hasPerm(p){return activeUser?.role==="admin"||userPerms().includes(p)}
+function allow(p){if(hasPerm(p))return true;alert("এই কাজের জন্য আপনার permission নেই");return false}
+function myRoleList(){const u=S.users.find(v=>v.id===activeUser?.id||v.identifier===activeUser?.identifier);return String(u&&u.roleLabel||"").split(" · ").map(x=>x.trim()).filter(Boolean)}
+function isParent(){if(!activeUser||isSuper()||activeUser.role==="admin")return false;const r=myRoleList();return r.includes("অভিভাবক")&&!r.some(x=>["অ্যাডমিন","সহ-অ্যাডমিন","শিক্ষক","হিসাবরক্ষক"].includes(x))}
+const PTABS=[["home",ico("home"),"হোম"],["portal",ico("stu"),"অভিভাবক পোর্টাল"],["back","←","ফিরে যান"]];
+function canTab(t){if(isParent())return t==="home"||t==="portal"||t==="more"||t==="back";return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
+const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"backup"};
+function canMenu(k){if(isParent())return k==="cp";if(k==="bkp")return !!activeUser;if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}
