@@ -8,11 +8,11 @@ async function oauthLogin(p){
 }
 function emailLoginView(){
   const su=window._authMode==="signup",go=su?"emailSignup()":"emailLogin()";
-  const logo=(S.school&&S.school.logo)?`<img src="${safeDataImage(S.school.logo)}" style="width:64px;height:64px;object-fit:contain;border-radius:50%">`:`<div style="font-size:40px">🔐</div>`;
+  const logo=(Store.school&&Store.school.logo)?`<img src="${safeDataImage(Store.school.logo)}" style="width:64px;height:64px;object-fit:contain;border-radius:50%">`:`<div style="font-size:40px">🔐</div>`;
   const G='<svg width="22" height="22" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
   const F='<svg width="22" height="22" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.68-.23c-2.74 0-4.53 1.66-4.53 4.66V12H7.08v3.47h3.05v8.39a12.1 12.1 0 003.74 0v-8.39h2.8z"/></svg>';
   return `<div class="login-box"><div class="lg-card">
-<div style="text-align:center;margin-bottom:14px">${logo}<div style="font-size:20px;font-weight:700;margin-top:6px">${esc((S.school&&S.school.name)||"")}</div><div style="font-size:13px;color:var(--mu)">${su?"Create your account":"Sign in to continue"}</div></div>
+<div style="text-align:center;margin-bottom:14px">${logo}<div style="font-size:20px;font-weight:700;margin-top:6px">${esc((Store.school&&Store.school.name)||"")}</div><div style="font-size:13px;color:var(--mu)">${su?"Create your account":"Sign in to continue"}</div></div>
 <button class="lg-soc" onclick="oauthLogin('google')">${G}Continue with Google</button>
 <button class="lg-soc" onclick="oauthLogin('facebook')">${F}Continue with Facebook</button>
 <div class="lg-or"><span>OR</span></div>
@@ -40,7 +40,7 @@ ${su?"":`<div class="lg-sub"><a onclick="emailReset()">Forgot password?</a></div
   const {data:{session}}=await sb.auth.getSession();
   if(session&&session.user&&session.user.email)await completeLogin(session.user,String(session.user.email).toLowerCase());
 }catch(e){}})();
-if(S.set.bism===undefined)S.set.bism=1;
+if(Store.set.bism===undefined)Store.set.bism=1;
 function clockHtml(d){
   let t=d.toLocaleTimeString(LANG=="en"?"en-US":"bn-BD");
   const m=t.match(/\s*(AM|PM)$/i);let ap="";

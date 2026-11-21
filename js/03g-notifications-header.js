@@ -50,7 +50,7 @@ function notifItems(){
     if(dl<0)add(2,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হয়েছে",se+" তারিখে মেয়াদ শেষ হয়েছে",SUBGO,"sub|exp|"+se);
     else if(dl<=7)add(1,"💳","সাবস্ক্রিপশনের মেয়াদ শেষ হচ্ছে",bn(dl)+" দিন বাকি ("+se+")",SUBGO,"sub|soon|"+se);
   }
-  if(set)((S.sub&&S.sub.reqs)||[]).forEach(r=>{
+  if(set)((Store.sub&&Store.sub.reqs)||[]).forEach(r=>{
     if(r.status==="pending")add(1,"⏳","নবায়ন অনুরোধ পেন্ডিং",bn(r.months)+" মাস · TXN "+r.txn+" — Super Admin-এর অনুমোদনের অপেক্ষায়",SUBGO,"rq|p|"+r.id);
     else if(r.status==="approved"&&r.approvedOn&&r.approvedOn>=dayOff(-7))add(0,"✅","সাবস্ক্রিপশন নবায়ন অনুমোদিত হয়েছে","মেয়াদ বেড়েছে "+bn(r.months)+" মাস",SUBGO,"rq|a|"+r.id);
     else if(r.status==="rejected"&&r.decidedOn&&r.decidedOn>=dayOff(-14))add(1,"❌","নবায়ন অনুরোধ বাতিল হয়েছে","TXN "+r.txn+" — Super Admin-এর সঙ্গে যোগাযোগ করুন",SUBGO,"rq|r|"+r.id);
@@ -58,21 +58,21 @@ function notifItems(){
   const rp=window._renPend||[];
   if(isSuper()&&rp.length)add(2,"📩",bn(rp.length)+"টি নবায়নের অনুরোধ এসেছে",[...new Set(rp.map(x=>x.inst_name||"প্রতিষ্ঠান"))].join(", "),"satT=5;nav('more','sat')","rn|"+rp.map(x=>x.id).join(","));
   if(isSuper()&&window._pendCnt>0)add(2,"👤",bn(window._pendCnt)+" জন নতুন ইউজার অনুমোদনের অপেক্ষায়","অনুমোদন দিন এবং ভূমিকা/পারমিশন নির্ধারণ করুন","loadApprovalPanel()","pu|"+window._pendCnt);
-  const dues=S.fees.filter(f=>due(f)>0);
+  const dues=Store.fees.filter(f=>due(f)>0);
   if(dues.length){
     const tot=dues.reduce((a,f)=>a+due(f),0),n=new Set(dues.map(f=>f.sid)).size;
     add(2,"💰","বকেয়া ফি: "+bn(n)+" জন শিক্ষার্থী","মোট বকেয়া "+money(tot),"nav('fee')","du|"+n+"|"+tot);
   }
   let od=0;
-  S.books.forEach(b=>(b.issues||[]).forEach(i=>{if(!i.ret&&i.due&&i.due<T)od++}));
+  Store.books.forEach(b=>(b.issues||[]).forEach(i=>{if(!i.ret&&i.due&&i.due<T)od++}));
   if(od)add(1,"📚",bn(od)+"টি বই ফেরতের সময় পার হয়েছে","লাইব্রেরি দেখুন","nav('more','lib')","lb|"+od);
-  const lim=dayOff(3),ex=S.exams.filter(e=>e.date==T),ux=S.exams.filter(e=>e.date>T&&e.date<=lim);
+  const lim=dayOff(3),ex=Store.exams.filter(e=>e.date==T),ux=Store.exams.filter(e=>e.date>T&&e.date<=lim);
   if(ex.length)add(1,"📝","আজ "+bn(ex.length)+"টি পরীক্ষা আছে",ex.map(e=>e.name||e.title||"পরীক্ষা").join(", "),"nav('more','xh')","ex|"+T+"|"+ex.map(e=>e.id).join(","));
   if(ux.length)add(0,"📅","আগামী ৩ দিনে "+bn(ux.length)+"টি পরীক্ষা",ux.map(e=>(e.name||e.title||"পরীক্ষা")+" ("+e.date+")").join(", "),"nav('more','xh')","ux|"+ux.map(e=>e.id+e.date).join(","));
-  const lb=S.set&&S.set.lastBk;
-  if(hasPerm("backup")&&S.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","bkT=0;nav('more','bkp')","bk|"+(lb||"none"));
+  const lb=Store.set&&Store.set.lastBk;
+  if(hasPerm("backup")&&Store.students.length&&(!lb||Date.now()-new Date(lb).getTime()>7*864e5))add(1,"🗄","ব্যাকআপ নেওয়া হয়নি",lb?"শেষ ব্যাকআপ ৭ দিনের বেশি আগে":"এখনও কোনো ব্যাকআপ নেওয়া হয়নি","bkT=0;nav('more','bkp')","bk|"+(lb||"none"));
   const cs=dayOff(-14);
-  S.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')","nt|"+n.id));
+  Store.notices.slice().reverse().filter(n=>!n.date||n.date>=cs).slice(0,3).forEach(n=>add(0,"🔔",n.title||n.t||"নোটিশ",n.date||"","nav('more','notice')","nt|"+n.id));
   return L.sort((a,b)=>b.sev-a.sev);
 }
 const readStore=()=>"smartEduRead:"+ACT_SID+":"+((activeUser&&activeUser.identifier)||"");
@@ -114,7 +114,7 @@ async function notifOpen(){
 setInterval(refreshPending,300000);
 
 const BISM="بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
-function netTxt(){const n=(S.syncQueue||[]).length;return (navigator.onLine?"● অনলাইন":"● অফলাইন")+(n?" · queue "+bn(n):"")}
+function netTxt(){const n=(Store.syncQueue||[]).length;return (navigator.onLine?"● অনলাইন":"● অফলাইন")+(n?" · queue "+bn(n):"")}
 function annText(){try{return (JSON.parse(localStorage.getItem("smartEduAnn")||"{}").t)||""}catch(e){return ""}}
 function annBarHtml(){
   const t=annText();
@@ -132,9 +132,9 @@ async function annFetch(){
 }
 setTimeout(annFetch,2000);setInterval(annFetch,300000);addEventListener("online",annFetch);
 function appHeader(){
-  const bell=S.set.bell?`<span class="ib" style="position:relative" onclick="notifOpen()">${ico("bell",21)}${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:"";
-  const tb=S.set.tbtn?`<span class="ib" onclick="themeTog()">${ico(isDark()?"sun":"moon",21)}</span>`:"";
-  const row2=tab==="home"?`<div class="hdr2"><div class="hl"><span class="grt">${S.set.greet?"👋 "+greet():""}</span><span class="netIn${navigator.onLine?"":" off"}">${netTxt()}</span></div>${S.set.bism?`<span class="bism" lang="ar" dir="rtl"><span>${BISM}</span></span>`:`<span style="flex:1"></span>`}<div class="hr">${bell}${tb}</div></div>`:"";
+  const bell=Store.set.bell?`<span class="ib" style="position:relative" onclick="notifOpen()">${ico("bell",21)}${notifUnread()?`<b class="bd" id="bellBd">${bn(notifUnread())}</b>`:""}</span>`:"";
+  const tb=Store.set.tbtn?`<span class="ib" onclick="themeTog()">${ico(isDark()?"sun":"moon",21)}</span>`:"";
+  const row2=tab==="home"?`<div class="hdr2"><div class="hl"><span class="grt">${Store.set.greet?"👋 "+greet():""}</span><span class="netIn${navigator.onLine?"":" off"}">${netTxt()}</span></div>${Store.set.bism?`<span class="bism" lang="ar" dir="rtl"><span>${BISM}</span></span>`:`<span style="flex:1"></span>`}<div class="hr">${bell}${tb}</div></div>`:"";
   return `<div id="hdr"><div class="hdr1"><span class="ib" onclick="drawer()">${ico("menu",22)}</span><div id="annSlot" style="flex:1;min-width:0;display:flex">${annBarHtml()}</div></div>${row2}</div>`;
 }
 function clockStr(d){
@@ -164,7 +164,7 @@ let _ip=null;
 addEventListener("beforeinstallprompt",e=>{e.preventDefault();_ip=e});
 async function installApp(){
   if(_ip){_ip.prompt();try{await _ip.userChoice}catch(e){}_ip=null;return}
-  const l=S.school&&S.school.appLink;
+  const l=Store.school&&Store.school.appLink;
   if(l&&/^https?:\/\//i.test(l)){window.open(l,"_blank");return}
   alert("ফোনে ইন্সটল করতে Chrome-এর ⋮ মেনু থেকে \"Install app\" বা \"Add to Home screen\" বাছুন।");
 }

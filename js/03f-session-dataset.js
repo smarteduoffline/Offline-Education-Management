@@ -1,12 +1,12 @@
 var _mainSchool=null;
 function applySessionSchool(sid){
   try{
-    if(_mainSchool){S.school=_mainSchool;_mainSchool=null}
-    const sc=(sid&&sid!=="main")?(S.schools||[]).find(x=>String(x.id)===String(sid)):null;
+    if(_mainSchool){Store.school=_mainSchool;_mainSchool=null}
+    const sc=(sid&&sid!=="main")?(Store.schools||[]).find(x=>String(x.id)===String(sid)):null;
     if(!sc)return;
-    _mainSchool=S.school;
+    _mainSchool=Store.school;
     Object.defineProperty(S,"toJSON",{value:function(){return _mainSchool?Object.assign({},this,{school:_mainSchool}):this},enumerable:false,configurable:true,writable:true});
-    S.school=Object.assign({},_mainSchool,{name:sc.name,logo:sc.logo,addr:sc.addr,phone:sc.phone,email:sc.email||"",est:sc.est});
+    Store.school=Object.assign({},_mainSchool,{name:sc.name,logo:sc.logo,addr:sc.addr,phone:sc.phone,email:sc.email||"",est:sc.est});
   }catch(e){}
 }
 function permsFromAccess(access){
@@ -31,7 +31,7 @@ async function refreshRemembered(){
       sessionStorage.removeItem("smartEduUser");localStorage.removeItem("smartEduRemember");
       location.reload();return;
     }
-    const u=S.users.find(x=>x.id===activeUser.id);
+    const u=Store.users.find(x=>x.id===activeUser.id);
     if(!u)return;
     u.role=(access.roles||[]).includes(UROLES[0])?"admin":"teacher";
     u.roleLabel=roleTxt(access.roles);
@@ -90,10 +90,10 @@ function applyPending(){
     if(!p)return;
     localStorage.removeItem("smartEduPending");
     if(p.sid!==ACT_SID)return;
-    let u=S.users.find(x=>String(x.identifier).toLowerCase()===p.identifier);
-    if(!u){u={id:uid(),identifier:p.identifier,pin:uid()+uid(),role:p.role,active:true,permissions:[],createdAt:Date.now()};S.users.push(u)}
+    let u=Store.users.find(x=>String(x.identifier).toLowerCase()===p.identifier);
+    if(!u){u={id:uid(),identifier:p.identifier,pin:uid()+uid(),role:p.role,active:true,permissions:[],createdAt:Date.now()};Store.users.push(u)}
     u.role=p.role;if(p.roleLabel)u.roleLabel=p.roleLabel;u.active=true;u.permissions=p.permissions||[];
-    if(p.school)S.school=Object.assign({},S.school||{},p.school,{_init:1});
+    if(p.school)Store.school=Object.assign({},Store.school||{},p.school,{_init:1});
     save();
     activeUser={id:u.id,identifier:u.identifier,role:u.role};
     sessionStorage.setItem("smartEduUser",JSON.stringify(activeUser));
