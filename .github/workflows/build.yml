@@ -36,13 +36,17 @@ jobs:
           cp manifest.webmanifest www/
           cp sw.js www/
 
+          # মডিউলার স্টাইল ও স্ক্রিপ্ট ফোল্ডার (এগুলো না থাকলে অ্যাপ ফাঁকা দেখায়)
+          cp -r css www/
+          cp -r js www/
+
           cp icon-192.png www/
           cp icon-512.png www/
           cp icon-maskable-192.png www/
           cp icon-maskable-512.png www/
 
           echo "Web assets copied:"
-          find www -maxdepth 1 -type f -printf '%f\n' | sort
+          find www -type f -printf '%P\n' | sort
 
       - name: Validate required files
         shell: bash
@@ -67,6 +71,18 @@ jobs:
           done
 
           node --check www/sw.js
+
+          # index.html যে css/js ফাইলগুলো ডাকে সেগুলো আছে কি না এবং সিনট্যাক্স ঠিক কি না
+          for f in $(grep -oE '(src|href)="(js|css)/[^"]+"' www/index.html | sed -E 's/^(src|href)="//; s/"$//'); do
+            if [ ! -s "www/$f" ]; then
+              echo "index.html references a missing or empty file: $f"
+              exit 1
+            fi
+          done
+
+          for f in www/js/*.js; do
+            node --check "$f" || { echo "Syntax error in $f"; exit 1; }
+          done
 
           node -e "
             const fs = require('fs');
