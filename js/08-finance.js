@@ -760,21 +760,52 @@ ${helpLogin()}
 <div class="hp-dev"><div style="font-weight:700">App Builder</div><b>Tofsir Ahamed Parvez</b><div style="font-size:12px">mail: ${DEV_MAIL} &nbsp; Phone: ${DEV_PH}</div></div>`}
 function ytId(u){const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:""}
 function hGuide(){
- const cs=[...new Set(S.guides.map(g=>g.cat))];
+ guFetch();
+ const cs=[...new Set(guList().map(g=>g.cat))];
  return hTabs()+`<div style="font-size:20px;font-weight:700">ইউজার গাইডলাইন</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">অ্যাপের পরিচিতি ও ব্যবহার সম্পর্কে ভিডিও গাইড</div>${isSuper()?`<button class="btn" style="margin-bottom:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}
 <input placeholder="🔍 গাইড খুঁজুন..." value="${esc(guQ)}" oninput="guQ=this.value;guLst()"><div class="lx-f" style="margin-top:8px"><button class="${!guC?"on":""}" onclick="guC='';guLst(true)">সব</button>${cs.map(c=>`<button class="${guC==c?"on":""}" onclick="guC=this.dataset.c;guLst(true)" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="gul">${guH()}</div>`}
 function guH(){
- const k=guQ.trim().toLowerCase(),L=S.guides.filter(g=>(!guC||g.cat==guC)&&(!k||(g.t+(g.desc||"")).toLowerCase().includes(k)));
+ const k=guQ.trim().toLowerCase(),L=guList().filter(g=>(!guC||g.cat==guC)&&(!k||(g.t+(g.desc||"")).toLowerCase().includes(k)));
  if(!L.length)return `<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">🎥</div><b style="color:var(--tx)">কোনো গাইড নেই</b><br>${isSuper()?`<small>নতুন গাইড যোগ করুন</small><br>`:""}${isSuper()?`<button class="btn" style="margin-top:12px" onclick="guForm()">＋ নতুন গাইড</button>`:""}</div>`;
  return L.map(g=>{const y=ytId(g.url);return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>${esc(g.t)}</b> <span class="lx-c">${esc(g.cat)}</span>${g.desc?`<div style="font-size:13px;color:var(--mu);margin-top:4px">${esc(g.desc)}</div>`:""}</div>${isSuper()?`<button class="lx-i x" style="border:0;background:none;padding:0 6px;display:block;font-size:20px;color:var(--mu)" onclick="guMenu('${g.id}')">⋯</button>`:""}</div>
-${guPlay==g.id&&y?`<iframe src="https://www.youtube-nocookie.com/embed/${y}" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:10px" allowfullscreen></iframe>`:""}<button class="btn o s" style="margin-top:10px" onclick="${y?`guPlay=guPlay=='${g.id}'?'':'${g.id}';guLst()`:`openExt(S.guides.find(x=>x.id=='${g.id}').url)`}">${y?(guPlay==g.id?"⏹ বন্ধ করুন":"▶ ভিডিও দেখুন"):"🔗 লিংক খুলুন"}</button></div>`}).join("")}
+${guPlay==g.id&&y?`<iframe src="https://www.youtube-nocookie.com/embed/${y}" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:10px" allowfullscreen></iframe>`:""}<button class="btn o s" style="margin-top:10px" onclick="${y?`guPlay=guPlay=='${g.id}'?'':'${g.id}';guLst()`:`openExt(guList().find(x=>x.id=='${g.id}').url)`}">${y?(guPlay==g.id?"⏹ বন্ধ করুন":"▶ ভিডিও দেখুন"):"🔗 লিংক খুলুন"}</button></div>`}).join("")}
 function guLst(full){if(full){render();return}const e=$("gul");if(e)e.innerHTML=guH()}
 function guForm(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const g=id?S.guides.find(x=>x.id==id):{};
  modal(`<span onclick="closeM()" style="float:right;font-size:22px">×</span><h2 style="text-align:center">${id?"গাইড সম্পাদনা":"নতুন গাইড যোগ করুন"}</h2>${stF("শিরোনাম *","gu_t",g.t||"")}${stF("ভিডিও লিংক *","gu_u",g.url||"")}<div class="hint" style="margin:-4px 0 8px">YouTube লিংক হলে সরাসরি ভেতরে প্লে হবে</div><label class="lb">বিভাগ</label><select id="gu_c">${GCATS.map(c=>`<option ${g.cat==c?"selected":""}>${c}</option>`).join("")}</select><label class="lb">বিবরণ</label><textarea id="gu_d" rows="3" placeholder="ভিডিও সম্পর্কে সংক্ষিপ্ত বিবরণ">${esc(g.desc||"")}</textarea><button class="btn" style="width:100%" onclick="guSave('${id||""}')">সংরক্ষণ</button><button class="btn o" style="width:100%;margin-top:8px;color:var(--tx);border-color:var(--ln)" onclick="closeM()">বাতিল</button>`)}
 function guSave(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const t=$("gu_t").value.trim(),u=$("gu_u").value.trim();if(!t||!u){alert("শিরোনাম ও ভিডিও লিংক দিন");return}
  const o={t,url:/^https?:\/\//i.test(u)?u:"https://"+u,cat:$("gu_c").value,desc:$("gu_d").value.trim()};
- if(id)Object.assign(S.guides.find(x=>x.id==id),o);else S.guides.unshift({id:uid(),date:today(),...o});save();closeM();render()}
-function guMenu(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();render()}}
+ if(id)Object.assign(S.guides.find(x=>x.id==id),o);else S.guides.unshift({id:uid(),date:today(),...o});save();guPush();closeM();render()}
+function guMenu(id){if(!isSuper()){alert("শুধু Super Admin গাইড যোগ, সম্পাদনা বা মুছতে পারবেন");return}const g=S.guides.find(x=>x.id==id);if(!g)return;if(confirm("\""+g.t+"\" গাইড সম্পাদনা করবেন? (বাতিল চাপলে মুছে ফেলার অপশন আসবে)"))guForm(id);else if(confirm("গাইডটি মুছে ফেলবেন?")){S.guides=S.guides.filter(x=>x.id!=id);save();guPush();render()}}
+/* ---- গাইড সার্ভারে শেয়ার: সুপার এডমিন যা যোগ করেন তা সব ব্যবহারকারী দেখবেন ---- */
+const GU_KEY="smartEduGuidesRemote";
+let guRemote=[],guLastFetch=0;
+const guClean=a=>(Array.isArray(a)?a:[]).slice(0,200).map(g=>({id:String((g&&g.id)||"").replace(/[^\w-]/g,"")||uid(),t:String((g&&g.t)||"").slice(0,200),url:/^https?:\/\//i.test(String((g&&g.url)||""))?String(g.url).slice(0,500):"",cat:String((g&&g.cat)||"").slice(0,60),desc:String((g&&g.desc)||"").slice(0,500),date:String((g&&g.date)||"").slice(0,20)})).filter(g=>g.t&&g.url);
+try{guRemote=guClean(JSON.parse(localStorage.getItem(GU_KEY)||"[]"))}catch(_){guRemote=[]}
+const guList=()=>isSuper()?S.guides:guRemote;
+function guStore(a){guRemote=guClean(a);try{localStorage.setItem(GU_KEY,JSON.stringify(guRemote))}catch(_){}}
+async function guFetch(force){
+  try{
+    if(!sb||!navigator.onLine)return;
+    if(!force&&Date.now()-guLastFetch<30000)return;
+    guLastFetch=Date.now();
+    const {data,error}=await sb.rpc("smartedu_get_guides");
+    if(error||!Array.isArray(data))return;
+    guStore(data);
+    /* সুপার এডমিনের কাছে গাইড আছে কিন্তু সার্ভারে নেই — প্রথমবার তুলে দেওয়া */
+    if(isSuper()&&!guRemote.length&&S.guides.length)guPush();
+    guLst();
+  }catch(_){}
+}
+async function guPush(){
+  if(!isSuper()||!sb)return;
+  try{
+    const {error}=await sb.rpc("smartedu_set_guides",{p:guClean(S.guides)});
+    if(error)throw error;
+    guStore(S.guides);
+  }catch(e){alert("গাইড সার্ভারে পাঠানো যায়নি: "+(e.message||e)+"\n(ইন্টারনেট ও ইমেইল লগইন লাগবে)")}
+}
+setTimeout(guFetch,2500);addEventListener("online",()=>guFetch(true));
+
 function hFeed(){
  return hTabs()+`<div style="font-size:20px;font-weight:700">ফিডব্যাক</div><div style="color:var(--mu);font-size:13px;margin-bottom:10px">মতামত, সমস্যা বা পরামর্শ ডেভেলপারকে জানান</div><button class="btn" style="margin-bottom:12px" onclick="fbForm()">＋ নতুন ফিডব্যাক</button>`+(S.feedback.map(f=>`<div class="card"><div style="display:flex;justify-content:space-between"><span class="lx-c">${esc(f.ty)}</span><small style="color:var(--mu)">${bn(f.date)}</small></div><div style="font-size:14px;margin:8px 0;white-space:pre-wrap">${esc(f.tx)}</div>${f.files&&f.files.length?`<div style="font-size:12px;color:var(--mu)">📎 ${f.files.map(esc).join("، ")}</div>`:""}<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px"><button class="btn o s" onclick="fbSend('${f.id}','m')">✉️ ইমেইল</button><button class="btn o s" style="color:#16a34a;border-color:#86efac" onclick="fbSend('${f.id}','w')">💬 WhatsApp</button><button class="btn o s" style="color:#dc2626;border-color:#fca5a5" onclick="fbDel('${f.id}')">মুছুন</button></div></div>`).join("")||'<div class="lx-e" style="padding:34px 10px"><div style="font-size:34px">💬</div><b style="color:var(--tx)">কোনো ফিডব্যাক নেই</b><br><small>নতুন ফিডব্যাক লিখুন</small></div>')}
 function fbForm(){fbFiles=[];
