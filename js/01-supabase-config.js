@@ -1,4 +1,4 @@
-const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
+  const SUPABASE_URL = "https://akzlqgmxinlqiqecedom.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h5KmWK6erDa2J9SRu8NWhw_4QDWk624";
 
 // ইমেইল কনফার্মেশন / OAuth লিংক থেকে ফিরে এলে URL-এ টোকেন থাকে — createClient তা মুছে ফেলার আগেই ধরে রাখা
