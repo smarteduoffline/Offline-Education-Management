@@ -226,7 +226,9 @@ function userPerms(u=activeUser){if(!u)return[];if(u.role==="admin")return Objec
 const SUPER_ADMIN_EMAILS=["tofsirahmedparvez@gmail.com","tofsirahmedparvez1@gmail.com"];
 const isSupEmail=e=>SUPER_ADMIN_EMAILS.includes(String(e||"").toLowerCase());
 // Super Admin = শুধু উপরের দুই ইমেইল; সাধারণ অ্যাডমিন নয়
-const isSuper=()=>activeUser?.role==="super_admin"||isSupEmail(activeUser?.identifier);
+/* সুপার অ্যাডমিন: শুধু সুপার-ইমেইল তালিকা থেকে; লোকাল role লেখা দিয়ে নয়।
+   _supOk === false মানে সার্ভার/লগইন-সেশন যাচাইয়ে সুপার প্রমাণিত হয়নি (03i-super-verify.js) */
+const isSuper=()=>isSupEmail(activeUser?.identifier)&&window._supOk!==false;
 const isAdm=()=>activeUser?.role==="admin"||isSuper();
 function roleTxt(rs){rs=Array.isArray(rs)?rs:[];const a=UROLES.filter(r=>rs.includes(r));return a.length?a.join(" · "):"শিক্ষক"}
 function myRoleText(){if(isSuper())return "Super Admin";const u=S.users.find(v=>v.id===activeUser?.id||v.identifier===activeUser?.identifier);if(u&&u.roleLabel)return u.roleLabel;return activeUser?.role==="admin"?"অ্যাডমিন":"শিক্ষক"}

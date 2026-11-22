@@ -56,5 +56,11 @@
   const card=()=>{const m=mins();
     const o=[[0,"বন্ধ"],[1,"১ মিনিট"],[5,"৫ মিনিট"],[15,"১৫ মিনিট"],[30,"৩০ মিনিট"],[60,"১ ঘণ্টা"]];
     return `<div class="card" style="margin-top:14px"><div style="font-weight:700;margin-bottom:6px">🔒 অ্যাপ লক</div><div style="font-size:13px;opacity:.8;margin-bottom:10px">এই ডিভাইসে অ্যাপ এতক্ষণ ব্যবহার না হলে বা ব্যাকগ্রাউন্ডে থাকলে আবার লগইন লাগবে। ফোন হারালে ডেটা সুরক্ষিত থাকে।</div><select onchange="setLockMin(this.value)">${o.map(x=>`<option value="${x[0]}"${x[0]===m?" selected":""}>${x[1]}</option>`).join("")}</select></div>`};
-  if(typeof setng==="function"){const orig=setng;window.setng=function(){return orig.apply(this,arguments)+card()}}
+  /* "আমার লগইন তথ্য": কে লগইন করা এবং সুপার অ্যাডমিন কি না — ভুল ভূমিকা ধরতে সুবিধা */
+  const idCard=()=>{
+    let who="—",role="—",sup="না",chk="";
+    try{who=activeUser&&activeUser.identifier||"—";role=myRoleText();sup=isSuper()?"হ্যাঁ":"না";
+      chk=window._supOk===true?" (সার্ভার নিশ্চিত করেছে)":window._supOk===false?" (সার্ভার নিশ্চিত করেনি)":""}catch(_){}
+    return `<div class="card" style="margin-top:14px"><div style="font-weight:700;margin-bottom:6px">🔎 আমার লগইন তথ্য</div><div style="font-size:13px;line-height:1.8">লগইন: <b>${esc(who)}</b><br>ভূমিকা: <b>${esc(role)}</b><br>সুপার অ্যাডমিন: <b>${sup}</b>${chk}<br>ডেটাসেট: <b>${esc(String(typeof ACT_SID!=="undefined"?ACT_SID:""))}</b></div></div>`};
+  if(typeof setng==="function"){const orig=setng;window.setng=function(){return orig.apply(this,arguments)+card()+idCard()}}
 })();
