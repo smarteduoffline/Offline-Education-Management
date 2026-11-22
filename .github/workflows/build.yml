@@ -125,6 +125,21 @@ jobs:
 
           npx cap add android
 
+      - name: Harden Android manifest
+        shell: bash
+        run: |
+          set -e
+
+          # ফোন কম্পিউটারে যুক্ত করে (adb backup) বা ক্লাউড ব্যাকআপ থেকে অ্যাপের ডেটা বের করা বন্ধ
+          M=android/app/src/main/AndroidManifest.xml
+          test -f "$M"
+          sed -i 's/android:allowBackup="true"/android:allowBackup="false"/' "$M"
+          if grep -q 'android:allowBackup="false"' "$M"; then
+            echo "allowBackup disabled"
+          else
+            echo "::warning::allowBackup could not be disabled; check AndroidManifest.xml"
+          fi
+
       - name: Sync Capacitor project
         shell: bash
         run: |
