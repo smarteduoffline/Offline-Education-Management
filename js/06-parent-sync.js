@@ -80,7 +80,7 @@ addEventListener("online",pubParentSoon);setTimeout(pubParentSoon,5000);
 // ===== ☁️ Supabase ক্লাউড সিঙ্ক (স্ন্যাপশট) =====
 // অ্যাপ আগের মতোই লোকাল স্টোরেজে চলে। অনলাইনে এলে প্রতিষ্ঠানের ডেটা Supabase-এ জমা হয় এবং নতুন ফোনে লগইন করলে নেমে আসে।
 // একাধিক ডিভাইসের পরিবর্তন 3-way merge দিয়ে মেশানো হয় (রেকর্ড আইডি ধরে)।
-const SNAP_EXCL=["sync","syncQueue","audit","users","invUsers","schools","updatedAt","schemaVersion","smslog"];
+const SNAP_EXCL=["sync","syncQueue","audit","users","invUsers","schools","updatedAt","schemaVersion","smslog","qbFiles"];
 const SNAP_SET_EXCL=["pin","theme","lang","lastBk"];
 let _snapBusy=false,_snapT=null;
 const _snapMetaKey=()=>KEY+":snapmeta",_snapBaseKey=()=>KEY+":snapbase";
