@@ -238,5 +238,5 @@ function myRoleList(){const u=S.users.find(v=>v.id===activeUser?.id||v.identifie
 function isParent(){if(!activeUser||isSuper()||activeUser.role==="admin")return false;const r=myRoleList();return r.includes("অভিভাবক")&&!r.some(x=>["অ্যাডমিন","সহ-অ্যাডমিন","শিক্ষক","হিসাবরক্ষক"].includes(x))}
 const PTABS=[["home",ico("home"),"হোম"],["portal",ico("stu"),"অভিভাবক পোর্টাল"],["back","←","ফিরে যান"]];
 function canTab(t){if(isParent())return t==="home"||t==="portal"||t==="more"||t==="back";return t==="more"||t==="back"||hasPerm({home:"dashboard",att:"attendance",stu:"students",fee:"fees"}[t]||"dashboard")}
-const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"backup"};
+const MENU_PERM={fh:"accounting",saas:"saas",reports:"reports",xh:"exams",qb:"exams",qg:"exams",acc:"accounting",cp:"classes",lib:"library",sms:"messages",teach:"teachers",staff:"staff",notice:"notices",set:"settings",bkp:"backup"};
 function canMenu(k){if(isParent())return k==="cp";if(k==="bkp")return !!activeUser;if(k==="sat")return isSuper();return hasPerm(MENU_PERM[k]||"dashboard")}

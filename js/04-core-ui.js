@@ -42,7 +42,7 @@ function drawer(){
   {items:[L("home","","home","ড্যাশবোর্ড")]},
   {title:"শিক্ষার্থী ও শিক্ষক",ic:"stu",items:[L("stu","","stu","শিক্ষার্থী"),L("more","teach","teach","শিক্ষক"),L("more","staff","staff","কর্মকর্তা/কর্মচারী")]},
   {items:[L("att","","att","উপস্থিতি")]},
-  {title:"একাডেমিক",ic:"book",items:[L("more","cp","book","শ্রেণী ও পাঠ্য"),L("more","xh","exam","পরীক্ষা ও ফলাফল"),L("more","reports","report","রিপোর্ট"),L("more","lib","lib","লাইব্রেরি")]},
+  {title:"একাডেমিক",ic:"book",items:[L("more","cp","book","শ্রেণী ও পাঠ্য"),L("more","xh","exam","পরীক্ষা ও ফলাফল"),L("more","qb","exam","প্রশ্নব্যাংক"),L("more","qg","exam","AI প্রশ্ন জেনারেটর"),L("more","reports","report","রিপোর্ট"),L("more","lib","lib","লাইব্রেরি")]},
   {title:"যোগাযোগ",ic:"sms",items:[L("more","sms","sms","SMS (অভিভাবক)"),L("more","notice","bell","নোটিশ বোর্ড")]},
   {title:"ফিন্যান্স ও হিসাব",ic:"fee",items:[L("fee","","fee","ফি"),L("more","fh","fin","ফিন্যান্স ও হিসাব")]},
   {title:"অ্যাডমিন ও টুলস",ic:"set",items:[L("more","bkp","set","ব্যাকআপ ও রিসাইকেল বিন"),L("more","set","set","সেটিংস"),L("more","sat","crown","Super Admin Tool")]},
