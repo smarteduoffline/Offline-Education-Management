@@ -231,11 +231,13 @@ async function prefetchPdfLibs(){try{if(!navigator.onLine||!window.caches)return
 window.addEventListener("online",()=>setTimeout(prefetchPdfLibs,2000));setTimeout(prefetchPdfLibs,6000);
 function toast(m,keep){let t=$("toast");if(!t){t=document.createElement("div");t.id="toast";t.style.cssText="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:85%;text-align:center";document.body.appendChild(t)}t.textContent=m;t.style.display="block";clearTimeout(t._h);if(!keep)t._h=setTimeout(()=>{t.style.display="none"},3500)}
 function toastOff(){const t=$("toast");if(t)t.style.display="none"}
-async function pdfRender(body,bw){
+const PAPERS={a4:[595,842],letter:[612,792],legal:[612,1008]};
+const pdfDims=(s,l)=>{const p=PAPERS[s]||PAPERS.a4;return l?{w:p[1],h:p[0]}:{w:p[0],h:p[1]}};
+async function pdfRender(body,bw,P){P=P||{w:595,h:842};const LW=Math.round(P.w*794/595);
  let wrap=null;window._pdfBusy=true;document.documentElement.style.zoom="";
  try{
   wrap=document.createElement("div");
-  wrap.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#111;padding:28px;box-sizing:border-box;font-family:sans-serif;--bg:#e2f6eb;--card:#fff;--tx:#111;--mu:#555;--ln:#ddd;--pri:#16a34a";
+  wrap.style.cssText="position:fixed;left:-10000px;top:0;width:"+LW+"px;background:#fff;color:#111;padding:28px;box-sizing:border-box;font-family:sans-serif;--bg:#e2f6eb;--card:#fff;--tx:#111;--mu:#555;--ln:#ddd;--pri:#16a34a";
   /* সাদা-কালো: ডিজাইন একই, শুধু গাঢ় ব্যাকগ্রাউন্ড সরে কাগজের রঙ (সাদা) ও লেখা কালো হয় */
   const bwCss=bw?'.bwm,.bwm *{background-color:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;border-color:#555!important;box-shadow:none!important;text-shadow:none!important}.bwm [style*="gradient"]{background-image:none!important}':'';
   if(bw)wrap.className="bwm";
@@ -247,7 +249,7 @@ async function pdfRender(body,bw){
   const cv=await html2canvas(wrap,{scale:sc,backgroundColor:"#fff",useCORS:true});
   const wr=wrap.getBoundingClientRect(),cuts=[...wrap.querySelectorAll("tr,.pgb")].map(e=>(e.getBoundingClientRect().bottom-wr.top)*sc);
   wrap.remove();wrap=null;window._pdfBusy=false;fitMobileZoom();
-  const PW=595,PH=842,ph=Math.floor(cv.width*PH/PW),pages=[];
+  const PW=P.w,PH=P.h,ph=Math.floor(cv.width*PH/PW),pages=[];
   let y=0;
   while(y<cv.height-1){
    let end=Math.min(y+ph,cv.height);
@@ -260,16 +262,16 @@ async function pdfRender(body,bw){
   return {cv,pages,PW,PH,sc};
  }finally{window._pdfBusy=false;if(wrap){wrap.remove();fitMobileZoom()}}
 }
-async function printDoc(name,body){if(LANG=="en")body=trS(body);
+async function printDoc(name,body,opt){if(LANG=="en")body=trS(body);
  if(!navigator.onLine&&!(await libsReady())){toast("ইন্টারনেট নেই — প্রিন্টযোগ্য ফাইল তৈরি হচ্ছে");return htmlShare(name,body)}
  const fn=name+"-"+today()+".pdf";
  toast("⏳ PDF তৈরি হচ্ছে…",1);
  try{
   await loadLib("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
   await loadLib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  const col=await pdfRender(body,false);
+  const pp=Object.assign({size:"a4",land:false},opt||{}),col=await pdfRender(body,false,pdfDims(pp.size,pp.land));
   toastOff();
-  window._pdfJob={fn,body,col,bw:null,gray:false,busy:false,sel:col.pages.map(()=>true)};
+  window._pdfJob={fn,body,col,bw:null,gray:false,busy:false,paper:pp,sel:col.pages.map(()=>true)};
   pdfOpts();
  }catch(e){window._pdfBusy=false;fitMobileZoom();toast("PDF তৈরি করা যায়নি — প্রিন্টযোগ্য ফাইল শেয়ার হচ্ছে");htmlShare(name,body)}
 }

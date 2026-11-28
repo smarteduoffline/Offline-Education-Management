@@ -4,6 +4,8 @@ function pdfOpts(){
  const J=window._pdfJob;if(!J)return;
  modal(HND+`<h2 style="text-align:center;font-size:16px;margin-bottom:10px">PDF অপশন</h2>
  <label class="lb">রঙ</label><div class="seg"><button id="pdfC0" onclick="pdfGray(0)">🎨 রঙিন</button><button id="pdfC1" onclick="pdfGray(1)">⚫ সাদা-কালো</button></div>
+ <label class="lb">কাগজের সাইজ</label><div class="seg"><button id="pdfS_a4" onclick="pdfPaper('size','a4')">A4</button><button id="pdfS_letter" onclick="pdfPaper('size','letter')">Letter</button><button id="pdfS_legal" onclick="pdfPaper('size','legal')">Legal</button></div>
+ <label class="lb">ধরন</label><div class="seg"><button id="pdfO0" onclick="pdfPaper('land',0)">📄 সাধারণ (পোর্ট্রেট)</button><button id="pdfO1" onclick="pdfPaper('land',1)">🖼 ল্যান্ডস্কেপ</button></div>
  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label class="lb" style="margin:0">পেইজ — মোট ${bn(J.col.pages.length)} টি</label><span style="display:flex;gap:6px"><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(1)">সব</button><button class="ob" style="padding:4px 10px;font-size:12px" onclick="pdfAll(0)">কিছুই না</button></span></div>
  <div id="pdfPg" style="display:flex;gap:8px;overflow-x:auto;padding:10px 2px"></div>
  ${J.col.sc<1.6?`<div class="hint" style="margin:0 0 6px">⚠ বড় ডকুমেন্ট — লেখা কিছুটা ঝাপসা হতে পারে। তীক্ষ্ণ লেখার জন্য নিচের সিস্টেম প্রিন্ট ব্যবহার করুন।</div>`:""}<button class="ob" style="width:100%;margin:0 0 8px" onclick="pdfVector()">🖨 সিস্টেম প্রিন্ট (তীক্ষ্ণ টেক্সট PDF)</button>
@@ -13,17 +15,25 @@ function pdfOpts(){
 function pdfDraw(){
  const J=window._pdfJob;if(!J)return;
  const c0=$("pdfC0"),c1=$("pdfC1");if(c0)c0.className=J.gray?"":"on";if(c1)c1.className=J.gray?"on":"";
+ ["a4","letter","legal"].forEach(k=>{const b=$("pdfS_"+k);if(b)b.className=J.paper.size==k?"on":""});[0,1].forEach(k=>{const b=$("pdfO"+k);if(b)b.className=(!!J.paper.land==!!k)?"on":""});
  const A=pdfSet(J),box=$("pdfPg");
  if(box)box.innerHTML=A.pages.map((p,i)=>`<div class="pgc ${J.sel[i]?"on":""}" onclick="pdfTog(${i})">${J.sel[i]?"<i>✓</i>":""}<img src="${p.th}" style="filter:${J.gray?"grayscale(1)":"none"}"><b>${bn(i+1)}</b></div>`).join("");
  const n=J.sel.filter(Boolean).length,go=$("pdfGo");
  if(go){go.disabled=!n||J.busy;go.style.opacity=(n&&!J.busy)?"1":".5";go.textContent=J.busy?"⏳ অপেক্ষা করুন…":"⬇ PDF তৈরি করুন ("+bn(n)+" পেইজ)"}
+}
+async function pdfPaper(k,v){
+ const J=window._pdfJob;if(!J||J.busy)return;const old=J.paper,p={...old};if(k=="size")p.size=v;else p.land=!!v;if(p.size==old.size&&!!p.land==!!old.land)return;
+ J.busy=true;J.paper=p;pdfDraw();
+ try{const d=pdfDims(p.size,p.land),g=J.gray;J.col=await pdfRender(J.body,false,d);J.bw=g?await pdfRender(J.body,true,d):null;J.sel=pdfSet(J).pages.map(()=>true)}
+ catch(e){J.paper=old;toast("কাগজের সাইজ বদলানো যায়নি")}
+ J.busy=false;if(window._pdfJob===J)pdfDraw();
 }
 async function pdfGray(g){
  const J=window._pdfJob;if(!J||J.busy)return;
  if(!g){J.gray=false;pdfDraw();return}
  if(!J.bw){
   J.busy=true;J.gray=true;pdfDraw();
-  try{J.bw=await pdfRender(J.body,true);if(J.bw.pages.length!=J.sel.length)J.sel=J.bw.pages.map(()=>true)}
+  try{J.bw=await pdfRender(J.body,true,pdfDims(J.paper.size,J.paper.land));if(J.bw.pages.length!=J.sel.length)J.sel=J.bw.pages.map(()=>true)}
   catch(e){J.gray=false;toast("সাদা-কালো তৈরি করা যায়নি")}
   J.busy=false;
   if(window._pdfJob!==J)return;
@@ -31,12 +41,12 @@ async function pdfGray(g){
  pdfDraw();
 }
 function pdfVector(){
- const J=window._pdfJob;if(!J)return;const bw=J.gray,body=J.body;
+ const J=window._pdfJob;if(!J)return;const bw=J.gray,body=J.body;const pgSz=(J.paper?J.paper.size:"a4").toUpperCase()+(J.paper&&J.paper.land?" landscape":"");
  window._pdfJob=null;closeM();
  ["printRoot","printRootCss"].forEach(i=>{const o=document.getElementById(i);if(o)o.remove()});
  const r=document.createElement("div");r.id="printRoot";r.innerHTML=body;
  const st=document.createElement("style");st.id="printRootCss";
- st.textContent='#printRoot{display:none}@media print{@page{size:A4;margin:10mm}html,body{background:#fff!important;height:auto!important;overflow:visible!important}body>*:not(#printRoot){display:none!important}#printRoot{display:block!important;width:100%;color:#111;font-family:sans-serif}#printRoot table{border-collapse:collapse;width:100%}#printRoot tr{page-break-inside:avoid}#printRoot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}'+(bw?'#printRoot,#printRoot *{background-color:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;border-color:#555!important;box-shadow:none!important;text-shadow:none!important}#printRoot [style*="gradient"]{background-image:none!important}#printRoot img{filter:grayscale(1)!important}':'')+'}';
+ st.textContent='#printRoot{display:none}@media print{@page{size:'+pgSz+';margin:10mm}html,body{background:#fff!important;height:auto!important;overflow:visible!important}body>*:not(#printRoot){display:none!important}#printRoot{display:block!important;width:100%;color:#111;font-family:sans-serif}#printRoot table{border-collapse:collapse;width:100%}#printRoot tr{page-break-inside:avoid}#printRoot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}'+(bw?'#printRoot,#printRoot *{background-color:#fff!important;color:#111!important;-webkit-text-fill-color:#111!important;border-color:#555!important;box-shadow:none!important;text-shadow:none!important}#printRoot [style*="gradient"]{background-image:none!important}#printRoot img{filter:grayscale(1)!important}':'')+'}';
  document.head.appendChild(st);document.body.appendChild(r);
  setTimeout(()=>{try{window.print()}catch(e){toast("এই ডিভাইসে সিস্টেম প্রিন্ট চালু করা যায়নি")}},200);
 }
@@ -49,7 +59,7 @@ async function pdfGo(){
  closeM();toast("⏳ PDF তৈরি হচ্ছে…",1);
  try{
   await new Promise(r=>setTimeout(r,60));
-  const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:"a4",compress:true});let first=true;
+  const {jsPDF}=window.jspdf,pdf=new jsPDF({unit:"pt",format:[Math.min(A.PW,A.PH),Math.max(A.PW,A.PH)],orientation:A.PW>A.PH?"landscape":"portrait",compress:true});let first=true;
   for(let i=0;i<A.pages.length;i++){
    if(!J.sel[i])continue;
    const {y,end}=A.pages[i],cv=A.cv,pc=document.createElement("canvas");pc.width=cv.width;pc.height=Math.ceil(end-y);
